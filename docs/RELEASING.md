@@ -18,7 +18,10 @@
 
 - [ ] `git status` 里没有 `m8/data/` 下的任何文件（密钥、上传的 skill、缓存）
 - [ ] 没有 `__pycache__` / `*.pyc` 被提交
-- [ ] 面向用户的文档里没有本机绝对路径：`README.md` / `README.en.md` / `docs/TESTING.md` / `docs/ERROR-PLAYBOOK.md`（`AGENTS.md` 是本机开发文档，**允许**带路径）
+- [ ] **仓库里任何文件都不带本机信息** —— 盘符、用户名、ComfyUI 装在哪个目录，一个都不行。
+      注意 `AGENTS.md`：它是开发机的作业规程，里面全是本机环境。它**只存在于开发机**，
+      `.gitignore` 挡着。**一旦提交过就必须重写历史** —— 删文件加提交只是把痕迹留在原地，
+      `git log` 里照样翻得到。
 - [ ] 没有把 API Key 写进任何文件
 - [ ] 第三方资产（小鲸鱼图片）的原许可证副本还在：`js/ui/whale/assets/LICENSE.txt`
       —— MIT 要求「在软件的实质部分中保留版权声明」，复制别人的图就得留着它
