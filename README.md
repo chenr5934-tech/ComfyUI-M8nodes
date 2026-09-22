@@ -1,4 +1,4 @@
-# ComfyUI-m8nodes
+# ComfyUI-M8nodes
 
 [English](README.en.md) | 中文
 
@@ -187,7 +187,7 @@ fantasy forest COUPLE(0.00 0.25, 0.00 1.00, 1.00) elf archer COUPLE(0.25 0.50, 0
 
 ```bash
 cd ComfyUI/custom_nodes
-git clone https://github.com/chenr5934-tech/ComfyUI-m8nodes.git
+git clone https://github.com/chenr5934-tech/ComfyUI-M8nodes.git
 ```
 
 重启 ComfyUI 即可。**不需要 pip 安装任何依赖。**
@@ -197,7 +197,7 @@ git clone https://github.com/chenr5934-tech/ComfyUI-m8nodes.git
 ### 更新
 
 ```bash
-cd ComfyUI/custom_nodes/ComfyUI-m8nodes
+cd ComfyUI/custom_nodes/ComfyUI-M8nodes
 git pull
 ```
 
