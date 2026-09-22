@@ -1,0 +1,112 @@
+/* ============================================================================
+ * M8web · LoRA 解析
+ * 卡片、键值表那些通用零件在 shell.css，这里只放这个页面特有的。
+ * ==========================================================================*/
+
+.lora {
+  width: min(1080px, calc(100% - 40px));
+  margin: 0 auto;
+}
+
+.lora-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 18px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.lora-head h1 {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.lora-head p {
+  margin: 8px 0 0;
+  max-width: 64ch;
+  color: var(--text-sub);
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.lora-head .ghost-btn { width: auto; }
+
+/* 这句要显眼 —— 用户会担心几个 G 的模型被传走 */
+.lora-privacy {
+  margin: 0 0 18px;
+  padding: 12px 16px;
+  border: 1px solid color-mix(in srgb, var(--accent) 32%, transparent);
+  border-radius: var(--r-item);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  color: var(--text-sub);
+  font-size: 12.5px;
+  line-height: 1.75;
+}
+
+.lora-privacy b { color: var(--text); }
+
+.lora-body { margin-top: 18px; }
+
+/* ---------------------------------------------------------------- 标签频率 */
+
+.tag-list { display: grid; gap: 6px; }
+
+.tag-row {
+  display: grid;
+  grid-template-columns: minmax(110px, 210px) minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  font-size: 12.5px;
+}
+
+.tag-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text);
+}
+
+.tag-bar {
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+}
+
+.tag-bar span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--accent);
+}
+
+.tag-num {
+  color: var(--text-sub);
+  font-variant-numeric: tabular-nums;
+  min-width: 44px;
+  text-align: right;
+}
+
+/* 标签组（一个 LoRA 可能学好几个数据集） */
+.tag-group + .tag-group { margin-top: 14px; }
+
+.tag-group > h3 {
+  margin: 0 0 8px;
+  color: var(--text-sub);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.tag-more {
+  margin: 8px 0 0;
+  color: var(--text-sub);
+  font-size: 12px;
+}
+
+@media (max-width: 620px) {
+  .lora { width: calc(100% - 24px); }
+  .tag-row { grid-template-columns: minmax(80px, 130px) minmax(0, 1fr) auto; }
+}

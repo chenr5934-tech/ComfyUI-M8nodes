@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>M8 工作台</title>
+  <link rel="icon" type="image/svg+xml" href="assets/img/favicon.svg">
+  <link rel="stylesheet" href="assets/css/base.css">
+  <link rel="stylesheet" href="assets/css/shell.css">
+  <script>
+    /* 主题必须在这里定，不能等 boot()：外部脚本加载完再设的话，
+       选了黑夜主题的人会先看见一帧白底，夜里很刺眼。
+       注意设的是 documentElement —— app.js 的 applyTheme 也必须设同一个元素。 */
+    try {
+      var t = localStorage.getItem("m8web.theme");
+      document.documentElement.dataset.theme = t || "night";
+    } catch (e) {
+      document.documentElement.dataset.theme = "night";
+    }
+  </script>
+</head>
+<body>
+  <div id="fx" aria-hidden="true"></div>
+  <div class="shell">
+    <div id="sidebar"></div>
+    <div class="main">
+      <div class="content">
+        <header class="hero">
+          <h1>M8 工作台</h1>
+          <p>给 ComfyUI 加的一层自己的东西：出图之外的那些麻烦事，在这里一次做完。左侧是同一份功能清单，随时能来回切。</p>
+          <div class="hero-tools">
+            <button class="ghost-btn" id="mkShortcut" type="button"
+              title="在桌面放一个快捷方式，双击它就把工作台拉起来 —— ComfyUI 开着关着都能用">＋ 创建桌面快捷方式</button>
+            <span class="hero-note" id="mkShortcutNote"></span>
+          </div>
+        </header>
+        <div id="cards" class="cards"></div>
+      </div>
+    </div>
+  </div>
+  <script src="assets/js/app.js"></script>
+  <script src="assets/js/migrate.js"></script>
+  <script>
+    boot({ activeId: "", base: "" });
+    renderCards(document.getElementById("cards"));
+  </script>
+</body>
+</html>

@@ -1,0 +1,223 @@
+/* ============================================================================
+ * M8web · 混淆图
+ * 卡片、键值表、上传区、按钮、状态行那些通用零件都在 shell.css，
+ * 这里只放这个页面特有的。
+ * ==========================================================================*/
+
+.obf {
+  width: min(1080px, calc(100% - 40px));
+  margin: 0 auto;
+}
+
+.obf-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 18px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.obf-head h1 {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.obf-head p {
+  margin: 8px 0 0;
+  max-width: 64ch;
+  color: var(--text-sub);
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+/* 这条要显眼：存成 JPEG 就再也解不回来了 */
+.obf-note {
+  margin: 0 0 18px;
+  padding: 12px 16px;
+  border: 1px solid color-mix(in srgb, var(--accent) 32%, transparent);
+  border-radius: var(--r-item);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  color: var(--text-sub);
+  font-size: 12.5px;
+  line-height: 1.75;
+}
+
+.obf-note b { color: var(--text); }
+
+/* 两排分段按钮：上面选模式，下面选方向 */
+.obf-bar {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.obf-seg {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-item);
+  background: var(--panel-bg);
+}
+
+.obf-seg button {
+  padding: 7px 18px;
+  border: 0;
+  border-radius: calc(var(--r-item) - 4px);
+  background: transparent;
+  color: var(--text-sub);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.18s var(--ease), color 0.18s var(--ease);
+}
+
+.obf-seg button:hover { color: var(--text); }
+
+.obf-seg button.is-on {
+  background: color-mix(in srgb, var(--accent) 20%, transparent);
+  color: var(--text);
+}
+
+.obf-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.obf-field { display: grid; gap: 6px; }
+
+.obf-field > span {
+  color: var(--text-sub);
+  font-size: 12.5px;
+}
+
+.obf-field input,
+.obf-field select,
+.obf-field textarea {
+  width: 100%;
+  padding: 9px 11px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-item);
+  background: var(--panel-bg);
+  color: var(--text);
+  font: inherit;
+  font-size: 13.5px;
+}
+
+.obf-field textarea {
+  resize: vertical;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  word-break: break-all;
+}
+
+.obf-field input:focus,
+.obf-field select:focus,
+.obf-field textarea:focus {
+  outline: none;
+  border-color: color-mix(in srgb, var(--accent) 60%, transparent);
+}
+
+.obf-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  align-self: end;
+  padding-bottom: 10px;
+  color: var(--text-sub);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.obf-check input { width: auto; }
+
+.obf-warn {
+  margin: 0 0 16px;
+  color: var(--text-sub);
+  font-size: 12.5px;
+}
+
+.obf-drops {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.obf-drop-label {
+  margin: 0 0 8px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.obf-ticket { margin-bottom: 16px; }/* .drop-thumb（拖拽区里那张缩略图）已经搬去 shell.css —— 像素风那个页面也要用，
+   而它不引本文件。 */
+
+/* 结果卡里那串密钥 —— 只读、等宽，方便整段选中 */
+.obf-ticket-out {
+  width: 100%;
+  margin: 8px 0 0;
+  padding: 9px 11px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-item);
+  background: var(--panel-bg);
+  color: var(--text-sub);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  resize: vertical;
+  word-break: break-all;
+}
+
+.obf-actions {
+  display: flex;
+  gap: 10px;
+  margin: 4px 0;
+}
+
+.obf-actions .gen-btn,
+.obf-actions .ghost-btn {
+  width: auto;
+  margin: 0;
+  padding: 10px 26px;
+}
+
+.obf-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+  margin-top: 20px;
+}
+
+.obf-preview { display: grid; gap: 10px; }
+
+.obf-preview img {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: var(--r-item);
+  background: var(--panel-bg);
+  /* 放大看的时候保持硬边，不然看不出一个像素一个像素的效果 */
+  image-rendering: pixelated;
+}
+
+.obf-meta {
+  margin: 0;
+  color: var(--text-sub);
+  font-size: 12.5px;
+  line-height: 1.6;
+}
+
+@media (max-width: 760px) {
+  .obf { width: calc(100% - 24px); }
+  .obf-body { grid-template-columns: 1fr; }
+  .obf-seg button { flex: 1; padding: 7px 12px; }
+}

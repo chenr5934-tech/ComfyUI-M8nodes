@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>图片元数据 · M8 工作台</title>
+  <link rel="icon" type="image/svg+xml" href="../assets/img/favicon.svg">
+  <link rel="stylesheet" href="../assets/css/base.css">
+  <link rel="stylesheet" href="../assets/css/shell.css">
+  <link rel="stylesheet" href="../assets/css/meta.css">
+  <script>
+    /* 主题要在 head 里就定下来，否则黑夜主题会先闪白底 */
+    try {
+      var t = localStorage.getItem("m8web.theme");
+      document.documentElement.dataset.theme = t || "night";
+    } catch (e) {
+      document.documentElement.dataset.theme = "night";
+    }
+  </script>
+</head>
+<body>
+  <div id="fx" aria-hidden="true"></div>
+  <div class="shell">
+    <div id="sidebar"></div>
+    <div class="main">
+      <div id="topbar" class="topbar"></div>
+      <div class="content">
+        <section class="meta">
+
+          <header class="meta-head">
+            <div>
+              <h1>图片元数据</h1>
+              <p>拖一张图进来就自动解析：生成参数、内嵌工作流、EXIF、文件信息。全程在本机读，图片不会被上传。</p>
+            </div>
+            <button class="ghost-btn is-hidden" id="metaAgain" type="button">换一张</button>
+          </header>
+
+          <div class="drop" id="metaDrop">
+            <input id="metaFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif">
+            <span class="drop-ico" aria-hidden="true">＋</span>
+            <strong>点击选择、拖进来，或者 Ctrl+V 粘贴</strong>
+            <small id="metaHint">支持 PNG / JPEG / WebP / GIF</small>
+          </div>
+
+          <div class="meta-body is-hidden" id="metaBody">
+            <div class="meta-preview">
+              <img id="metaThumb" alt="图片预览">
+              <p class="meta-name" id="metaName"></p>
+            </div>
+            <div class="info-panels" id="metaPanels"></div>
+          </div>
+
+          <p class="status" id="metaStatus" role="status"></p>
+        </section>
+      </div>
+    </div>
+  </div>
+  <script src="../assets/js/app.js"></script>
+  <script src="../assets/js/migrate.js"></script>
+  <script src="../assets/js/meta.js"></script>
+  <script>
+    boot({ activeId: "meta", title: "图片元数据", base: "../" });
+    M8Meta.init();
+  </script>
+</body>
+</html>

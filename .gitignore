@@ -1,0 +1,29 @@
+# 运行时数据：密钥、上传的 skill、缓存。绝不进仓库
+# 注意 git 的规矩：父目录被排除后，里面的文件没法用 ! 重新包含 ——
+# 所以 skills 目录要单独放行一次，否则 .gitkeep 也进不来，空目录就跟不进仓库。
+m8/data/*
+!m8/data/skills/
+m8/data/skills/*
+!m8/data/skills/.gitkeep
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# 编辑器 / 系统
+.vscode/
+.idea/
+node_modules/
+.DS_Store
+Thumbs.db
+
+# 临时产物
+_shot*.png
+*.log
+
+# 工作台数据目录的路标：内容是本机算出来的绝对路径，每台机器都不一样。
+# ComfyUI 每次加载插件会重写它，所以不用提交。
+M8web/.m8data

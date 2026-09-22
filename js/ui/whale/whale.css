@@ -1,0 +1,526 @@
+/* ============================================================================
+ * M8 小鲸鱼 · 样式
+ *
+ * 配色全部走 m8_theme.css 的变量，换主题只改那一处。
+ * 层级取 9990 以上：ComfyUI 自己有一堆浮层（队列侧栏、设置弹窗、右键菜单），
+ * 挂件要压在它们之上，但不能盖过 m8-toast（99999）—— 通知必须永远看得见。
+ * ==========================================================================*/
+
+/* ---------------------------------------------------------------- 挂件 */
+
+.m8-whale {
+  position: fixed;
+  /* 压过 ComfyUI 自己的浮层（侧边栏、工具栏、设置弹窗）。留 9 给 m8-toast，
+     通知必须永远在最上面 —— 报错被挂件盖住就没人看得见了。 */
+  z-index: 99990;
+
+  /* 基准尺寸的公式照搬原版：跟着视口缩，但有上下限。
+     122px 是下限（再小看不清余额），625px 是上限（再大挡半个屏幕），
+     中间那段按视口短边的 28% 走，再乘用户设的倍率。 */
+  --m8-whale-scale: 1.5;
+  --m8-whale-base: clamp(
+    122px,
+    calc(min(250px, min(100vw, 100vh) * 0.28) * var(--m8-whale-scale)),
+    625px
+  );
+  /* 1 个 SVG 单位 = 多少像素。气泡里所有字号都按它算，所以缩放时整体等比。 */
+  --m8-whale-u: calc(var(--m8-whale-base) / 1026);
+
+  width: var(--m8-whale-base);
+  height: var(--m8-whale-base);
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+  /* 0.3s：吸附滑动和翻转都用它。拖拽中会被 JS 临时关掉（1:1 跟手）。 */
+  transition: left 0.3s ease, top 0.3s ease, transform 0.3s ease;
+}
+
+/* 吸附到左缘时整体镜像 —— 鲸鱼转身朝右，看着像是靠着屏幕左边。
+   文字块会自己再翻回来（见下面 .m8-whale-bubble-text 那条）。 */
+.m8-whale.-left {
+  transform: scaleX(-1);
+}
+
+/* 承载按压 Q 弹。单开一层是因为 root 要留着做镜像 ——
+   两个 transform 写在一个元素上会互相覆盖。 */
+.m8-whale-body {
+  position: absolute;
+  inset: 0;
+  /* 底边中心：按下去时脚不动，只有上半身被压扁，才像玩偶 */
+  transform-origin: 50% 100%;
+  transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.m8-whale:hover {
+  filter: drop-shadow(0 8px 20px rgba(59, 169, 156, 0.5));
+}
+
+/* 拖拽中：关掉过渡 1:1 跟手，松手后再由 settle() 带着动画滑向吸附位 */
+.m8-whale.-dragging {
+  cursor: grabbing;
+  transition: none;
+}
+
+/* 鲸鱼本体。**不是铺满**：原版是 610×610 的 cut-out，只占容器 59.45%，
+   贴在右下角 —— 剩下那块空位就是气泡的地盘。 */
+.m8-whale-img {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 59.45%;
+  height: 59.45%;
+  display: block;
+  pointer-events: none;
+  -webkit-user-drag: none;
+  user-select: none;
+}
+
+/* 按下的 Q 弹。压扁 + 微微横向撑开，回弹的过冲由 body 上那条 cubic-bezier 给。 */
+.m8-whale.-press .m8-whale-body {
+  transform: scaleY(0.88) scaleX(1.05);
+}
+
+/* ---------------------------------------------------------------- 余额气泡 */
+
+/* 白底深蓝描边的思考气泡。形状是 SVG path 画的（见 whale.js 里的 BUBBLE_SVG），
+   不是 CSS 圆角 —— 尾巴那个从椭圆本体延伸出去的锥形，CSS 画不出来。
+
+   这套蓝取自原版（MeteorNOX/DeepSeek-Balance-Whale-Widget）：
+   描边 #203170、主文字 #536ba9、辅助文字 #9fb0d9。
+   要改色只动这三行。 */
+.m8-whale {
+  --whale-ink: #203170;
+  --whale-text: #536ba9;
+  --whale-dim: #9fb0d9;
+  /* 气泡的整体缩放，跟着挂件大小走但夹了舒适范围（见 applyScale） */
+  /* 1 个 SVG 单位等于多少像素。气泡宽度 195px 对应原版的 1026 单位 */
+}
+
+.m8-whale-bubble {
+  position: absolute;
+  /* 气泡在容器的左上角，鲸鱼在右下角 —— 两者拼成整幅画面。
+     这是原版的结构：它们共用同一张 1026×700 的坐标纸，
+     所以气泡不用另算位置，铺满容器的上侧就行。 */
+  left: 0;
+  top: 0;
+  width: 100%;
+  aspect-ratio: 1026 / 700;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.m8-whale-bubble.-show {
+  opacity: 1;
+  /* 显示时才能点 —— 点它是「换一句台词」，再点是「关掉」。
+     隐藏态保持 pointer-events:none，否则会挡住挂件自身的拖拽。 */
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+/* 台词里的时段档：比金额小一号，用来把「高峰/空闲」和数字区分开 */
+.m8-whale-bubble-period {
+  font-size: calc(var(--m8-whale-u) * 104);
+  font-weight: 800;
+  line-height: 1.05;
+}
+
+/* 需要换行的台词（长句子） */
+.m8-whale-bubble-wrap {
+  white-space: normal;
+  max-width: calc(var(--m8-whale-u) * 560);
+  line-height: 1.2;
+}
+
+/* gif 台词：占气泡中间那块，文字全让位 */
+.m8-whale-bubble-gif {
+  position: absolute;
+  left: 44.25%;
+  top: 38%;
+  transform: translate(-50%, -50%);
+  max-width: calc(var(--m8-whale-u) * 560);
+  max-height: calc(var(--m8-whale-u) * 400);
+  object-fit: contain;
+  display: none;
+  pointer-events: none;
+}
+
+.m8-whale-bubble svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* 三个部件依次弹出：圆点先、椭圆本体后。原版的这个错位是它的手感来源，
+   一起出现就变成一块塑料。收起时顺序反过来。 */
+.m8-whale-bubble .m8-whale-shape,
+.m8-whale-bubble .m8-whale-dot1,
+.m8-whale-bubble .m8-whale-dot2 {
+  fill: #fff;
+  stroke: var(--whale-ink);
+  stroke-width: 18;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  opacity: 0;
+  transform: scale(0.7);
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.m8-whale-bubble.-show .m8-whale-shape,
+.m8-whale-bubble.-show .m8-whale-dot1,
+.m8-whale-bubble.-show .m8-whale-dot2 {
+  opacity: 1;
+  transform: none;
+}
+
+.m8-whale-bubble.-show .m8-whale-dot2 { transition-delay: 0s; }
+.m8-whale-bubble.-show .m8-whale-dot1 { transition-delay: 0.13s; }
+.m8-whale-bubble.-show .m8-whale-shape { transition-delay: 0.26s; }
+.m8-whale-bubble .m8-whale-shape { transition-delay: 0.1s; }
+.m8-whale-bubble .m8-whale-dot1 { transition-delay: 0.2s; }
+.m8-whale-bubble .m8-whale-dot2 { transition-delay: 0.3s; }
+
+/* 文字压在椭圆的中心上。位置是原版算好的：44.25% 和 38% 正好是
+   那个椭圆的圆心（1026 x 0.4425 = 454，700 x 0.38 = 266）。 */
+.m8-whale-bubble-text {
+  position: absolute;
+  left: 44.25%;
+  top: 38%;
+  transform: translate(-50%, -50%);
+  width: 78%;
+  text-align: center;
+  color: var(--whale-text);
+  line-height: 1.15;
+  opacity: 0;
+  pointer-events: none;
+  /* **过渡必须按属性拆开写**。合成一条 transition 的话，下面 .-show 状态里
+     给 opacity 加的 0.36s 延迟会一起作用到 transform 上 ——
+     于是左吸附翻转时，文字要慢半拍才翻过来，看着像闪了一下。
+     原版把这条写进了踩坑记录，照抄。 */
+  transition: opacity 0.16s ease, transform 0.3s ease;
+}
+
+/* 左吸附时整幅画面被 scaleX(-1) 镜像了，文字得自己翻回来，否则余额是反的。
+   translate 要带上：那个居中偏移在镜像之后仍然有效。 */
+.m8-whale.-left .m8-whale-bubble-text {
+  transform: translate(-50%, -50%) scaleX(-1);
+}
+
+.m8-whale-bubble.-show .m8-whale-bubble-text {
+  opacity: 1;
+  transition: opacity 0.16s ease 0.36s, transform 0.3s ease;
+}
+
+.m8-whale-bubble-label {
+  font-size: calc(var(--m8-whale-u) * 66);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+}
+
+.m8-whale-bubble-amount {
+  font-size: calc(var(--m8-whale-u) * 128);
+  font-weight: 800;
+  line-height: 1.05;
+  font-variant-numeric: tabular-nums;
+  word-break: break-all;
+}
+
+.m8-whale-bubble-amount .cur {
+  font-size: calc(var(--m8-whale-u) * 92);
+  margin-right: 1px;
+}
+
+.m8-whale-bubble-hint {
+  font-size: calc(var(--m8-whale-u) * 56);
+  color: var(--whale-dim);
+  letter-spacing: 0.02em;
+  margin-top: calc(var(--m8-whale-u) * 9);
+  line-height: 1.15;
+}
+
+/* 出错时描边和文字换红，形状照旧 */
+.m8-whale-bubble.-err {
+  --whale-ink: #d0453f;
+  --whale-text: #d0453f;
+  --whale-dim: #c98b88;
+}
+
+
+/* ---------------------------------------------------------------- 汉堡菜单 */
+
+/* 按钮贴在鲸鱼右侧，鼠标滑到鲸鱼身上才出现。
+   尺寸、颜色、圆角、三条横线的粗细间距全部取自原版。 */
+.m8-whale-menu-btn {
+  position: absolute;
+  top: calc(40% + 4px);
+  right: 4px;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  border-radius: 6px;
+  background: rgba(32, 49, 112, 0.92);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  /* 挂件里最高的那层：图片是静态定位，气泡是 1，这里是 3。
+     少了它就会被压在图片底下 —— 看得见一点点但点不到。 */
+  z-index: 3;
+  opacity: 0;
+  /* 隐藏时不参与命中测试。留着 opacity:0 可点会让人误触到一个看不见的按钮 */
+  pointer-events: none;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+  transition: opacity 0.15s ease, background 0.15s ease, transform 0.15s ease;
+}
+
+.m8-whale-menu-btn.-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.m8-whale-menu-btn.-visible:hover {
+  transform: scale(1.1);
+}
+
+.m8-whale-menu-btn span {
+  display: block;
+  width: 14px;
+  height: 2px;
+  background: #fff;
+  border-radius: 1px;
+}
+
+.m8-whale-menu-btn:hover {
+  background: #203170;
+}
+
+/* 快捷调整菜单。白底、蓝字、回弹式弹出 —— 全套照搬原版。 */
+.m8-whale-menu {
+  position: fixed;
+  min-width: 196px;
+  /* 必须高于挂件（99990）：菜单向下翻转时会盖在挂件上，
+     层级低的话就被自己的挂件压住了。仍低于 m8-toast 的 99999。 */
+  z-index: 99995;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid rgba(32, 49, 112, 0.35);
+  border-radius: 10px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
+  color: #203170;
+  color-scheme: light;
+  opacity: 0;
+  transform: scale(0.92) translateY(-4px);
+  transform-origin: top right;
+  transition: opacity 0.18s ease, transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  pointer-events: none;
+}
+
+.m8-whale-menu.-open {
+  opacity: 1;
+  transform: scale(1) translateY(0);
+  pointer-events: auto;
+}
+
+.m8-whale-menu-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 5px 0;
+  color: #203170;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.m8-whale-menu-row > span {
+  flex: 0 0 auto;
+}
+
+.m8-whale-menu-sep {
+  height: 1px;
+  background: rgba(32, 49, 112, 0.25);
+  margin: 6px 0;
+}
+
+.m8-whale-range {
+  flex: 1;
+  min-width: 0;
+  accent-color: #203170;
+}
+
+.m8-whale-number {
+  width: 44px;
+  box-sizing: border-box;
+  padding: 2px 4px;
+  border: 1px solid rgba(32, 49, 112, 0.4);
+  border-radius: 6px;
+  background: #fff;
+  color: #203170;
+  font-size: 12px;
+}
+
+.m8-whale-number:disabled {
+  opacity: 0.4;
+  background: rgba(32, 49, 112, 0.06);
+  cursor: not-allowed;
+}
+
+.m8-whale-select {
+  flex: 1;
+  min-width: 0;
+  padding: 3px 0;
+  border: 1px solid rgba(32, 49, 112, 0.4);
+  border-radius: 6px;
+  background: rgba(32, 49, 112, 0.08);
+  color: #203170;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.m8-whale-select:hover {
+  background: rgba(32, 49, 112, 0.16);
+}
+
+.m8-whale-check {
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+  accent-color: #203170;
+  cursor: pointer;
+}
+
+.m8-whale-volpct {
+  flex: 0 0 auto;
+  width: 34px;
+  text-align: right;
+  color: #203170;
+  font-size: 12px;
+}
+
+/* 高峰红、空闲绿 —— 原版这两个色值。 */
+.m8-whale-peak-on { color: #e0433f; }
+.m8-whale-peak-off { color: #2fa24c; }
+
+/* ---------------------------------------------------------------- 设置面板 */
+
+.m8-whale-panel {
+  padding: 12px;
+  color: var(--m8-text);
+  font-size: 13px;
+  overflow-y: auto;
+  height: 100%;
+  box-sizing: border-box;
+}
+
+.m8-whale-panel h3 {
+  margin: 0 0 10px;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.m8-whale-panel h3 img {
+  width: 22px;
+}
+
+.m8-whale-field {
+  margin-bottom: 12px;
+}
+
+.m8-whale-field > label {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--m8-text-dim);
+  font-size: 12px;
+}
+
+.m8-whale-field input[type="text"],
+.m8-whale-field input[type="password"],
+.m8-whale-field input[type="number"],
+.m8-whale-field select,
+.m8-whale-field textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 6px 8px;
+  border: 1px solid var(--m8-line);
+  border-radius: 5px;
+  background: rgba(0, 0, 0, 0.24);
+  color: var(--m8-text);
+  font: inherit;
+  outline: none;
+}
+
+.m8-whale-field textarea {
+  min-height: 90px;
+  resize: vertical;
+  line-height: 1.5;
+}
+
+.m8-whale-field input:focus,
+.m8-whale-field select:focus,
+.m8-whale-field textarea:focus {
+  border-color: var(--m8-primary);
+}
+
+.m8-whale-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.m8-whale-row > * {
+  flex: 1;
+}
+
+.m8-whale-row > button {
+  flex: none;
+}
+
+.m8-whale-panel button {
+  padding: 6px 12px;
+  border: 1px solid var(--m8-line);
+  border-radius: 5px;
+  background: var(--m8-bg-soft);
+  color: var(--m8-text);
+  cursor: pointer;
+  font: inherit;
+}
+
+.m8-whale-panel button:hover {
+  border-color: var(--m8-primary);
+}
+
+.m8-whale-panel button.-primary {
+  background: var(--m8-primary);
+  border-color: var(--m8-primary);
+  color: #06231f;
+  font-weight: 700;
+}
+
+.m8-whale-hint {
+  margin-top: 4px;
+  color: var(--m8-text-dim);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.m8-whale-switch {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.m8-whale-sep {
+  margin: 16px 0 12px;
+  border: none;
+  border-top: 1px solid var(--m8-line);
+}

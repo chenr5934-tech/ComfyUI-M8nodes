@@ -1,0 +1,252 @@
+/* ============================================================================
+ * M8web · 设计底座
+ *
+ * 设计语言整份取自参考站（azusa.nyacraft.cn 的 style.css / sidebar.css），
+ * 不是我自己想的 —— 四套主题的每一个色值都能在那边逐行对上。
+ * 参考站原样是：
+ *     :root                     → 暗夜（默认）
+ *     :root[data-theme=sakura]  → 樱花
+ *     :root[data-theme=nyaneko] → 猫猫（用了背景大图，这里没搬）
+ *     :root[data-theme=ocean]   → 海蓝
+ * 这边保留它的前两套与海蓝，把 nyankeo 换成白天主题（参考站没有浅色版，
+ * 按同一套变量结构推导，青绿在白底上压暗以保证对比度）。
+ *
+ * 主色是青绿 #26c8bd（侧栏悬停、卡片强调），不是紫。
+ * ==========================================================================*/
+
+/* 暗夜既是「没选过主题时的默认值」，也是主题条上那个明确选项 ——
+   两种写法都指到同一个块，省得靠「回落到裸 :root」这种隐式行为兜底。 */
+:root,
+:root[data-theme="night"] {
+  /* 暗夜 · 照抄参考站 :root */
+  --bg-main: #11131a;
+  --bg-sub: #1a1d29;
+  --bg-gradient: linear-gradient(135deg, #11131a 0%, #1a1d29 50%, #161922 100%);
+  --card: rgba(25, 27, 40, 0.72);
+  --card-hover: rgba(35, 38, 56, 0.88);
+  --panel-bg: rgba(18, 21, 32, 0.62);
+  --border: rgba(255, 255, 255, 0.06);
+  --text: #e8e8ee;
+  --text-sub: #9ea4b5;
+  --pink: #d89ac7;
+  --purple: #8b7fd1;
+  --blue: #7aa2d6;
+  --soft-shadow: rgba(0, 0, 0, 0.2);
+
+  --accent: #26c8bd;
+  --accent-2: #e5c776;
+  --accent-ink: #101018;
+  --sidebar-bg: rgba(10, 10, 14, 0.74);
+  --float-bg: rgba(18, 21, 32, 0.82);
+
+  --noise: 0.035;
+  --noise-ink: 255, 255, 255;
+
+  /* 侧栏宽度：参考站就是靠这个变量在 58 / 184 之间切换 */
+  --site-sidebar-width: 58px;
+
+  --r-card: 18px;
+  --r-item: 12px;
+  --r-ctl: 8px;
+
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+:root[data-theme="sakura"] {
+  --bg-main: #171218;
+  --bg-sub: #261c2b;
+  --bg-gradient: linear-gradient(135deg, #171218 0%, #2b1c2f 54%, #201922 100%);
+  --card: rgba(48, 33, 49, 0.74);
+  --card-hover: rgba(62, 42, 63, 0.9);
+  --panel-bg: rgba(44, 30, 47, 0.66);
+  --border: rgba(255, 255, 255, 0.08);
+  --text: #fff3f8;
+  --text-sub: #d9b9c9;
+  --pink: #ff9fca;
+  --purple: #bd93f9;
+  --blue: #8ed8ff;
+  --soft-shadow: rgba(60, 18, 48, 0.24);
+  --accent: #ff9fca;
+  --accent-2: #e5c776;
+  --accent-ink: #24101c;
+  --sidebar-bg: rgba(23, 14, 22, 0.74);
+  --float-bg: rgba(44, 30, 47, 0.84);
+}
+
+:root[data-theme="ocean"] {
+  --bg-main: #0a1318;
+  --bg-sub: #102833;
+  --bg-gradient: linear-gradient(135deg, #071118 0%, #102d38 52%, #071b24 100%);
+  --card: rgba(15, 39, 50, 0.75);
+  --card-hover: rgba(20, 55, 70, 0.92);
+  --panel-bg: rgba(12, 35, 46, 0.68);
+  --border: rgba(170, 230, 255, 0.11);
+  --text: #e9fbff;
+  --text-sub: #9ec7d4;
+  --pink: #9ee7ff;
+  --purple: #6bc2ff;
+  --blue: #69e0d4;
+  --soft-shadow: rgba(0, 20, 36, 0.28);
+  --accent: #69e0d4;
+  --accent-2: #9ee7ff;
+  --accent-ink: #04222b;
+  --sidebar-bg: rgba(6, 20, 26, 0.74);
+  --float-bg: rgba(12, 35, 46, 0.84);
+}
+
+/* 白天：参考站没有这套，按同一结构推导。
+   注意 --accent 压暗到 #0f9d92 —— 原来的 #26c8bd 在白底上对比度只有 2:1 左右，
+   正文和图标会糊在背景里。 */
+:root[data-theme="day"] {
+  --bg-main: #f4f6f9;
+  --bg-sub: #e8ecf2;
+  --bg-gradient: linear-gradient(135deg, #f8fafc 0%, #eaeff6 52%, #f2f5f9 100%);
+  --card: rgba(255, 255, 255, 0.86);
+  --card-hover: rgba(255, 255, 255, 0.99);
+  --panel-bg: rgba(255, 255, 255, 0.72);
+  --border: rgba(17, 19, 26, 0.09);
+  --text: #1b1f2a;
+  --text-sub: #5d6675;
+  --pink: #bf5b96;
+  --purple: #6b5cc4;
+  --blue: #3f76b8;
+  --soft-shadow: rgba(24, 32, 48, 0.1);
+  --accent: #0f9d92;
+  --accent-2: #b8862f;
+  --accent-ink: #f6fffe;
+  --sidebar-bg: rgba(255, 255, 255, 0.76);
+  --float-bg: rgba(255, 255, 255, 0.86);
+  --noise: 0.02;
+  --noise-ink: 17, 19, 26;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  min-height: 100vh;
+  overflow-x: hidden;
+  font-family: "MiSans", "Microsoft YaHei", "PingFang SC", system-ui, sans-serif;
+  font-size: 14px;
+  color: var(--text);
+  background: var(--bg-gradient);
+  background-attachment: fixed;
+  transition: background 0.4s var(--ease), color 0.4s var(--ease);
+}
+
+/* 背景噪点：参考站是 1px 圆点铺 4px 网格，整屏非常淡的一层颗粒 */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: var(--noise);
+  background-image: radial-gradient(rgba(var(--noise-ink), 0.08) 1px, transparent 1px);
+  background-size: 4px 4px;
+}
+
+a { color: inherit; }
+button { font: inherit; cursor: pointer; }
+::selection { background: var(--accent); color: var(--accent-ink); }
+
+/* 统一键盘焦点：参考站用的是青绿描边 */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover { background: var(--text-sub); }
+
+/* ---------------------------------------------------------------- 动效层 */
+
+/* 纯装饰，铺满整屏但不吃点击。参考站没有这一层（它的猫猫主题直接用了背景大图），
+   樱花和海蓝这两套按你的要求留着：安静的背景动，不抢内容。 */
+#fx {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+/* 樱花：两层错峰飘落，一层慢一层快，免得看出明显循环 */
+:root[data-theme="sakura"] #fx::before,
+:root[data-theme="sakura"] #fx::after {
+  content: "";
+  position: absolute;
+  inset: -20% -12%;
+  background-repeat: repeat;
+  will-change: transform;
+}
+
+:root[data-theme="sakura"] #fx::before {
+  background-image:
+    radial-gradient(circle at 12% 8%, rgba(255, 159, 202, 0.85) 0 3px, transparent 3px),
+    radial-gradient(circle at 38% 22%, rgba(255, 190, 214, 0.7) 0 4px, transparent 4px),
+    radial-gradient(circle at 64% 14%, rgba(240, 140, 180, 0.75) 0 3px, transparent 3px),
+    radial-gradient(circle at 86% 30%, rgba(255, 200, 222, 0.6) 0 5px, transparent 5px),
+    radial-gradient(circle at 22% 48%, rgba(255, 159, 202, 0.55) 0 3px, transparent 3px),
+    radial-gradient(circle at 54% 60%, rgba(255, 190, 214, 0.65) 0 4px, transparent 4px);
+  background-size: 260px 340px;
+  animation: sakura-fall 22s linear infinite;
+}
+
+:root[data-theme="sakura"] #fx::after {
+  background-image:
+    radial-gradient(circle at 30% 12%, rgba(189, 147, 249, 0.5) 0 2px, transparent 2px),
+    radial-gradient(circle at 70% 34%, rgba(255, 159, 202, 0.5) 0 3px, transparent 3px),
+    radial-gradient(circle at 48% 74%, rgba(255, 200, 222, 0.45) 0 2px, transparent 2px);
+  background-size: 180px 240px;
+  animation: sakura-fall 15s linear infinite reverse;
+}
+
+@keyframes sakura-fall {
+  from { transform: translate3d(0, -12%, 0); }
+  to { transform: translate3d(-40px, 12%, 0); }
+}
+
+/* 海蓝：三团很淡的水波亮带，缓慢横向摆动 */
+:root[data-theme="ocean"] #fx::before {
+  content: "";
+  position: absolute;
+  inset: -12%;
+  background-image:
+    radial-gradient(ellipse 62% 16% at 28% 18%, rgba(105, 224, 212, 0.1), transparent 70%),
+    radial-gradient(ellipse 54% 14% at 74% 52%, rgba(158, 231, 255, 0.09), transparent 70%),
+    radial-gradient(ellipse 70% 18% at 44% 84%, rgba(107, 194, 255, 0.08), transparent 70%);
+  will-change: transform;
+  animation: ocean-sway 14s ease-in-out infinite;
+}
+
+:root[data-theme="ocean"] #fx::after {
+  content: "";
+  position: absolute;
+  inset: -12%;
+  background-image:
+    radial-gradient(ellipse 40% 10% at 60% 30%, rgba(158, 231, 255, 0.07), transparent 70%),
+    radial-gradient(ellipse 48% 12% at 18% 68%, rgba(105, 224, 212, 0.07), transparent 70%);
+  will-change: transform;
+  animation: ocean-sway 20s ease-in-out infinite reverse;
+}
+
+@keyframes ocean-sway {
+  0%, 100% { transform: translate3d(-2%, 0, 0) scaleY(1); }
+  50% { transform: translate3d(2%, -10px, 0) scaleY(1.04); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  #fx::before,
+  #fx::after { animation: none !important; }
+}

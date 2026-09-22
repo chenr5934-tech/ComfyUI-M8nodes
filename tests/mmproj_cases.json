@@ -1,0 +1,90 @@
+{
+  "note": "主模型 ↔ mmproj 自动配对的共用用例。后端 models._pick_from 和前端 autoPickMmproj 都跑这一份，改一边不改另一边会当场红。expect 为 null 表示配不上，前端那边对应常量 NO_MMPROJ。",
+  "cands": [
+    "qwen2.1-image\\Qwen-Image-2.1-PE-I2I.mmproj-bf16.gguf",
+    "qwen3.5-4B\\mmproj-Qwen3.5-4B-Uncensored-HauhauCS-Aggressive-BF16.gguf",
+    "qwen3.5-9b\\mmproj-Qwen3.5-9B-Uncensored-HauhauCS-Aggressive-BF16.gguf"
+  ],
+  "cases": [
+    {
+      "name": "同目录命中 9B",
+      "model": "qwen3.5-9b\\Qwen3.5-9B-Uncensored-HauhauCS-Aggressive-Q4_K_M.gguf",
+      "expect": "qwen3.5-9b\\mmproj-Qwen3.5-9B-Uncensored-HauhauCS-Aggressive-BF16.gguf"
+    },
+    {
+      "name": "同目录命中 4B",
+      "model": "qwen3.5-4B\\Qwen3.5-4B-Uncensored-HauhauCS-Aggressive-Q6_K.gguf",
+      "expect": "qwen3.5-4B\\mmproj-Qwen3.5-4B-Uncensored-HauhauCS-Aggressive-BF16.gguf"
+    },
+    {
+      "name": "同目录命中 image 系列",
+      "model": "qwen2.1-image\\Qwen-Image-2.1-PE-I2I.Q4_K_M.gguf",
+      "expect": "qwen2.1-image\\Qwen-Image-2.1-PE-I2I.mmproj-bf16.gguf"
+    },
+    {
+      "name": "平铺在根目录时靠参数规模分（回归：曾经配到 4B 上）",
+      "model": "Qwen3.5-9B-Uncensored-HauhauCS-Aggressive-Q4_K_M.gguf",
+      "expect": "qwen3.5-9b\\mmproj-Qwen3.5-9B-Uncensored-HauhauCS-Aggressive-BF16.gguf"
+    },
+    {
+      "name": "主模型用正斜杠、候选用反斜杠，仍然算同目录",
+      "model": "qwen3.5-9b/Qwen3.5-9B-Uncensored-HauhauCS-Aggressive-Q4_K_M.gguf",
+      "expect": "qwen3.5-9b\\mmproj-Qwen3.5-9B-Uncensored-HauhauCS-Aggressive-BF16.gguf"
+    },
+    {
+      "name": "只有一个候选就直接用",
+      "model": "whatever\\foo-bar.gguf",
+      "cands": [
+        "somewhere\\mmproj-foo-bar-BF16.gguf"
+      ],
+      "expect": "somewhere\\mmproj-foo-bar-BF16.gguf"
+    },
+    {
+      "name": "一个候选都没有",
+      "model": "whatever\\foo-bar.gguf",
+      "cands": [],
+      "expect": null
+    },
+    {
+      "name": "名字毫无共同词就不猜",
+      "model": "totally-different\\blah-blah.gguf",
+      "expect": null
+    },
+    {
+      "name": "量化后缀不该被当成规模（A-Q4_K_M 不该配 A 系列里任何一个）",
+      "model": "root\\A-Q4_K_M.gguf",
+      "cands": [
+        "root\\mmproj-A-BF16.gguf",
+        "root\\mmproj-B-BF16.gguf"
+      ],
+      "expect": null
+    },
+    {
+      "name": "同目录有多个候选时继续按特征词 + 规模评分",
+      "model": "multi\\Qwen3.5-9B-xyz.gguf",
+      "cands": [
+        "multi\\mmproj-Qwen3.5-4B-xyz.gguf",
+        "multi\\mmproj-Qwen3.5-9B-xyz.gguf"
+      ],
+      "expect": "multi\\mmproj-Qwen3.5-9B-xyz.gguf"
+    },
+    {
+      "name": "主模型和 mmproj 都在根目录（两边的「根目录」字面值不同，结果必须一样）",
+      "model": "Qwen3.5-9B-xyz.gguf",
+      "cands": [
+        "mmproj-Qwen3.5-9B-xyz.gguf",
+        "mmproj-Qwen3.5-4B-xyz.gguf"
+      ],
+      "expect": "mmproj-Qwen3.5-9B-xyz.gguf"
+    },
+    {
+      "name": "主模型在子目录、候选全在根目录时回落按词评分",
+      "model": "sub\\Qwen3.5-4B-Uncensored-HauhauCS-Aggressive-Q6_K.gguf",
+      "cands": [
+        "mmproj-Qwen3.5-9B-Uncensored-HauhauCS-Aggressive-BF16.gguf",
+        "mmproj-Qwen3.5-4B-Uncensored-HauhauCS-Aggressive-BF16.gguf"
+      ],
+      "expect": "mmproj-Qwen3.5-4B-Uncensored-HauhauCS-Aggressive-BF16.gguf"
+    }
+  ]
+}

@@ -1,0 +1,134 @@
+/* ============================================================================
+ * M8web · 像素风转化
+ * 卡片、键值表、上传区、按钮、状态行那些通用零件都在 shell.css，
+ * 这里只放这个页面特有的。
+ * ==========================================================================*/
+
+.px {
+  width: min(1080px, calc(100% - 40px));
+  margin: 0 auto;
+}
+
+.px-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 18px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.px-head h1 {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.px-head p {
+  margin: 8px 0 0;
+  max-width: 64ch;
+  color: var(--text-sub);
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.px-note {
+  margin: 0 0 18px;
+  padding: 12px 16px;
+  border: 1px solid color-mix(in srgb, var(--accent) 32%, transparent);
+  border-radius: var(--r-item);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  color: var(--text-sub);
+  font-size: 12.5px;
+  line-height: 1.75;
+}
+
+.px-note b { color: var(--text); }
+
+.px-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.px-field { display: grid; gap: 6px; }
+
+.px-field > span {
+  color: var(--text-sub);
+  font-size: 12.5px;
+}
+
+.px-field select {
+  width: 100%;
+  padding: 9px 11px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-item);
+  background: var(--panel-bg);
+  color: var(--text);
+  font: inherit;
+  font-size: 13.5px;
+}
+
+.px-field select:focus {
+  outline: none;
+  border-color: color-mix(in srgb, var(--accent) 60%, transparent);
+}
+
+.px-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  align-self: end;
+  padding-bottom: 10px;
+  color: var(--text-sub);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.px-check input { width: auto; }
+
+.px-actions {
+  display: flex;
+  gap: 10px;
+  margin: 16px 0 4px;
+}
+
+.px-actions .gen-btn,
+.px-actions .ghost-btn {
+  width: auto;
+  margin: 0;
+  padding: 10px 26px;
+}
+
+.px-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+  margin-top: 20px;
+}
+
+.px-preview { display: grid; gap: 10px; }
+
+.px-preview img {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: var(--r-item);
+  background: var(--panel-bg);
+  /* 这条不能少 —— 少了浏览器就会自己插值，看着就不是像素画了 */
+  image-rendering: pixelated;
+}
+
+.px-meta {
+  margin: 0;
+  color: var(--text-sub);
+  font-size: 12.5px;
+  line-height: 1.6;
+}
+
+@media (max-width: 760px) {
+  .px { width: calc(100% - 24px); }
+  .px-body { grid-template-columns: 1fr; }
+}

@@ -1,0 +1,933 @@
+/* ============================================================================
+ * M8web · 图片工坊
+ *
+ * 配色和圆角全部走 base.css 里的主题变量，四套主题自动生效。
+ *
+ * 两处布局是这套东西的关键：
+ *   1. 横切时 .cut-panel 是横向 flex（图在左、屏蔽按钮列在右）；
+ *      竖切时切成纵向（屏蔽按钮行在上、图在下）。按钮就是靠这个自然贴到
+ *      「每段右侧 / 上侧」。
+ *   2. 屏蔽按钮不用像素算位置，而是每个按钮给一个 flex 比例（等于该段占比）——
+ *      段多高按钮就多高，永远严丝合缝，缩放窗口也不会错位。
+ * ==========================================================================*/
+
+.studio {
+  width: min(1200px, calc(100% - 40px));
+  margin: 0 auto;
+}
+
+/* ---------------------------------------------------------------- 选图 */
+
+/* 上传拖拽区（.drop / .drop-ico）已经搬去 shell.css ——
+   图片元数据页和 LoRA 解析页都要用它，而这两个页面不引本文件，
+   以前它们的上传区是裸的（连虚线框都没有）。小号变体 .drop.mini 留在下面。 */
+
+/* ---------------------------------------------------------------- 工作台 */
+
+/* 功能标签栏 */
+.shop-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 18px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.shop-tabs button {
+  padding: 8px 14px;
+  border-radius: var(--r-ctl);
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-sub);
+  font-size: 13px;
+  font-weight: 600;
+  transition: background 0.18s var(--ease), color 0.18s var(--ease), border-color 0.18s var(--ease);
+}
+
+.shop-tabs button:hover:not(:disabled) { color: var(--text); }
+
+.shop-tabs button.on {
+  background: var(--accent);
+  border-color: transparent;
+  color: var(--accent-ink);
+  font-weight: 800;
+}
+
+.shop-tabs button:disabled { opacity: 0.42; cursor: not-allowed; }
+
+.studio-grid {
+  display: grid;
+  /* 右列给到 330px 起，不然工具挤成一窄条、底下一大片空白 */
+  grid-template-columns: minmax(0, 1.45fr) minmax(330px, 0.72fr);
+  gap: 18px;
+  /* stretch 而不是 start：工具列要和图片一样高，
+     右列拉伸之后由 .studio-side 的弹性行把空白吃掉 */
+  align-items: stretch;
+}
+
+/* 横切：图在左，屏蔽列在右 */
+.cut-panel {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 10px;
+  min-width: 0;
+}
+
+/* 竖切：屏蔽行在上，图在下 */
+.cut-panel[data-dir="v"] { flex-direction: column; }
+
+.cut-frame {
+  position: relative;
+  /* 必须是 flex: 1 1 0，不能是 1 1 auto。
+     auto 的意思是「先按内容宽度定基准」，而 #paintFrame 上声明了
+     container-type: inline-size —— 尺寸容器会**忽略内在尺寸**，
+     于是基准算成 0，宽度塌缩、aspect-ratio 再把高度也带成 0，整块画布看不见。
+     基准给 0 就只由 flex 分配宽度，跟容器查询不冲突。 */
+  flex: 1 1 0;
+  min-width: 0;
+  border-radius: var(--r-card);
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid var(--border);
+  /* 棋盘底纹：透明 PNG 也能看出边界 */
+  background-image:
+    linear-gradient(45deg, rgba(255, 255, 255, 0.035) 25%, transparent 25%, transparent 75%, rgba(255, 255, 255, 0.035) 75%),
+    linear-gradient(45deg, rgba(255, 255, 255, 0.035) 25%, transparent 25%, transparent 75%, rgba(255, 255, 255, 0.035) 75%);
+  background-size: 18px 18px;
+  background-position: 0 0, 9px 9px;
+}
+
+.cut-frame img {
+  display: block;
+  width: 100%;
+  height: auto;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+/* 每段的蒙版层 */
+.cut-tints { position: absolute; inset: 0; pointer-events: none; }
+
+.cut-tint {
+  position: absolute;
+  opacity: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(126, 132, 144, 0.62);
+  transition: opacity 0.18s var(--ease);
+}
+
+.cut-tint.on { opacity: 1; }
+
+.cut-tint::after {
+  content: "不导出";
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: rgba(12, 15, 20, 0.72);
+  color: #f2f4f7;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+
+/* 分割虚线层：整层不吃点击，只有圆点吃 */
+.cut-lines { position: absolute; inset: 0; pointer-events: none; }
+
+.cut-line { position: absolute; }
+
+/* 横切的分割线：一条水平的深色虚线。
+   叠一圈极淡的白描边 —— 不然遇到深色图片，深色虚线就整个融进背景里了。 */
+.cut-panel[data-dir="h"] .cut-line {
+  left: 0;
+  right: 0;
+  height: 0;
+  border-top: 2px dashed rgba(11, 14, 20, 0.92);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.3);
+}
+
+.cut-panel[data-dir="v"] .cut-line {
+  top: 0;
+  bottom: 0;
+  width: 0;
+  border-left: 2px dashed rgba(11, 14, 20, 0.92);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.3);
+}
+
+/* 虚线中间的圆点：唯一能抓的地方 */
+.cut-knob {
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.95);
+  background: var(--accent);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
+  pointer-events: auto;
+  cursor: grab;
+  touch-action: none;
+  transition: transform 0.12s var(--ease);
+}
+
+.cut-panel[data-dir="h"] .cut-knob {
+  left: 50%;
+  top: -9px;
+  transform: translateX(-50%);
+}
+
+.cut-panel[data-dir="v"] .cut-knob {
+  top: 50%;
+  left: -9px;
+  transform: translateY(-50%);
+}
+
+.cut-knob:hover { transform: translateX(-50%) scale(1.15); }
+.cut-panel[data-dir="v"] .cut-knob:hover { transform: translateY(-50%) scale(1.15); }
+.cut-knob:active { cursor: grabbing; }
+
+/* 屏蔽按钮：横切时右侧竖排，竖切时上侧横排 */
+.cut-mutes {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 0;
+}
+
+.cut-panel[data-dir="h"] .cut-mutes {
+  flex-direction: column;
+  width: 48px;
+}
+
+.cut-panel[data-dir="v"] .cut-mutes {
+  flex-direction: row;
+  height: 48px;
+}
+
+.cut-mute {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+.cut-mute span {
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--panel-bg);
+  color: var(--text-sub);
+  font-size: 12px;
+  line-height: 1;
+  transition: background 0.18s var(--ease), color 0.18s var(--ease), border-color 0.18s var(--ease);
+}
+
+.cut-mute:hover span {
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  color: var(--text);
+}
+
+.cut-mute.on span {
+  background: var(--accent);
+  border-color: transparent;
+  color: var(--accent-ink);
+  font-weight: 800;
+}
+
+/* 提示行横跨两列，所以它在 DOM 里必须排在 .cut-panel 和 .studio-side 之后。
+   grid 的自动排版从左到右、走过不回头：这行跨满两列，排在工具列前面的话，
+   row1 的 col2 会被它跳过，工具列直接掉到下一行第一列（图片下面），
+   右列整列空着 —— 这个坑真踩过一次，位置就是靠 DOM 顺序定的。 */
+.cut-hint {
+  grid-column: 1 / -1;
+  margin: 10px 0 0;
+  color: var(--text-sub);
+  font-size: 12.5px;
+  line-height: 1.6;
+}
+
+/* ---------------------------------------------------------------- 右侧工具 */
+
+/* 工具栈：以后每加一个功能，就是往这里再塞一组卡片。
+   用 flex 而不是写死的行模板 —— 行模板得几行写几行，
+   以后多一张卡就全错位；flex 下只让标了 .stretch 的那张把剩余高度吃掉，
+   图片再高，右列底下也不会留一大片空。 */
+.studio-side {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+}
+
+.tool-card {
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-item);
+  background: var(--panel-bg);
+  min-height: 0;
+}
+
+/* 会被拉伸的那张卡：内容仍靠上排，卡片本身撑开，视觉上就不空了 */
+.tool-card.stretch { display: flex; flex-direction: column; min-height: 0; }
+
+.tool-card h3 {
+  margin: 0 0 10px;
+  color: var(--text-sub);
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+}
+
+/* 横切 / 竖切 */
+.seg { display: flex; gap: 6px; }
+
+.seg button {
+  flex: 1 1 0;
+  padding: 9px 10px;
+  border-radius: var(--r-ctl);
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-sub);
+  font-size: 13px;
+  font-weight: 600;
+  transition: background 0.18s var(--ease), color 0.18s var(--ease), border-color 0.18s var(--ease);
+}
+
+.seg button:hover { color: var(--text); }
+
+.seg button.on {
+  background: var(--accent);
+  border-color: transparent;
+  color: var(--accent-ink);
+  font-weight: 800;
+}
+
+/* 段数 */
+.range-row { display: flex; align-items: center; gap: 12px; }
+
+.range-row input[type="range"] {
+  flex: 1 1 auto;
+  min-width: 0;
+  accent-color: var(--accent);
+}
+
+.range-row output {
+  min-width: 46px;
+  text-align: right;
+  font-size: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 各段尺寸 */
+.seg-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 6px;
+  align-content: start;
+  overflow-y: auto;
+}
+
+.seg-list li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.035);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.seg-list li.off { opacity: 0.42; text-decoration: line-through; }
+
+.seg-list .seg-no {
+  width: 20px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+  color: var(--text);
+  font-size: 11px;
+  font-weight: 800;
+  flex: none;
+}
+
+.seg-list .seg-size { margin-left: auto; color: var(--text-sub); }
+
+/* ---------------------------------------------------------------- 预览 */
+
+.studio-preview { margin-top: 22px; }
+
+.preview-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.preview-head h2 { margin: 0; font-size: 17px; font-weight: 700; }
+.preview-note { color: var(--text-sub); font-size: 12.5px; }
+.preview-head .gen-btn { margin-left: auto; width: auto; }
+
+.preview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
+  gap: 12px;
+}
+
+.pv-card {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-item);
+  background: var(--panel-bg);
+}
+
+.pv-shot {
+  display: grid;
+  place-items: center;
+  min-height: 96px;
+  border-radius: 7px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.24);
+}
+
+.pv-shot img { display: block; max-width: 100%; max-height: 190px; }
+
+.pv-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.pv-meta .seg-size { margin-left: auto; color: var(--text-sub); }
+
+.pv-save {
+  padding: 7px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
+  text-decoration: none;
+  transition: border-color 0.18s var(--ease), background 0.18s var(--ease);
+}
+
+.pv-save:hover {
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+}
+
+/* ---------------------------------------------------------------- 窄屏 */
+
+@media (max-width: 900px) {
+  .studio-grid { grid-template-columns: 1fr; }
+  .studio-side { position: static; }
+}
+
+@media (max-width: 620px) {
+  .studio { width: calc(100% - 24px); }
+  .cut-panel[data-dir="h"] .cut-mutes { width: 40px; }
+  .cut-panel[data-dir="v"] .cut-mutes { height: 40px; }
+  .cut-knob { width: 22px; height: 22px; }
+  .cut-panel[data-dir="h"] .cut-knob { top: -11px; }
+  .cut-panel[data-dir="v"] .cut-knob { left: -11px; }
+}
+
+/* ---------------------------------------------------------------- 功能面板 */
+
+.shop-status { margin: 10px 0 0; }
+.shop-body { margin-top: 4px; }
+
+/* 工具卡底部的说明行 */
+.tool-note {
+  margin: 8px 0 0;
+  color: var(--text-sub);
+  font-size: 11.5px;
+  line-height: 1.55;
+}
+
+/* ---------------------------------------------------------------- 分段遮挡 */
+
+.mask-strips { position: absolute; inset: 0; }
+
+/* 黑条本身。inset 描一圈极淡的白边 —— 纯黑在黑夜主题下会和背景糊在一起，
+   看不出条在哪、也就拖不动它。 */
+.mask-strip {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background: #000000;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.16);
+  cursor: move;
+  touch-action: none;
+  transition: box-shadow 0.15s var(--ease);
+}
+
+.mask-strip:hover {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 65%, transparent);
+}
+
+.mask-strip:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.mask-label {
+  color: #ffffff;
+  font-weight: 800;
+  /* 行高和 mask.js 里 fitText 用的 1.22 对齐，否则预览和导出会差一点 */
+  line-height: 1.22;
+  text-align: center;
+  /* 排版结果是一行行拼起来的（换行符分隔），所以用 pre-line 让它真的换行。
+     原来是 nowrap —— 那是文字被裁掉的直接原因。 */
+  white-space: pre-line;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* 竖遮时这个盒子的宽高由 JS 按像素设好，再整体转 90 度。
+   这里只管把文字在盒里居中。 */
+.mask-label.rotated {
+  display: grid;
+  place-items: center;
+}
+
+/* ---------------------------------------------------------------- 贴纸遮挡 */
+
+.sticker-layer { position: absolute; inset: 0; }
+
+/* 贴纸本体。宽高由 JS 按百分比定（跟着底图的显示尺寸走），
+   translate(-50%,-50%) 让 left/top 指的是中心点。 */
+.sticker-item {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  cursor: move;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-drag: none;
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.35));
+}
+
+/* 选中描一圈 —— 几张叠一起时不然分不清在拖哪张 */
+.sticker-item.on {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+/* ---------------------------------------------------------------- 抠图 */
+
+#keyStage {
+  display: grid;
+  gap: 8px;
+  justify-items: center;
+}
+
+/* 棋盘底纹：抠掉的地方变透明，得有底纹才看得出来 */
+#stickerCanvas {
+  max-width: 100%;
+  max-height: 46svh;
+  border-radius: var(--r-item);
+  border: 1px solid var(--border);
+  background-image:
+    linear-gradient(45deg, rgba(255, 255, 255, 0.07) 25%, transparent 25%, transparent 75%, rgba(255, 255, 255, 0.07) 75%),
+    linear-gradient(45deg, rgba(255, 255, 255, 0.07) 25%, transparent 25%, transparent 75%, rgba(255, 255, 255, 0.07) 75%);
+  background-size: 16px 16px;
+  background-position: 0 0, 8px 8px;
+  cursor: crosshair;
+}
+
+.key-tip {
+  margin: 0;
+  color: var(--text-sub);
+  font-size: 12px;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.key-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.key-actions .tool-note { margin: 0; }
+
+/* ---------------------------------------------------------------- 贴纸库 */
+
+.sticker-lib {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(56px, 1fr));
+  gap: 9px;
+  align-content: start;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.lib-item {
+  position: relative;
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  padding: 5px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  /* 底色和棋盘纹分开写：用 background 简写会把底纹那层冲掉 */
+  background-color: rgba(255, 255, 255, 0.04);
+  background-image:
+    linear-gradient(45deg, rgba(255, 255, 255, 0.06) 25%, transparent 25%, transparent 75%, rgba(255, 255, 255, 0.06) 75%),
+    linear-gradient(45deg, rgba(255, 255, 255, 0.06) 25%, transparent 25%, transparent 75%, rgba(255, 255, 255, 0.06) 75%);
+  background-size: 12px 12px;
+  background-position: 0 0, 6px 6px;
+  cursor: pointer;
+  transition: border-color 0.18s var(--ease), background-color 0.18s var(--ease);
+}
+
+.lib-item img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.lib-item:hover { border-color: color-mix(in srgb, var(--accent) 55%, transparent); }
+
+/* 内置那张描个青绿边，和「我导入的」区分开 */
+.lib-item.builtin { border-color: color-mix(in srgb, var(--accent) 32%, transparent); }
+
+/* 删除钮平时藏着，指上去才露出来，免得网格显得很吵 */
+.lib-del {
+  position: absolute;
+  top: -7px;
+  right: -7px;
+  width: 19px;
+  height: 19px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--bg-main);
+  color: var(--text-sub);
+  font-size: 12px;
+  line-height: 1;
+  opacity: 0;
+  transition: opacity 0.15s var(--ease), color 0.15s var(--ease), background 0.15s var(--ease);
+}
+
+.lib-item:hover .lib-del { opacity: 1; }
+
+.lib-del:hover {
+  color: #fff;
+  background: var(--pink);
+  border-color: transparent;
+}
+
+/* ---------------------------------------------------------------- 宫格拼图 */
+
+/* 拼图板：预览直接显示「拼好的样子」，n 列等分，每格 cover 填满。
+   比在图上画几条切点线直观 —— 用户要看的就是最终那张拼图。 */
+#gridFrame { aspect-ratio: 1 / 1; }
+
+.grid-board {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-auto-rows: 1fr;
+  gap: 0;
+  background: rgba(0, 0, 0, 0.22);
+}
+
+.board-cell {
+  position: relative;
+  overflow: hidden;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+}
+
+.board-cell img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  /* 和 canvas 里 coverRect 是同一套规则：裁满、不拉变形 */
+  object-fit: cover;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.board-cell.empty { background: rgba(255, 255, 255, 0.03); }
+
+.grid-empty {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  margin: 0;
+  color: var(--text-sub);
+  font-size: 13px;
+  pointer-events: none;
+}
+
+/* 已导入的缩略图 */
+.grid-thumbs {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(52px, 1fr));
+  gap: 8px;
+  align-content: start;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.thumb {
+  position: relative;
+  aspect-ratio: 1;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: rgba(0, 0, 0, 0.2);
+  cursor: grab;
+  touch-action: none;
+  transition: border-color 0.15s var(--ease), opacity 0.15s var(--ease), transform 0.15s var(--ease);
+}
+
+.thumb:active { cursor: grabbing; }
+
+/* 手上抓着的那张 */
+.thumb.dragging {
+  opacity: 0.45;
+  transform: scale(0.94);
+}
+
+/* 松手会插到这里 */
+.thumb.drop-target {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 45%, transparent);
+}
+
+.thumb img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* 超出格子的那几张标灰：它们不会被拼进去 */
+.thumb.over { opacity: 0.42; }
+
+.thumb-no {
+  position: absolute;
+  left: 3px;
+  bottom: 2px;
+  padding: 0 4px;
+  border-radius: 4px;
+  background: rgba(8, 10, 14, 0.74);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 15px;
+}
+
+.thumb-del {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 17px;
+  height: 17px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border-radius: 50%;
+  border: 0;
+  background: rgba(8, 10, 14, 0.76);
+  color: #fff;
+  font-size: 11px;
+  line-height: 1;
+  opacity: 0;
+  transition: opacity 0.15s var(--ease), background 0.15s var(--ease);
+}
+
+.thumb:hover .thumb-del { opacity: 1; }
+.thumb-del:hover { background: var(--pink); }
+
+/* 拼图面板里那个小号上传区 */
+.drop.mini {
+  padding: 18px 14px;
+  gap: 6px;
+}
+
+.drop.mini .drop-ico { width: 34px; height: 34px; font-size: 16px; }
+.drop.mini strong { font-size: 13.5px; }
+.drop.mini small { font-size: 11.5px; }
+
+/* 拼图方式：1×1 到 5×5，五个按钮排三列 */
+.grid-picker {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.grid-picker button {
+  padding: 10px 8px;
+  border-radius: var(--r-ctl);
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-sub);
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  transition: background 0.18s var(--ease), color 0.18s var(--ease), border-color 0.18s var(--ease);
+}
+
+.grid-picker button:hover { color: var(--text); }
+
+.grid-picker button.on {
+  background: var(--accent);
+  border-color: transparent;
+  color: var(--accent-ink);
+  font-weight: 800;
+}
+
+/* ---------------------------------------------------------------- 文字与画笔 */
+
+/* ⚠ 这里**不要**写 container-type: inline-size。
+   试过：它能让文字字号直接用 cqw（容器宽度的 1%），看着很优雅，
+   但它会让元素**忽略内在尺寸**，而 flex 的基准（auto / 0 / 100%）全都要靠
+   容器宽度推出来、容器宽度又依赖这个元素 —— 于是整条链从下往上全塌成 0：
+   画布 0 宽 → aspect-ratio 把高度也带成 0 → 面板 0 高 → 整块看不见，
+   而且**页面上一点报错都没有**，只是空的。试过 flex-basis 换 0、换 100%，都没用。
+   字号还是老老实实用 JS 按 frame 宽度算（见 paint.js 的 px()）。 */
+#paintFrame {
+  flex: 1 1 auto;
+}
+
+#paintFrame[data-mode="brush"] { cursor: crosshair; }
+#paintFrame[data-mode="text"] { cursor: text; }
+
+/* 画笔层：事件统一由 .cut-frame 收，这一层只是画给人看 */
+.paint-layer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+/* 文字层本身不吃事件，只有文字本体吃 —— 否则点空白处加不了字 */
+.text-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.paint-text {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  font-weight: 800;
+  white-space: pre-line;
+  text-align: center;
+  max-width: 96%;
+  cursor: move;
+  user-select: none;
+  touch-action: none;
+  pointer-events: auto;
+}
+
+/* 黑边用 em 做单位：字号多大描边就多粗。
+   写成固定 px 的话，字号一放大描边就看不见了。 */
+.paint-text.outline {
+  text-shadow:
+    -0.07em 0 0 rgba(0, 0, 0, 0.92),
+     0.07em 0 0 rgba(0, 0, 0, 0.92),
+     0 -0.07em 0 rgba(0, 0, 0, 0.92),
+     0  0.07em 0 rgba(0, 0, 0, 0.92),
+    -0.05em -0.05em 0 rgba(0, 0, 0, 0.92),
+     0.05em -0.05em 0 rgba(0, 0, 0, 0.92),
+    -0.05em  0.05em 0 rgba(0, 0, 0, 0.92),
+     0.05em  0.05em 0 rgba(0, 0, 0, 0.92);
+}
+
+/* 选中的那条描一圈，不然一屏好几条字时分不清在改哪个 */
+.paint-text.on {
+  outline: 1px dashed color-mix(in srgb, var(--accent) 80%, transparent);
+  outline-offset: 5px;
+}
+
+/* 色板 */
+.swatches {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.swatch {
+  aspect-ratio: 1;
+  padding: 0;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18);
+  transition: transform 0.15s var(--ease), border-color 0.15s var(--ease);
+}
+
+.swatch:hover { transform: scale(1.12); }
+
+.swatch.on {
+  border-color: var(--text);
+  transform: scale(1.12);
+}
+
+.check-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  color: var(--text-sub);
+  font-size: 12.5px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.check-row input { accent-color: var(--accent); }
+
+#textBody {
+  width: 100%;
+  margin-top: 10px;
+  padding: 8px 10px;
+  border-radius: var(--r-ctl);
+  border: 1px solid var(--border);
+  background: rgba(0, 0, 0, 0.22);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+#textBody:focus {
+  outline: none;
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+}
+
+#textBody:disabled { opacity: 0.5; }
+
+#paintColors + .side-actions,
+#textTools .side-actions { margin-top: 10px; }

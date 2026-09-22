@@ -1,0 +1,229 @@
+/* ============================================================================
+ * M8web · OC 工坊
+ *
+ * 一条就是一个原创角色：左边例图、右边特征词，竖着一条条排下来（1×n）。
+ * 刻意不用网格 —— 特征词是要读、要改的长文本，格子一窄就没法看。
+ * ==========================================================================*/
+
+.oc {
+  width: min(1080px, calc(100% - 40px));
+  margin: 0 auto;
+}
+
+/* ---------------------------------------------------------------- 页头 */
+
+.oc-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+
+.oc-head-copy h1 {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.oc-head-copy p {
+  margin: 8px 0 0;
+  max-width: 62ch;
+  color: var(--text-sub);
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.oc-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.oc-count { color: var(--text-sub); font-size: 12.5px; }
+.oc-head-actions .gen-btn { width: auto; }
+
+/* ---------------------------------------------------------------- 一条一条 */
+
+.oc-list { display: grid; gap: 14px; }
+
+.oc-row {
+  display: flex;
+  gap: 16px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-card);
+  background: var(--panel-bg);
+  box-shadow: 0 12px 30px var(--soft-shadow);
+  transition: border-color 0.18s var(--ease);
+}
+
+/* 改过还没存的那条描个边，一眼看出哪条没落盘 */
+.oc-row.dirty { border-color: color-mix(in srgb, var(--accent) 55%, transparent); }
+
+/* 左：例图 */
+.oc-photo {
+  position: relative;
+  flex: 0 0 176px;
+  width: 176px;
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border: 1px dashed var(--border);
+  border-radius: var(--r-item);
+  /* 棋盘底：例图常是带透明的 PNG，没底纹看不出边界 */
+  background-color: rgba(255, 255, 255, 0.035);
+  background-image:
+    linear-gradient(45deg, rgba(255, 255, 255, 0.05) 25%, transparent 25%, transparent 75%, rgba(255, 255, 255, 0.05) 75%),
+    linear-gradient(45deg, rgba(255, 255, 255, 0.05) 25%, transparent 25%, transparent 75%, rgba(255, 255, 255, 0.05) 75%);
+  background-size: 16px 16px;
+  background-position: 0 0, 8px 8px;
+  cursor: pointer;
+  transition: border-color 0.18s var(--ease);
+}
+
+.oc-photo:hover { border-color: color-mix(in srgb, var(--accent) 55%, transparent); }
+
+.oc-photo img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  /* 例图要能看清整张，所以是 contain 不是 cover */
+  object-fit: contain;
+}
+
+.oc-photo-hint {
+  display: grid;
+  justify-items: center;
+  gap: 5px;
+  padding: 10px;
+  color: var(--text-sub);
+  font-size: 12px;
+  text-align: center;
+  pointer-events: none;
+}
+
+.oc-photo-hint .plus { font-size: 22px; line-height: 1; color: var(--accent); }
+
+/* 图上传之后才出现的小按钮 */
+.oc-photo-tools {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.15s var(--ease);
+}
+
+.oc-photo:hover .oc-photo-tools { opacity: 1; }
+
+.oc-photo-tools button {
+  padding: 3px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--bg-main) 88%, transparent);
+  color: var(--text);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.oc-photo-tools button:hover { border-color: color-mix(in srgb, var(--accent) 55%, transparent); }
+
+/* 右：名字 + 特征词 */
+.oc-body {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: grid;
+  gap: 10px;
+  align-content: start;
+}
+
+.oc-name {
+  width: 100%;
+  padding: 7px 10px;
+  border-radius: var(--r-ctl);
+  border: 1px solid var(--border);
+  background: rgba(0, 0, 0, 0.16);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.oc-prompt {
+  width: 100%;
+  min-height: 108px;
+  padding: 10px 12px;
+  border-radius: var(--r-ctl);
+  border: 1px solid var(--border);
+  background: rgba(0, 0, 0, 0.2);
+  color: var(--text);
+  font-family: ui-monospace, Consolas, "Microsoft YaHei", monospace;
+  font-size: 12.5px;
+  line-height: 1.75;
+  resize: vertical;
+}
+
+.oc-name:focus,
+.oc-prompt:focus {
+  outline: none;
+  border-color: color-mix(in srgb, var(--accent) 60%, transparent);
+}
+
+.oc-tools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.oc-tools button {
+  padding: 7px 12px;
+  border-radius: var(--r-ctl);
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-sub);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 0.18s var(--ease), border-color 0.18s var(--ease), background 0.18s var(--ease);
+}
+
+.oc-tools button:hover {
+  color: var(--text);
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+}
+
+.oc-tools .primary {
+  background: var(--accent);
+  border-color: transparent;
+  color: var(--accent-ink);
+  font-weight: 800;
+}
+
+.oc-tools .danger:hover {
+  color: #fff;
+  background: var(--pink);
+  border-color: transparent;
+}
+
+.oc-state {
+  margin-left: auto;
+  color: var(--text-sub);
+  font-size: 12px;
+}
+
+.oc-row.dirty .oc-state { color: var(--accent); font-weight: 700; }
+
+/* ---------------------------------------------------------------- 窄屏 */
+
+@media (max-width: 720px) {
+  .oc { width: calc(100% - 24px); }
+  .oc-row { flex-direction: column; }
+  .oc-photo { flex: 0 0 auto; width: 100%; max-width: 240px; }
+  .oc-head { align-items: flex-start; }
+}
