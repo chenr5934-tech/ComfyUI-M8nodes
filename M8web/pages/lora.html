@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LoRA 解析 · M8 工作台</title>
+  <link rel="icon" type="image/svg+xml" href="../assets/img/favicon.svg">
+  <link rel="stylesheet" href="../assets/css/base.css">
+  <link rel="stylesheet" href="../assets/css/shell.css">
+  <link rel="stylesheet" href="../assets/css/lora.css">
+  <script>
+    try {
+      var t = localStorage.getItem("m8web.theme");
+      document.documentElement.dataset.theme = t || "night";
+    } catch (e) {
+      document.documentElement.dataset.theme = "night";
+    }
+  </script>
+</head>
+<body>
+  <div id="fx" aria-hidden="true"></div>
+  <div class="shell">
+    <div id="sidebar"></div>
+    <div class="main">
+      <div id="topbar" class="topbar"></div>
+      <div class="content">
+        <section class="lora">
+
+          <header class="lora-head">
+            <div>
+              <h1>LoRA 解析</h1>
+              <p>拖一个 .safetensors 进来，读出它的训练参数和训练标签。</p>
+            </div>
+            <button class="ghost-btn is-hidden" id="loraAgain" type="button">换一个</button>
+          </header>
+
+          <!-- 这句要显眼：用户会担心几个 G 的模型被传走 -->
+          <p class="lora-privacy">
+            <b>文件不会被上传，也不会落盘。</b>
+            解析只读文件开头那一段（通常几 KB 到几十 KB），读完就把引用清掉 ——
+            几百 MB 的模型也是一瞬间的事，因为张量数据一个字节都没读。
+          </p>
+
+          <div class="drop" id="loraDrop">
+            <input id="loraFile" type="file" accept=".safetensors">
+            <span class="drop-ico" aria-hidden="true">＋</span>
+            <strong>点击选择、拖进来，或者 Ctrl+V 粘贴</strong>
+            <small id="loraHint">只认 .safetensors</small>
+          </div>
+
+          <div class="lora-body is-hidden" id="loraBody">
+            <div class="info-panels" id="loraPanels"></div>
+          </div>
+
+          <p class="status" id="loraStatus" role="status"></p>
+        </section>
+      </div>
+    </div>
+  </div>
+  <script src="../assets/js/app.js"></script>
+  <script src="../assets/js/migrate.js"></script>
+  <script src="../assets/js/lora.js"></script>
+  <script>
+    boot({ activeId: "lora", title: "LoRA 解析", base: "../" });
+    M8Lora.init();
+  </script>
+</body>
+</html>

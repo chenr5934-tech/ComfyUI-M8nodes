@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>提示词归纳 · M8 工作台</title>
+  <link rel="icon" type="image/svg+xml" href="../assets/img/favicon.svg">
+  <link rel="stylesheet" href="../assets/css/base.css">
+  <link rel="stylesheet" href="../assets/css/shell.css">
+  <link rel="stylesheet" href="../assets/css/prompts.css">
+  <script>
+    /* 与首页同一段：主题要在 head 里就定下来，否则黑夜主题会先闪白底 */
+    try {
+      var t = localStorage.getItem("m8web.theme");
+      document.documentElement.dataset.theme = t || "night";
+    } catch (e) {
+      document.documentElement.dataset.theme = "night";
+    }
+  </script>
+</head>
+<body>
+  <div id="fx" aria-hidden="true"></div>
+  <div class="shell">
+    <div id="sidebar"></div>
+    <div class="main">
+      <div id="topbar" class="topbar"></div>
+      <div class="content">
+        <section class="pg">
+
+          <header class="pg-head">
+            <div class="pg-head-copy">
+              <h1>提示词归纳</h1>
+              <p>一张卡一条概念提示词 —— 构图、光影、质感、画风这种。写好归到分类里，用的时候一键复制。
+                内容存在本机，下次打开还在。</p>
+            </div>
+            <div class="pg-head-actions">
+              <span class="pg-count" id="pgCount"></span>
+              <div class="backup-bar">
+                <button class="ghost-btn" id="pgBackupOut" type="button"
+                  title="把卡片、分类和例图一起存成一个 json 文件">导出备份</button>
+                <button class="ghost-btn" id="pgBackupIn" type="button"
+                  title="从备份文件里读回来">导入备份</button>
+              </div>
+              <button class="gen-btn" id="pgAddCard" type="button">＋ 新建一张卡</button>
+            </div>
+          </header>
+
+          <div class="pg-groups" id="pgGroups"></div>
+
+          <div class="pg-list" id="pgList"></div>
+
+          <div class="blank is-hidden" id="pgEmpty">
+            <span class="blank-ico" aria-hidden="true">🗂</span>
+            <h2>还没有卡片</h2>
+            <p>点右上角「新建一张卡」——名字写「仰拍构图」，提示词写 from below, low angle…，再挑个分类。</p>
+          </div>
+
+          <p class="status" id="pgStatus" role="status"></p>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <!-- 删卡确认。一条里可能攒了几百个字的提示词，误点一下就没了 -->
+  <div class="modal is-hidden" id="pgDelModal" role="dialog" aria-modal="true" aria-labelledby="pgDelTitle">
+    <div class="modal-box sm">
+      <header class="modal-head">
+        <h2 id="pgDelTitle">删掉这张卡？</h2>
+        <button class="modal-x" id="pgDelX" type="button" aria-label="关闭">×</button>
+      </header>
+      <div class="modal-body">
+        <p class="modal-text" id="pgDelText"></p>
+      </div>
+      <footer class="modal-foot">
+        <button class="ghost-btn" id="pgDelCancel" type="button">取消</button>
+        <button class="gen-btn danger" id="pgDelOk" type="button">确认删除</button>
+      </footer>
+    </div>
+  </div>
+
+  <!-- 分类改名。用自己的弹窗而不是 window.prompt —— 那个在无头浏览器里直接返回 null -->
+  <div class="modal is-hidden" id="pgNameModal" role="dialog" aria-modal="true" aria-labelledby="pgNameTitle">
+    <div class="modal-box sm">
+      <header class="modal-head">
+        <h2 id="pgNameTitle">这个分类叫什么？</h2>
+        <button class="modal-x" id="pgNameX" type="button" aria-label="关闭">×</button>
+      </header>
+      <div class="modal-body">
+        <label class="pg-field">
+          <input class="pg-input" id="pgNameInput" type="text" maxlength="40" autocomplete="off"
+            placeholder="比如：构图 / 光影 / 质感 / 画风">
+        </label>
+      </div>
+      <footer class="modal-foot">
+        <button class="ghost-btn" id="pgNameCancel" type="button">取消</button>
+        <button class="gen-btn" id="pgNameOk" type="button">确定</button>
+      </footer>
+    </div>
+  </div>
+
+  <script src="../assets/js/app.js"></script>
+  <script src="../assets/js/migrate.js"></script>
+  <script src="../assets/js/backup.js"></script>
+  <script src="../assets/js/prompts.js"></script>
+  <script>
+    boot({ activeId: "prompts", title: "提示词归纳", base: "../" });
+    M8Prompts.init();
+  </script>
+</body>
+</html>

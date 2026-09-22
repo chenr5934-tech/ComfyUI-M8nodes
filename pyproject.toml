@@ -1,0 +1,28 @@
+[project]
+name = "comfyui-m8-nodes"
+version = "0.4.0"
+description = "M8 节点包：按货架分类的 ComfyUI 自定义节点 —— 大模型推理（远程 / 本地）、skill 装载、相机机位、多角色提示词，另带一个独立网页工作台"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.10"
+# 刻意留空：整个包只依赖标准库 + ComfyUI 自带的东西。
+# 要加依赖必须写进这里、在 README 说明、并确认秋叶整合包的环境装得上。
+dependencies = []
+keywords = ["comfyui", "comfyui-nodes", "llm", "deepseek", "openai-compatible", "prompt"]
+
+[project.urls]
+# 上架前填上（docs/RELEASING.md 的检查清单里有这一条）
+Repository = "https://github.com/chenr5934-tech/ComfyUI-m8nodes"
+Issues = "https://github.com/chenr5934-tech/ComfyUI-m8nodes/issues"
+
+[tool.comfy]
+# ComfyUI Registry 用的字段。不打算发布到 registry 的话留着也不碍事。
+PublisherId = "m8"
+DisplayName = "M8 Nodes"
+# 图标 URL，可选。发布到 registry 时会在列表里显示。
+Icon = ""
+requires-comfyui = ">=0.3.0"
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"

@@ -1,0 +1,934 @@
+/* ============================================================================
+ * M8web · 外壳
+ *
+ * 结构与数值都对齐参考站（style.css 的 .home-entry* / .topbar，
+ * sidebar.css 的 .site-shell / .site-sidebar / .site-nav-*），
+ * 类名换成 M8 自己的语义，数值照搬：
+ *   侧栏       58px ↔ 184px，靠 :root 上一个类切 --site-sidebar-width
+ *   菜单项     40×40、圆角 12px、底色 rgba(255,255,255,.04)
+ *   悬停       青绿描边 + 青绿 16% 底
+ *   品牌块     青绿→金的渐变，深色字
+ *   首页卡片   3 列网格、kicker/标题/描述三层、悬停上浮 2px
+ * 只有两处按你的要求改了：
+ *   卡片圆角 8px → 18px（你要大圆角）
+ *   侧栏默认展开（列表要一眼看得见），收起才是 58px
+ * ==========================================================================*/
+
+:root {
+  /* 默认展开：功能菜单是列表，收起来就看不见了 */
+  --side-w: 184px;
+}
+
+:root.is-side-collapsed {
+  --side-w: 58px;
+}
+
+/* ---------------------------------------------------------------- 骨架 */
+
+.shell {
+  min-height: 100svh;
+  display: grid;
+  grid-template-columns: var(--side-w) minmax(0, 1fr);
+  position: relative;
+  z-index: 1;
+  transition: grid-template-columns 0.2s var(--ease);
+}
+
+.main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ---------------------------------------------------------------- 侧栏 */
+
+.side {
+  position: sticky;
+  top: 0;
+  height: 100svh;
+  min-width: 0;
+  padding: 12px 8px;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  align-content: start;
+  gap: 10px;
+  overflow: hidden;
+  background: var(--sidebar-bg);
+  border-right: 1px solid var(--border);
+  backdrop-filter: blur(18px);
+}
+
+.brand {
+  width: 40px;
+  height: 40px;
+  justify-self: center;
+  display: grid;
+  place-items: center;
+  border-radius: var(--r-item);
+  color: var(--accent-ink);
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  font-weight: 800;
+  font-size: 15px;
+  letter-spacing: 0;
+  overflow: hidden;
+  text-decoration: none;
+  flex: none;
+}
+
+/* 展开时品牌块拉满，露出文字 */
+:root:not(.is-side-collapsed) .brand {
+  width: 100%;
+  grid-template-columns: 40px minmax(0, 1fr);
+  justify-items: start;
+}
+
+.brand .mark {
+  width: 40px;
+  display: grid;
+  place-items: center;
+}
+
+.brand .word {
+  padding-right: 12px;
+  font-size: 14px;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.12s var(--ease);
+}
+
+:root:not(.is-side-collapsed) .brand .word { opacity: 1; }
+
+.nav {
+  min-height: 0;
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+}
+
+.nav-group {
+  padding: 6px 12px 0;
+  color: var(--text-sub);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.12s var(--ease);
+}
+
+:root:not(.is-side-collapsed) .nav-group { opacity: 1; }
+
+.nav-item {
+  width: 40px;
+  height: 40px;
+  justify-self: center;
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
+  align-items: center;
+  border-radius: var(--r-item);
+  color: #f1edf2;
+  text-decoration: none;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid transparent;
+  overflow: hidden;
+  transition: width 0.18s var(--ease), background 0.18s var(--ease), border-color 0.18s var(--ease);
+}
+
+:root[data-theme="day"] .nav-item { color: var(--text); }
+
+:root:not(.is-side-collapsed) .nav-item {
+  width: 100%;
+  justify-self: stretch;
+}
+
+.nav-item .ico {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  font-size: 17px;
+  line-height: 1;
+  flex: none;
+}
+
+.nav-item .label {
+  min-width: 0;
+  padding-right: 12px;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  opacity: 0;
+  transition: opacity 0.12s var(--ease);
+}
+
+:root:not(.is-side-collapsed) .nav-item .label { opacity: 1; }
+
+.nav-item:hover,
+.nav-item.active {
+  border-color: color-mix(in srgb, var(--accent) 38%, transparent);
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+}
+
+.nav-item.active .label { color: var(--accent); }
+
+.nav-item.soon {
+  opacity: 0.45;
+  cursor: default;
+  pointer-events: none;
+}
+
+.side-foot {
+  display: grid;
+  gap: 10px;
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+}
+
+.side-toggle {
+  width: 40px;
+  height: 40px;
+  justify-self: center;
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
+  align-items: center;
+  border-radius: var(--r-item);
+  color: #d8d6df;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid transparent;
+  overflow: hidden;
+  transition: width 0.18s var(--ease), background 0.18s var(--ease), border-color 0.18s var(--ease);
+}
+
+:root[data-theme="day"] .side-toggle { color: var(--text); }
+
+:root:not(.is-side-collapsed) .side-toggle {
+  width: 100%;
+  justify-self: stretch;
+}
+
+.side-toggle:hover {
+  border-color: color-mix(in srgb, var(--accent) 38%, transparent);
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+}
+
+.side-toggle .ico {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  font-size: 15px;
+}
+
+.side-toggle .label {
+  padding-right: 12px;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.12s var(--ease);
+}
+
+:root:not(.is-side-collapsed) .side-toggle .label { opacity: 1; }
+
+/* ---------------------------------------------------------------- 首页 */
+
+.content {
+  flex: 1;
+  min-width: 0;
+  padding-bottom: 64px;
+}
+
+.hero {
+  width: min(1080px, calc(100% - 40px));
+  margin: 0 auto;
+  padding: 36px 0 28px;
+}
+
+/* 参考站的招牌就是这一行巨型标题 */
+.hero h1 {
+  margin: 0;
+  font-size: clamp(34px, 7vw, 76px);
+  line-height: 0.95;
+  letter-spacing: 0;
+  font-weight: 700;
+  text-wrap: balance;
+}
+
+.hero p {
+  margin: 14px 0 0;
+  max-width: 62ch;
+  color: var(--text-sub);
+  line-height: 1.7;
+}
+
+.cards {
+  width: min(1080px, calc(100% - 40px));
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+/* 每张卡由 JS 塞一个 --tone（强调色），色带与悬停色都跟着它走 */
+.card {
+  min-height: 152px;
+  padding: 20px;
+  display: grid;
+  align-content: space-between;
+  gap: 12px;
+  border-radius: var(--r-card);
+  color: var(--text);
+  text-decoration: none;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--tone, var(--blue)) 14%, transparent), color-mix(in srgb, var(--tone-2, var(--pink)) 10%, transparent)),
+    var(--panel-bg);
+  border: 1px solid var(--border);
+  box-shadow: 0 18px 44px var(--soft-shadow);
+  transition: transform 0.2s var(--ease), border-color 0.2s var(--ease), background 0.2s var(--ease);
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--tone, var(--pink)) 40%, transparent);
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--tone, var(--blue)) 20%, transparent), color-mix(in srgb, var(--tone-2, var(--pink)) 16%, transparent)),
+    var(--card-hover);
+}
+
+.card-kicker {
+  color: var(--tone, var(--pink));
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+}
+
+.card strong {
+  display: block;
+  font-size: 22px;
+  line-height: 1.2;
+  font-weight: 700;
+}
+
+.card small {
+  color: var(--text-sub);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.card.soon {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.card.soon:hover {
+  transform: none;
+  border-color: var(--border);
+}
+
+/* 首页标题下面那行小工具 */
+.hero-tools {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+}
+
+.hero-tools .ghost-btn { width: auto; }
+
+.hero-note {
+  color: var(--text-sub);
+  font-size: 12px;
+}
+
+/* ---------------------------------------------------------------- 工具页 */
+
+.topbar {
+  width: min(1080px, calc(100% - 40px));
+  margin: 0 auto;
+  padding: 26px 0 22px;
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* 工具页用固定字号 —— 工作台里字号跟着视口飘会显得很吵 */
+.topbar h1 {
+  margin: 0;
+  font-size: 21px;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.topbar .crumb {
+  color: var(--text-sub);
+  font-size: 13px;
+}
+
+/* ---------------------------------------------------------------- 主题条 */
+
+/* 参考站是固定右上角的一条毛玻璃，里面是文字按钮，不是色点 */
+.themes {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 90;
+  display: flex;
+  gap: 6px;
+  padding: 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-ctl);
+  background: var(--float-bg);
+  backdrop-filter: blur(14px);
+  box-shadow: 0 14px 36px var(--soft-shadow);
+}
+
+.themes button {
+  min-width: 34px;
+  min-height: 32px;
+  margin: 0;
+  padding: 0 10px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  color: var(--text-sub);
+  background: transparent;
+  font-size: 12px;
+  line-height: 1;
+  white-space: nowrap;
+  transition: color 0.18s var(--ease), background 0.18s var(--ease), border-color 0.18s var(--ease);
+}
+
+.themes button:hover,
+.themes button.on {
+  color: var(--text);
+  border-color: color-mix(in srgb, var(--accent) 42%, transparent);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+}
+
+/* ---------------------------------------------------------------- 窄屏 */
+
+@media (max-width: 960px) {
+  .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+/* 参考站在 720px 以下把侧栏整个搬到底部，变成一条横向图标栏 */
+@media (max-width: 720px) {
+  .shell {
+    grid-template-columns: 1fr;
+    padding-bottom: 66px;
+  }
+
+  .side {
+    position: fixed;
+    inset: auto 0 0;
+    height: 58px;
+    padding: 8px 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-right: 0;
+    border-top: 1px solid var(--border);
+    z-index: 30;
+  }
+
+  .nav {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+
+  .nav-group,
+  .side-toggle { display: none; }
+
+  .brand,
+  .nav-item,
+  :root:not(.is-side-collapsed) .brand,
+  :root:not(.is-side-collapsed) .nav-item {
+    width: 40px;
+    justify-self: center;
+  }
+
+  .brand .word,
+  .nav-item .label,
+  :root:not(.is-side-collapsed) .brand .word,
+  :root:not(.is-side-collapsed) .nav-item .label {
+    display: none;
+  }
+
+  .hero { padding-top: 26px; }
+  .cards { gap: 12px; }
+  .card { min-height: 132px; padding: 16px; }
+  .card strong { font-size: 19px; }
+}
+
+@media (max-width: 620px) {
+  .cards { grid-template-columns: 1fr; }
+  .themes {
+    top: 10px;
+    right: 10px;
+    padding: 4px;
+  }
+  .themes button { padding: 0 7px; }
+}
+
+/* ---------------------------------------------------------------- 空状态 */
+
+/* 功能页现在都是这个：框架已经在了，功能还没填。
+   刻意不做成「敬请期待」的大字海报 —— 它只需要说明状态并给一条退路。 */
+.blank {
+  width: min(1080px, calc(100% - 40px));
+  margin: 0 auto;
+  padding: 44px 24px;
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  text-align: center;
+  border: 1px dashed var(--border);
+  border-radius: var(--r-card);
+  background: var(--panel-bg);
+}
+
+.blank-ico {
+  font-size: 34px;
+  line-height: 1;
+  opacity: 0.85;
+}
+
+.blank h2 {
+  margin: 6px 0 0;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.blank p {
+  margin: 0;
+  max-width: 46ch;
+  color: var(--text-sub);
+  line-height: 1.7;
+}
+
+.blank-back {
+  margin-top: 8px;
+  padding: 8px 14px;
+  border-radius: var(--r-ctl);
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: border-color 0.18s var(--ease), background 0.18s var(--ease);
+}
+
+.blank-back:hover {
+  border-color: color-mix(in srgb, var(--accent) 38%, transparent);
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+}
+
+/* ---------------------------------------------------------------- 上传区 */
+
+/* 这个区块被四个页面用（图片工坊 / 图片元数据 / LoRA 解析 / 混淆图），
+   所以必须待在 shell.css。
+   以前它在 studio.css 里 —— 只有工坊页引那个文件，于是元数据页和 LoRA 页的
+   上传区一直没有样式（连虚线框都没有），而且光看代码完全看不出来。
+   测试里现在有一条自动扫描钉住这类问题：页面用到的类，定义它的样式表必须被引。 */
+.drop {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  padding: 46px 24px;
+  border: 1px dashed var(--border);
+  border-radius: var(--r-card);
+  background: var(--panel-bg);
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.2s var(--ease), background 0.2s var(--ease);
+}
+
+.drop:hover,
+.drop.over {
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+  background: color-mix(in srgb, var(--accent) 8%, var(--panel-bg));
+}
+
+.drop input { display: none; }
+
+.drop-ico {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--accent);
+  font-size: 20px;
+  line-height: 1;
+}
+
+.drop strong { font-size: 15px; font-weight: 700; }
+.drop small { color: var(--text-sub); font-size: 12.5px; }
+
+/* 选好图之后拖拽区里换成的缩略图。不加这个的话用户选完只看得到一个文件名，
+   根本不知道自己选的对不对 —— 传错图是最常见的失误。
+   混淆图和像素风两个页面都用，所以待在 shell.css。 */
+.drop-thumb {
+  max-width: 100%;
+  max-height: 210px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-item);
+  background: var(--panel-bg);
+  object-fit: contain;
+}
+
+/* ---------------------------------------------------------------- 备份按钮 */
+
+/* 导出 / 导入这一对。三个有本地数据的功能页都用：OC 工坊、提示词归纳、贴纸库。
+   数据存在浏览器的 IndexedDB 里，而它挂在“源”上 —— 换成 localhost 打开、
+   清浏览器数据、换设备，都会看不见。导出是唯一能兜住的办法。 */
+.backup-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.backup-bar .ghost-btn {
+  width: auto;
+  padding: 6px 13px;
+  font-size: 12px;
+}
+
+.backup-note {
+  color: var(--text-sub);
+  font-size: 11.5px;
+}
+
+/* ---------------------------------------------------------------- 模态框 */
+
+.modal {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: grid;
+  place-items: center;
+  padding: 22px;
+  background: rgba(4, 6, 11, 0.72);
+  backdrop-filter: blur(6px);
+}
+
+body.modal-open { overflow: hidden; }
+
+.modal-box {
+  width: min(700px, 100%);
+  max-height: calc(100svh - 44px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--r-card);
+  /* 比普通面板实一点，底下垫着东西时也能看清 */
+  background: color-mix(in srgb, var(--bg-main) 88%, transparent);
+  backdrop-filter: blur(18px);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.5);
+}
+
+.modal-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 15px 18px;
+  border-bottom: 1px solid var(--border);
+}
+
+.modal-head h2 { margin: 0; font-size: 16px; font-weight: 700; }
+
+.modal-x {
+  margin-left: auto;
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--r-ctl);
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-sub);
+  font-size: 17px;
+  line-height: 1;
+  transition: color 0.18s var(--ease), border-color 0.18s var(--ease);
+}
+
+.modal-x:hover {
+  color: var(--text);
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+}
+
+.modal-body {
+  min-height: 0;
+  padding: 18px;
+  display: grid;
+  gap: 14px;
+  overflow-y: auto;
+}
+
+.modal-body .drop { padding: 34px 20px; }
+
+.modal-foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 14px 18px;
+  border-top: 1px solid var(--border);
+}
+
+/* 小号的模态：确认删除这种只有一两句话的，用不着 700px 宽 */
+.modal-box.sm { width: min(430px, 100%); }
+
+.modal-text {
+  margin: 0;
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.75;
+}
+
+/* 要删的那个 OC 名字标出来，免得删错 */
+.modal-text .who {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.modal-text .sub {
+  display: block;
+  margin-top: 8px;
+  color: var(--text-sub);
+  font-size: 12.5px;
+}
+
+/* 危险操作：用次强调色（樱粉）顶上，和普通按钮明确区分 */
+.gen-btn.danger {
+  background: var(--pink);
+  color: #21060f;
+}
+
+.gen-btn.danger:hover { filter: brightness(1.08); }
+
+/* ============================================================================
+ * 公共零件：隐藏工具类、侧栏按钮、强调按钮、状态行
+ *
+ * 这几条原来写在 studio.css 里，只有图片工坊那个页面能用。OC 工坊不引 studio.css，
+ * 结果 .is-hidden 不生效 —— 页面上那个删除确认框从一进页面就"显示"着
+ * （它其实一直是 display:block），用户看到的就是「还没加 OC 就问我删不删」。
+ *
+ * 教训：只要一个页面会用、另一个页面也可能会用的样式，就必须放在这里，
+ * 而不是放在某个具体功能的样式表里。
+ * ==========================================================================*/
+
+.is-hidden { display: none !important; }
+
+/* 底部按钮 */
+.side-actions { display: grid; gap: 8px; }
+
+.gen-btn {
+  padding: 11px 16px;
+  border-radius: var(--r-ctl);
+  border: 1px solid transparent;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-size: 13.5px;
+  font-weight: 800;
+  transition: filter 0.18s var(--ease), transform 0.18s var(--ease);
+}
+
+.gen-btn:hover { filter: brightness(1.08); }
+.gen-btn:active { transform: translateY(1px); }
+.gen-btn:disabled { opacity: 0.42; cursor: not-allowed; filter: none; }
+
+.ghost-btn {
+  padding: 9px 14px;
+  border-radius: var(--r-ctl);
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-sub);
+  font-size: 12.5px;
+  font-weight: 600;
+  transition: color 0.18s var(--ease), border-color 0.18s var(--ease);
+}
+
+.ghost-btn:hover {
+  color: var(--text);
+  border-color: color-mix(in srgb, var(--accent) 40%, transparent);
+}
+
+.status { margin: 0; min-height: 18px; color: var(--text-sub); font-size: 12px; line-height: 1.5; }
+.status.warn { color: var(--pink); }
+
+/* ============================================================================
+ * 通用的信息展示零件：卡片、键值表、参数格子、代码块
+ *
+ * 原来写在 meta.css 里（名字还带着 meta- 前缀），LoRA 解析页也要用同一套，
+ * 所以改成通用名搬到这里。教训和 .is-hidden 那次一样：
+ * 两个页面会用到的东西，不能塞在某个具体功能的样式表里。
+ * ==========================================================================*/
+.info-panels { display: grid; gap: 14px; min-width: 0; }
+
+/* ---------------------------------------------------------------- 卡片 */
+
+.info-card {
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-item);
+  background: var(--panel-bg);
+  min-width: 0;
+}
+
+.info-card > h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 12px;
+  color: var(--text-sub);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1.1px;
+}
+
+/* 标题右边的小标记：内置工作流 / 相机信息 之类 */
+.info-card .info-tag {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  color: var(--accent);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.info-card .card-actions { margin-left: auto; display: flex; gap: 6px; }
+
+.info-card .card-actions button {
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-sub);
+  font-size: 11.5px;
+  cursor: pointer;
+  transition: color 0.15s var(--ease), border-color 0.15s var(--ease);
+}
+
+.info-card .card-actions button:hover {
+  color: var(--text);
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+}
+
+/* ---------------------------------------------------------------- 键值表 */
+
+.kv {
+  margin: 0;
+  display: grid;
+  grid-template-columns: minmax(70px, auto) minmax(0, 1fr);
+  gap: 7px 16px;
+  font-size: 13px;
+}
+
+.kv dt { color: var(--text-sub); }
+
+.kv dd {
+  margin: 0;
+  color: var(--text);
+  word-break: break-all;
+  line-height: 1.5;
+}
+
+/* ---------------------------------------------------------------- 生成参数 */
+
+.param-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
+  gap: 8px;
+}
+
+.param-cell {
+  padding: 8px 10px;
+  border-radius: var(--r-ctl);
+  background: rgba(255, 255, 255, 0.04);
+  min-width: 0;
+}
+
+.param-cell b {
+  display: block;
+  margin-bottom: 3px;
+  color: var(--text-sub);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.param-cell span {
+  font-size: 13px;
+  word-break: break-all;
+  line-height: 1.45;
+}
+
+/* 模型名常常很长，允许折行但别撑破卡片 */
+.param-cell.wide { grid-column: 1 / -1; }
+
+/* ---------------------------------------------------------------- 旧数据搬运 */
+
+/* 升级后第一次打开时出现一次的横幅，搬完就没了 */
+.migrate-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 12px 18px;
+  border-bottom: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+  background: color-mix(in srgb, var(--accent) 12%, var(--bg-main));
+}
+
+.migrate-text {
+  flex: 1 1 320px;
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.migrate-bar .gen-btn,
+.migrate-bar .ghost-btn {
+  width: auto;
+  padding: 7px 16px;
+  font-size: 12.5px;
+}
+
+/* ---------------------------------------------------------------- 原始 JSON */
+
+.code-block {
+  margin: 0;
+  max-height: 340px;
+  overflow: auto;
+  padding: 12px 14px;
+  border-radius: var(--r-ctl);
+  background: rgba(0, 0, 0, 0.3);
+  color: var(--text);
+  font-family: ui-monospace, Consolas, "Microsoft YaHei", monospace;
+  font-size: 12px;
+  line-height: 1.65;
+  white-space: pre;
+  tab-size: 2;
+}
+
+/* 折叠起来的时候只给一行高度 */
+.info-card.folded .code-block { max-height: 120px; }
+
+.info-note {
+  margin: 0;
+  color: var(--text-sub);
+  font-size: 12.5px;
+  line-height: 1.65;
+}

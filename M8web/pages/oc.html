@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OC 工坊 · M8 工作台</title>
+  <link rel="icon" type="image/svg+xml" href="../assets/img/favicon.svg">
+  <link rel="stylesheet" href="../assets/css/base.css">
+  <link rel="stylesheet" href="../assets/css/shell.css">
+  <link rel="stylesheet" href="../assets/css/oc.css">
+  <script>
+    /* 主题要在 head 里就定下来，否则黑夜主题会先闪白底 */
+    try {
+      var t = localStorage.getItem("m8web.theme");
+      document.documentElement.dataset.theme = t || "night";
+    } catch (e) {
+      document.documentElement.dataset.theme = "night";
+    }
+  </script>
+</head>
+<body>
+  <div id="fx" aria-hidden="true"></div>
+  <div class="shell">
+    <div id="sidebar"></div>
+    <div class="main">
+      <div id="topbar" class="topbar"></div>
+      <div class="content">
+        <section class="oc">
+
+          <header class="oc-head">
+            <div class="oc-head-copy">
+              <h1>OC 工坊</h1>
+              <p>一个原创角色一条：左边放例图，右边写特征词。内容存在本机，下次打开还在。</p>
+            </div>
+            <div class="oc-head-actions">
+              <span class="oc-count" id="ocCount"></span>
+              <div class="backup-bar">
+                <button class="ghost-btn" id="ocBackupOut" type="button"
+                  title="把这里的 OC 连例图一起存成一个 json 文件">导出备份</button>
+                <button class="ghost-btn" id="ocBackupIn" type="button"
+                  title="从备份文件里读回来">导入备份</button>
+              </div>
+              <button class="gen-btn" id="ocAdd" type="button">＋ 新建一个 OC</button>
+            </div>
+          </header>
+
+          <div class="oc-list" id="ocList"></div>
+
+          <div class="blank is-hidden" id="ocEmpty">
+            <span class="blank-ico" aria-hidden="true">🎭</span>
+            <h2>还没有 OC</h2>
+            <p>点右上角「新建一个 OC」——左边传一张例图，右边把特征词写进去。</p>
+          </div>
+
+          <p class="status" id="ocStatus" role="status"></p>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <!-- 删除确认。直接删太险了 —— 一条里可能写着几十个字的特征词和一张例图，
+       误点一下就没了，所以中间加一道确认，并把要删的那个名字念出来。 -->
+  <div class="modal is-hidden" id="ocDelModal" role="dialog" aria-modal="true" aria-labelledby="ocDelTitle">
+    <div class="modal-box sm">
+      <header class="modal-head">
+        <h2 id="ocDelTitle">删掉这个 OC？</h2>
+        <button class="modal-x" id="ocDelX" type="button" aria-label="关闭">×</button>
+      </header>
+      <div class="modal-body">
+        <p class="modal-text" id="ocDelText"></p>
+      </div>
+      <footer class="modal-foot">
+        <button class="ghost-btn" id="ocDelCancel" type="button">取消</button>
+        <button class="gen-btn danger" id="ocDelOk" type="button">确认删除</button>
+      </footer>
+    </div>
+  </div>
+
+  <script src="../assets/js/app.js"></script>
+  <script src="../assets/js/migrate.js"></script>
+  <script src="../assets/js/backup.js"></script>
+  <script src="../assets/js/oc.js"></script>
+  <script>
+    boot({ activeId: "oc", title: "OC 工坊", base: "../" });
+    M8OC.init();
+  </script>
+</body>
+</html>

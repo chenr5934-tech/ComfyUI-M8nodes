@@ -1,0 +1,20 @@
+# 统一按 LF 入库。Windows 上检出仍可用 CRLF，但仓库里的换行必须一致，
+# 否则每次跨平台提交都会冒出一堆「整文件都被改了」的假 diff。
+* text=auto eol=lf
+
+# 批处理文件反过来：必须 CRLF 落盘。
+# cmd.exe 对 LF 换行的 .bat 支持不可靠（带 goto/label 的块会直接错）。
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# 图片按二进制处理，别让 git 去动换行或做任何转换
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.gif binary
+*.ico binary
+
+# 给 GitHub 语言统计一个准数：文档不计入代码量
+*.md linguist-documentation
+docs/* linguist-documentation

@@ -1,0 +1,358 @@
+/* ============================================================================
+ * M8web · 提示词归纳
+ *
+ * 一条就是一张概念提示词卡，竖着一条条排下来（1×n）。
+ * 和 OC 工坊同一个道理：刻意不用网格 —— 提示词是要读、要改的长文本，
+ * 格子一窄就没法看。
+ * ==========================================================================*/
+
+.pg {
+  width: min(1080px, calc(100% - 40px));
+  margin: 0 auto;
+}
+
+/* ---------------------------------------------------------------- 页头 */
+
+.pg-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.pg-head-copy h1 {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.pg-head-copy p {
+  margin: 8px 0 0;
+  max-width: 64ch;
+  color: var(--text-sub);
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.pg-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.pg-count { color: var(--text-sub); font-size: 12.5px; }
+.pg-head-actions .gen-btn { width: auto; }
+
+/* ---------------------------------------------------------------- 分类条 */
+
+.pg-groups {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+.pg-chip {
+  display: inline-flex;
+  align-items: stretch;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--panel-bg);
+  transition: border-color 0.18s var(--ease);
+}
+
+.pg-chip:hover { border-color: color-mix(in srgb, var(--accent) 40%, transparent); }
+
+.pg-chip.is-on {
+  border-color: color-mix(in srgb, var(--accent) 60%, transparent);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+}
+
+.pg-chip-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 14px;
+  border: 0;
+  background: transparent;
+  color: var(--text-sub);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.pg-chip.is-on .pg-chip-btn { color: var(--text); }
+.pg-chip-btn:hover { color: var(--text); }
+
+.pg-chip-num {
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.09);
+  color: var(--text-sub);
+  font-size: 11.5px;
+  font-style: normal;
+}
+
+.pg-chip-x {
+  width: 28px;
+  border: 0;
+  border-left: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-sub);
+  font-family: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.16s var(--ease), color 0.16s var(--ease);
+}
+
+.pg-chip-x:hover { background: rgba(224, 85, 85, 0.22); color: var(--text); }
+
+.pg-add {
+  padding: 7px 15px;
+  border: 1px dashed var(--border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-sub);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.18s var(--ease), color 0.18s var(--ease);
+}
+
+.pg-add:hover { border-color: color-mix(in srgb, var(--accent) 55%, transparent); color: var(--text); }
+
+/* ---------------------------------------------------------------- 一张一条 */
+
+.pg-list { display: grid; gap: 14px; }
+
+.pg-row {
+  display: flex;
+  gap: 16px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-card);
+  background: var(--panel-bg);
+  box-shadow: 0 12px 30px var(--soft-shadow);
+  transition: border-color 0.18s var(--ease);
+}
+
+/* 改过还没存的那条描个边，一眼看出哪条没落盘 */
+.pg-row.dirty { border-color: color-mix(in srgb, var(--accent) 55%, transparent); }
+
+/* ---------------------------------------------------------------- 左：例图 */
+
+.pg-photo {
+  position: relative;
+  flex: 0 0 176px;
+  width: 176px;
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border: 1px dashed var(--border);
+  border-radius: var(--r-item);
+  /* 棋盘底：例图常是带透明的 PNG，没底纹看不出边界 */
+  background-color: rgba(255, 255, 255, 0.035);
+  background-image:
+    linear-gradient(45deg, rgba(255, 255, 255, 0.05) 25%, transparent 25%, transparent 75%, rgba(255, 255, 255, 0.05) 75%),
+    linear-gradient(45deg, rgba(255, 255, 255, 0.05) 25%, transparent 25%, transparent 75%, rgba(255, 255, 255, 0.05) 75%);
+  background-size: 16px 16px;
+  background-position: 0 0, 8px 8px;
+  cursor: pointer;
+  transition: border-color 0.18s var(--ease);
+}
+
+.pg-photo:hover { border-color: color-mix(in srgb, var(--accent) 55%, transparent); }
+
+.pg-photo img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  /* 例图要看清整张，所以是 contain 不是 cover */
+  object-fit: contain;
+}
+
+.pg-photo-hint {
+  display: grid;
+  justify-items: center;
+  gap: 5px;
+  padding: 10px;
+  color: var(--text-sub);
+  font-size: 12px;
+  text-align: center;
+  pointer-events: none;
+}
+
+.pg-photo-hint .plus { font-size: 22px; line-height: 1; color: var(--accent); }
+
+/* 图传上来之后才出现的小按钮 */
+.pg-photo-tools {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.15s var(--ease);
+}
+
+.pg-photo:hover .pg-photo-tools { opacity: 1; }
+
+.pg-photo-tools button {
+  padding: 3px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--bg-main) 88%, transparent);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.pg-photo-tools button:hover { border-color: color-mix(in srgb, var(--accent) 55%, transparent); }
+
+/* ---------------------------------------------------------------- 右：文字 */
+
+.pg-body {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: grid;
+  gap: 10px;
+  align-content: start;
+}
+
+.pg-row-head {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.pg-name {
+  flex: 1 1 220px;
+  min-width: 0;
+  padding: 7px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-ctl);
+  background: rgba(0, 0, 0, 0.16);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+/* 把这张卡存进哪个类，就在这里选 */
+.pg-group {
+  flex: 0 0 auto;
+  padding: 7px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-ctl);
+  background: rgba(0, 0, 0, 0.16);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 13px;
+}
+
+.pg-text {
+  width: 100%;
+  min-height: 84px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-ctl);
+  background: rgba(0, 0, 0, 0.2);
+  color: var(--text);
+  font-family: ui-monospace, Consolas, "Microsoft YaHei", monospace;
+  font-size: 12.5px;
+  line-height: 1.75;
+  resize: vertical;
+}
+
+.pg-note {
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1px dashed var(--border);
+  border-radius: var(--r-ctl);
+  background: transparent;
+  color: var(--text-sub);
+  font-family: inherit;
+  font-size: 12.5px;
+  line-height: 1.65;
+  resize: vertical;
+}
+
+.pg-name:focus,
+.pg-group:focus,
+.pg-text:focus,
+.pg-note:focus,
+.pg-input:focus {
+  outline: none;
+  border-color: color-mix(in srgb, var(--accent) 60%, transparent);
+}
+
+.pg-tools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.pg-tools button {
+  padding: 7px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-ctl);
+  background: transparent;
+  color: var(--text-sub);
+  font-family: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  transition: color 0.16s var(--ease), border-color 0.16s var(--ease);
+}
+
+.pg-tools button:hover { color: var(--text); border-color: color-mix(in srgb, var(--accent) 45%, transparent); }
+
+.pg-tools button.primary {
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  color: var(--text);
+  font-weight: 700;
+}
+
+.pg-tools button.danger { color: color-mix(in srgb, #e05555 78%, var(--text)); }
+
+.pg-state {
+  margin-left: auto;
+  color: var(--text-sub);
+  font-size: 12px;
+}
+
+.pg-row.dirty .pg-state { color: var(--accent); }
+
+/* ---------------------------------------------------------------- 改名弹窗 */
+
+.pg-field { display: block; }
+
+.pg-input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-ctl);
+  background: rgba(0, 0, 0, 0.2);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 14px;
+}
+
+@media (max-width: 720px) {
+  .pg { width: calc(100% - 24px); }
+  /* 窄屏把例图收到上面一条，不然右边那块文字会被挤成竖条 */
+  .pg-row { flex-wrap: wrap; }
+  .pg-photo { flex: 0 0 100%; width: 100%; height: 180px; aspect-ratio: auto; }
+  .pg-name { flex: 1 1 100%; }
+  .pg-group { flex: 1 1 100%; }
+}
