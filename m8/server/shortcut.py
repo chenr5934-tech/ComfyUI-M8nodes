@@ -70,7 +70,7 @@ def safe_name(name: str) -> str:
 
 def launcher_path() -> Path:
     """启动脚本在哪。它就在插件里，所以位置是确定的。"""
-    return paths.PLUGIN_DIR / "M8web" / "启动工作台.bat"
+    return paths.PLUGIN_DIR / "M8web" / "start-workbench.bat"
 
 
 def icon_path() -> Path:

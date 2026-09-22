@@ -50,7 +50,7 @@ Turns a prompt-text file (Markdown / plain text) into a connectable knowledge pa
 ### M8 工作台 (Web Workbench)
 
 A standalone web app for things that do not fit in a node. Open it from the `M8` button in the
-ComfyUI top bar, or by double-clicking `M8web/启动工作台.bat` — that second route works with
+ComfyUI top bar, or by double-clicking `M8web/start-workbench.bat` — that second route works with
 ComfyUI closed. Both read and write the same files under `<ComfyUI>/models/M8data/webapp/`.
 
 Its **visual design** is taken from the reference site `azusa.nyacraft.cn` (colours, layout and

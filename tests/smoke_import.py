@@ -3131,7 +3131,7 @@ class TestWebapp(unittest.TestCase):
                     "assets/stickers/default-sticker.png", "assets/img/favicon.svg", "assets/img/favicon.ico",
                     # 工作台的两个入口零件。bat 是桌面快捷方式的目标，
                     # py 是 CUI 关着时用的独立服务 —— 缺一个就有一半功能废掉。
-                    "m8-serve.py", "启动工作台.bat"):
+                    "m8-serve.py", "start-workbench.bat"):
             self.assertTrue((root / rel).is_file(), "M8web 少了 " + rel)
 
     def test_topbar_button_is_shipped(self):

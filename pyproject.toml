@@ -1,6 +1,6 @@
 [project]
 name = "comfyui-m8-nodes"
-version = "0.4.0"
+version = "0.4.1"
 description = "M8 节点包：按货架分类的 ComfyUI 自定义节点 —— 大模型推理（远程 / 本地）、skill 装载、相机机位、多角色提示词，另带一个独立网页工作台"
 readme = "README.md"
 license = { text = "MIT" }
@@ -19,8 +19,8 @@ Issues = "https://github.com/chenr5934-tech/ComfyUI-M8nodes/issues"
 # ComfyUI Registry 用的字段。不打算发布到 registry 的话留着也不碍事。
 PublisherId = "m8"
 DisplayName = "M8 Nodes"
-# 图标 URL，可选。发布到 registry 时会在列表里显示。
-Icon = ""
+# 图标 URL。registry 列表里显示这个 —— 要求和网页 favicon 是同一张图。
+Icon = "https://raw.githubusercontent.com/chenr5934-tech/ComfyUI-M8nodes/main/M8web/assets/img/favicon.svg"
 requires-comfyui = ">=0.3.0"
 
 [build-system]

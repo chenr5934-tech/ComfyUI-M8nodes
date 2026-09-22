@@ -31,7 +31,7 @@
 | 怎么进 | 什么时候用 |
 | --- | --- |
 | ComfyUI 顶栏的 `M8` 按钮 | ComfyUI 开着的时候，顺手进去 |
-| 双击 `M8web/启动工作台.bat`（或者它的桌面快捷方式） | **ComfyUI 不用开**也能用 |
+| 双击 `M8web/start-workbench.bat`（或者它的桌面快捷方式） | **ComfyUI 不用开**也能用 |
 
 第二个门是独立的小服务（`M8web/m8-serve.py`，只用 Python 标准库）。它和 ComfyUI
 读写的是**同一份文件**，所以两边看到的内容始终一致。
