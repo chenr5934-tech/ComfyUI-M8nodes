@@ -86,7 +86,7 @@
   `<ComfyUI>/models/M8data/webapp/*.json` —— 升级、重装都带不走它，备份复制文件夹就行。
 - **也和浏览器无关**。早先存在 IndexedDB 里，换浏览器、换机器、清缓存就没了，
   而且写不进去时浏览器不给理由。现在只有服务端文件。
-- **两个门进同一份数据**：ComfyUI 顶栏的 `M8` 按钮，和 `M8web/启动工作台.bat`。
+- **两个门进同一份数据**：ComfyUI 顶栏的 `M8` 按钮，和 `M8web/start-workbench.bat`。
   后者拉起的独立服务（`m8-serve.py`）只用标准库，所以 **CUI 关着照样能用**。
   它不知道自己的数据目录在哪，靠 `M8web/.m8data` 这个路标 —— 那是 ComfyUI
   加载插件时用 `folder_paths` 算出来写下的。
@@ -225,7 +225,7 @@ Q 弹按压、今日已用记账、每轮消耗统计。
 - [x] 开 `M8web/` 货架（`M8-WEB-###`）—— 独立网页，和节点是两条线
 - [x] 数据搬到 `<ComfyUI>/models/M8data/webapp/*.json`：插件更新、ComfyUI 重装都带不走，
       也不在浏览器里（换浏览器、换机器、清缓存都还在）
-- [x] 桌面快捷方式：`.lnk` 指向 `M8web/启动工作台.bat`，图标和网页 favicon 同一张
+- [x] 桌面快捷方式：`.lnk` 指向 `M8web/start-workbench.bat`，图标和网页 favicon 同一张
 - [x] **CUI 关着也能用**：`M8web/m8-serve.py` 是只用标准库的独立服务，和 ComfyUI 读写同一份文件；
       路标 `M8web/.m8data` 由 ComfyUI 加载时写下，服务读到过期的会自动退回自己推的那份
 - [x] 功能页：分段裁剪 / 分段遮挡 / 贴纸遮挡 / 宫格拼图 / 文字与画笔 / OC 工坊 /
@@ -234,6 +234,14 @@ Q 弹按压、今日已用记账、每轮消耗统计。
 - [x] 三条数据线（OC / 提示词 / 贴纸）统一的导出与导入，按名字去重合并
 - [x] 旧版存在浏览器 IndexedDB 里的数据，首次打开会提示搬家
 - [x] 四套主题（白天 / 黑夜 / 樱花粉 / 海蓝），选择会记住
+
+**v0.4.1 —— 发布到 Comfy Registry 的适配**（已完成）
+
+- [x] 新增 `.comfyignore`：`AGENTS.md`（带本机路径）和 `tests/` 不进发布包
+- [x] 启动脚本改名 `M8web/start-workbench.bat` —— 中文文件名会被 `comfy node pack`
+      报 `File not found` 漏掉，而桌面快捷方式指着它
+- [x] `[tool.comfy] Icon` 填上（和网页 favicon 同一张图）
+- [x] `comfy node validate` 通过；打包 122 个条目，`.bat` 在内
 
 **v0.5 —— 加载器货架**：底模 / LoRA / CLIP / VAE。
 

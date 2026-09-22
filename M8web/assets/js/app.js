@@ -357,7 +357,7 @@ function showMigrateBar(items) {
    **后端做的是一个指向启动脚本的 .lnk，不是指向某个网址的 .url。**
    这个区别很关键：.url 只能开一个地址，所以必须先有人把服务起起来 ——
    ComfyUI 一关就白搭（第一版就是这么做的，用户点开是打不开的）。
-   .lnk 指向 M8web/启动工作台.bat，双击它会把本地服务拉起来再开浏览器，
+   .lnk 指向 M8web/start-workbench.bat，双击它会把本地服务拉起来再开浏览器，
    CUI 开着关着都能用。
 
    以前必须指向当前地址，是因为数据还在浏览器的 IndexedDB 里、挂在「源」上。

@@ -24,6 +24,9 @@ Thumbs.db
 _shot*.png
 *.log
 
+# comfy node pack 的产物（发布时临时生成，不进仓库）
+node.zip
+
 # 工作台数据目录的路标：内容是本机算出来的绝对路径，每台机器都不一样。
 # ComfyUI 每次加载插件会重写它，所以不用提交。
 M8web/.m8data
