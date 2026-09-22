@@ -88,7 +88,7 @@ git push origin main --tags
 
 ```bash
 cd ComfyUI/custom_nodes
-git clone https://github.com/chenr5934-tech/ComfyUI-m8nodes.git
+git clone https://github.com/chenr5934-tech/ComfyUI-M8nodes.git
 ```
 
 **ComfyUI Manager**：在 Manager 里搜仓库名即可，无需额外操作。

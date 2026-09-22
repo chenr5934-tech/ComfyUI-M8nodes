@@ -12,8 +12,8 @@ keywords = ["comfyui", "comfyui-nodes", "llm", "deepseek", "openai-compatible", 
 
 [project.urls]
 # 上架前填上（docs/RELEASING.md 的检查清单里有这一条）
-Repository = "https://github.com/chenr5934-tech/ComfyUI-m8nodes"
-Issues = "https://github.com/chenr5934-tech/ComfyUI-m8nodes/issues"
+Repository = "https://github.com/chenr5934-tech/ComfyUI-M8nodes"
+Issues = "https://github.com/chenr5934-tech/ComfyUI-M8nodes/issues"
 
 [tool.comfy]
 # ComfyUI Registry 用的字段。不打算发布到 registry 的话留着也不碍事。

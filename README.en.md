@@ -1,4 +1,4 @@
-# ComfyUI-m8nodes
+# ComfyUI-M8nodes
 
 English | [中文](README.md)
 
@@ -62,7 +62,7 @@ motion follow its CSS — see `docs/M8WEB-DESIGN.md`); the **features** are this
 
 ```bash
 cd ComfyUI/custom_nodes
-git clone https://github.com/chenr5934-tech/ComfyUI-m8nodes.git
+git clone https://github.com/chenr5934-tech/ComfyUI-M8nodes.git
 ```
 
 Restart ComfyUI. **No pip dependencies.**
