@@ -3536,7 +3536,7 @@ class TestPathResolution(unittest.TestCase):
 
     def test_integration_pack_layout(self):
         """秋叶整合包那种更深的层级 —— 靠「长什么样」判断，不数层数。"""
-        comfy = self._comfy_at(self._tmp / "D" / "ComfyUI-aki-v3" / "ComfyUI")
+        comfy = self._comfy_at(self._tmp / "D" / "ComfyUI-pack" / "ComfyUI")
         plug = self._plugin_at(comfy / "custom_nodes")
         self.assertEqual(self._load(plug, comfy / "models"), comfy / "models" / "M8data")
 
