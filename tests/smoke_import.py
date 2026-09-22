@@ -3444,6 +3444,28 @@ class TestMmprojPairing(unittest.TestCase):
         self.assertIn("return _pick_from(list_mmproj(), model_name)", src)
 
 
+class TestErrorCodeHygiene(unittest.TestCase):
+    """错误码不许撞号，也不许用了不登记。
+
+    实际踩过：shortcut.py 里新写了一个 M8-WEB-007，而那个码早就被 webdata.py
+    占着 —— 同一个码两套含义，报错手册只能写一个，查错的人会看到牛头不对马嘴
+    的文案。这类错编译器不管、跑起来也不报，只有专门查才拦得住。
+    """
+
+    def test_every_code_used_is_registered(self):
+        load_plugin(FakeRouteTable())
+        registered = set(submodule("m8.core.errors").ERRORS)
+        used: dict[str, list[str]] = {}
+        for path in sorted((PKG_DIR / "m8").rglob("*.py")):
+            if path.parts[len(PKG_DIR.parts)] == "data":
+                continue          # 用户上传的 skill 不算自己的代码
+            for m in re.finditer(r'"(M8-[A-Z]+-\d{3})"', path.read_text("utf-8")):
+                used.setdefault(m.group(1), []).append(path.name)
+        self.assertGreater(len(used), 20, "一个码都没扫到，断言可能失效了")
+        missing = sorted(c for c in used if c not in registered)
+        self.assertEqual(missing, [], "代码里用了但没在 errors.py 登记的码：" + str(missing))
+
+
 class TestPathResolution(unittest.TestCase):
     """数据目录到底落在哪儿。
 

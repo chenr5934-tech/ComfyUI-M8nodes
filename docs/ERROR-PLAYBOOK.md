@@ -116,6 +116,7 @@ ComfyUI 里的报错长这样：
 | M8-WEB-007 | `core/webdata.py: data_file` | 请求的数据类别不认识 | 只支持 oc / prompts / groups / stickers 这四类 |
 | M8-WEB-008 | `core/webdata.py: ensure_dir` | 建不出工作台数据目录 | 检查 `<ComfyUI>/models/M8data` 的写权限；想换地方就设环境变量 M8_DATA_DIR |
 | M8-WEB-009 | `core/webdata.py: write` | 写数据文件失败 | 检查磁盘空间和 `<ComfyUI>/models/M8data/webapp` 的写权限 |
+| M8-WEB-011 | `server/shortcut.py: confined` | 拼出来的路径跑到了桌面目录外面 | 内部调用出错，正常从工作台点按钮不会走到这儿 |
 | M8-WEB-010 | `core/webdata.py: put/replace` | 传进来要存的不是一条记录 | 这是内部调用写错了，不是你的操作问题；看 detail |
 
 ### 加载器 / 采样 / 判断 / 图像 / 文本
