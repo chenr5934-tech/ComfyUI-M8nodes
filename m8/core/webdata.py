@@ -90,6 +90,14 @@ def read(kind: str) -> list[dict[str, Any]]:
 
 def write(kind: str, rows: list[dict[str, Any]]) -> int:
     """整份写回去。返回写了几条。"""
+    # kind 会被拼进文件名，所以必须走白名单 —— 别的读写路径都查了，这里漏过一次
+    if kind not in KINDS:
+        raise M8Error(
+            "M8-WEB-007",
+            message="不认识的数据类别",
+            hint="只支持 " + " / ".join(KINDS) + " 这四类",
+            detail=str(kind),
+        )
     path = ensure_dir() / (kind + ".json")
     payload = {
         "app": "m8web",

@@ -3444,6 +3444,95 @@ class TestMmprojPairing(unittest.TestCase):
         self.assertIn("return _pick_from(list_mmproj(), model_name)", src)
 
 
+class TestKeyDisclosure(unittest.TestCase):
+    """服务端存的密钥只能交给它归属的那个地址。
+
+    审核退回时点名第一条：`/m8/llm/models` 是开放路由，apiKey 留空时会填上服务端
+    存的那份密钥，而 baseUrl 由调用方指定 —— 两者一拼，任何能访问 ComfyUI 的页面
+    都能把用户的密钥寄到自己服务器上。分享出去的工作流是同一个问题的另一种形态：
+    里面塞一个指向别人服务器的 base_url、密钥留空，用户一跑密钥就跟着走了。
+
+    这类 bug 不报错、界面上也看不出来，所以必须钉在这儿。
+    """
+
+    def setUp(self):
+        load_plugin(FakeRouteTable())
+        self.config = submodule("m8.core.config")
+        self.providers = submodule("m8.server.providers")
+        self.paths_mod = submodule("m8.core.paths")
+        self._tmp = Path(tempfile.mkdtemp(prefix="m8-key-"))
+        self._orig = self.paths_mod.CREDENTIALS_FILE
+        self.paths_mod.CREDENTIALS_FILE = self._tmp / "credentials.json"
+
+    def tearDown(self):
+        self.paths_mod.CREDENTIALS_FILE = self._orig
+        shutil.rmtree(self._tmp, ignore_errors=True)
+
+    def _allowed(self, provider: str) -> tuple[str, ...]:
+        return (self.providers.default_base_url(provider),
+                self.config.saved_base_url(provider))
+
+    def test_stored_key_is_not_sent_to_a_foreign_address(self):
+        """核心用例：base_url 换成别人的地址，存的密钥一个字都不能给出去。"""
+        self.config.set_api_key("deepseek", "sk-stored-secret", "https://api.deepseek.com/v1")
+        got = self.config.resolve_api_key(
+            "", "deepseek", "https://evil.example/v1", self._allowed("deepseek"))
+        self.assertEqual(got, "", "密钥被发到了调用方指定的地址")
+
+    def test_stored_key_is_sent_to_its_own_address(self):
+        """对得上就照给 —— 防得过头把正常功能废了也不行。"""
+        self.config.set_api_key("deepseek", "sk-ok", "")
+        self.assertEqual(
+            self.config.resolve_api_key(
+                "", "deepseek", self.providers.default_base_url("deepseek"),
+                self._allowed("deepseek")),
+            "sk-ok")
+
+    def test_saved_base_url_also_counts(self):
+        """用中转地址的人：存密钥时一起记下的那个地址也算数，尾斜杠不影响判定。"""
+        self.config.set_api_key("deepseek", "sk-relay", "https://my-relay.example/v1/")
+        self.assertEqual(
+            self.config.resolve_api_key("", "deepseek", "https://my-relay.example/v1",
+                                        self._allowed("deepseek")),
+            "sk-relay")
+
+    def test_trailing_slash_and_case_do_not_matter(self):
+        self.config.set_api_key("openai", "sk-x", "")
+        self.assertEqual(
+            self.config.resolve_api_key("", "openai", "HTTPS://API.OPENAI.COM/v1/",
+                                        self._allowed("openai")),
+            "sk-x")
+
+    def test_node_supplied_key_is_always_used(self):
+        """用户自己填在节点上的密钥原样用 —— 那不是服务端存的东西。"""
+        self.config.set_api_key("deepseek", "sk-stored", "")
+        self.assertEqual(
+            self.config.resolve_api_key("sk-mine", "deepseek", "https://anything.example", ()),
+            "sk-mine")
+
+    def test_empty_when_nothing_stored(self):
+        self.assertEqual(
+            self.config.resolve_api_key("", "deepseek", "https://api.deepseek.com", ()), "")
+
+    def test_webdata_write_rejects_unknown_kind(self):
+        """kind 会被拼进文件名，所以 write 也得走白名单（别的路径都查了，这里漏过）。"""
+        webdata = submodule("m8.core.webdata")
+        for bad in ("../../evil", "nope", "oc/../../x", ""):
+            with self.assertRaises(Exception, msg=bad):
+                webdata.write(bad, [])
+
+    def test_skill_delete_legacy_branch_is_confined(self):
+        """legacy 分支必须自己再查一次 containment。
+
+        Python 的 pathlib 遇到绝对路径会把左边整个换掉，所以「SKILLS_DIR / name」
+        不等于「skills 目录下的 name」—— 这一条最容易被漏掉。
+        """
+        src = (PKG_DIR / "m8" / "server" / "skills.py").read_text("utf-8")
+        tail = src[src.index("# 老格式"):src.index("def ", src.index("# 老格式") + 10)]
+        self.assertIn("sanitize_name", tail, "legacy 分支没净化名字")
+        self.assertIn("is_inside", tail, "legacy 分支少了 containment 检查")
+
+
 class TestErrorCodeHygiene(unittest.TestCase):
     """错误码不许撞号，也不许用了不登记。
 

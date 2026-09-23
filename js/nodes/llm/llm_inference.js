@@ -71,7 +71,9 @@ async function saveKey(node) {
     return;
   }
 
-  const result = await M8.apiPost("/keys/set", { provider, apiKey: value });
+  // baseUrl 一起存：服务端要记下这份密钥归哪个地址用，以后只有发往它才带上
+  const baseUrl = (M8.findWidget(node, "base_url")?.value || "").trim();
+  const result = await M8.apiPost("/keys/set", { provider, apiKey: value, baseUrl });
   // 存完就清空：留在框里会被写进工作流文件，分享出去就泄了
   keyWidget.value = "";
   M8.setStatus(node, "ok", `密钥已存 ${result.masked}`);
