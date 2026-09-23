@@ -377,6 +377,22 @@ class TestFrontendContract(unittest.TestCase):
         self.skill_js = feature_js("llm", "skill_loader").read_text("utf-8")
         self.core_js = CORE_JS.read_text("utf-8")
 
+    def test_llm_local_placeholders_match(self):
+        """本地推理节点的两个占位串，前后端必须逐字一致。
+
+        它们会出现在下拉里、也会走进节点执行时的默认值 —— 差一个字符，前端能选中
+        的值后端就不认了，表现是「明明选了却报值不合法」。
+        """
+        node_mod = submodule("m8.nodes.llm.llm_local.node")
+        js = feature_js("llm", "llm_local").read_text("utf-8")
+        for name in ("PLACEHOLDER", "NO_MMPROJ"):
+            value = getattr(node_mod, name)
+            self.assertRegex(
+                js,
+                rf'(?m)^const {name} = "{re.escape(value)}";\s*$',
+                f"{name} 前端和后端不一致：后端是 {value!r}",
+            )
+
     def test_placeholder_strings_match(self):
         skill_cls = self.module.NODE_CLASS_MAPPINGS["M8SkillLoader"]
         inference_cls = self.module.NODE_CLASS_MAPPINGS["M8LLMInference"]

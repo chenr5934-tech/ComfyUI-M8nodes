@@ -1,4 +1,4 @@
-"""M8 · 本地大模型推理。
+"""M8 · Local LLM Inference.
 
 和「大模型推理」那个节点是一对：那个走远程 API（要密钥、要联网），
 这个走本地 GGUF 文件（不联网、不花钱）。接口特意做得像，方便来回换。
@@ -21,6 +21,11 @@ from typing import Any
 from ....core.errors import M8Error
 from ....core.log import SHELF_LLM, warn
 from . import models
+
+# 两个下拉里的占位项。前端 js/nodes/llm/llm_local.js 里有同名常量，
+# 值必须逐字一致（tests/smoke_import.py 的契约测试会拦）。
+PLACEHOLDER = "(no .gguf in models/LLM yet)"
+NO_MMPROJ = "(none, text only)"
 
 # 图片送进模型前先缩到这个边长以内。原图像素动辄几百万，直接塞会把
 # 上下文撑爆 —— 模型的视觉编码是固定 token 预算的，喂再大也不会更清楚。
@@ -70,8 +75,8 @@ def tensor_to_data_url(image: Any, index: int = 0) -> str:
     except Exception as exc:
         raise M8Error(
             "M8-LLM-018",
-            message="处理图片要用的库没装",
-            hint="ComfyUI 一般都自带 pillow 和 numpy，确认环境没被破坏",
+            message="The libraries needed to handle images are missing",
+            hint="ComfyUI normally ships pillow and numpy; check the environment is intact",
             detail=f"{type(exc).__name__}: {exc}",
         ) from exc
 
@@ -85,8 +90,8 @@ def tensor_to_data_url(image: Any, index: int = 0) -> str:
     if arr is None or arr.ndim != 4:
         raise M8Error(
             "M8-LLM-018",
-            message="拿到的图片格式不对",
-            hint="IMAGE 输入应该是 [批, 高, 宽, 3]",
+            message="Unexpected image format received",
+            hint="The IMAGE input should be [batch, height, width, 3]",
             detail=f"shape={getattr(arr, 'shape', None)}",
         )
 
@@ -138,73 +143,73 @@ def build_messages(*, system: str, user: str, extra: str, images: list[str], ski
 
 
 class M8LLMLocal:
-    """M8 · 本地大模型推理"""
+    """M8 · Local LLM Inference"""
 
     CATEGORY = "M8/LLM"
     FUNCTION = "run"
     RETURN_TYPES = ("STRING", "STRING")
-    RETURN_NAMES = ("文本", "状态")
+    RETURN_NAMES = ("text", "status")
     OUTPUT_NODE = False
     DESCRIPTION = (
-        "用本地的 GGUF 模型跑推理，不联网、不要密钥。"
-        "模型放在 ComfyUI 的 models/LLM 目录下。"
-        "配上同目录的 mmproj 文件就有识图能力；可以接 skill 节点当知识包。"
+        "Runs inference on a local GGUF model: no network, no API key."
+        "Models live in ComfyUI's models/LLM folder."
+        "Pair it with an mmproj file in the same folder to enable vision; a skill node can supply a knowledge pack."
     )
 
     @classmethod
     def INPUT_TYPES(cls):
         # 列表在 ComfyUI 扫目录的时机上可能还是空的，至少给一个占位，
         # 不然前端会渲染成一个空下拉，看着像坏了。
-        names = models.list_models() or ["（models/LLM 里还没有 .gguf）"]
-        mm = ["（不用，纯文本）"] + models.list_mmproj()
+        names = models.list_models() or [PLACEHOLDER]
+        mm = [NO_MMPROJ] + models.list_mmproj()
         return {
             "required": {
                 "model": (names, {
-                    "tooltip": "models/LLM 目录里的 .gguf 主模型。列不出来就去看看那个目录。",
+                    "tooltip": "The main .gguf in models/LLM. If the list is empty, check that folder.",
                 }),
                 "system_prompt": ("STRING", {
                     "multiline": True,
                     "default": "",
                     "dynamicPrompts": False,
-                    "tooltip": "系统提示词。和 skill 一起拼进系统段，skill 在前。",
+                    "tooltip": "System prompt. Combined with any skill into the system block, skill first.",
                 }),
                 "user_prompt": ("STRING", {
                     "multiline": True,
                     "default": "",
                     "dynamicPrompts": False,
-                    "tooltip": "这一轮要问的话。",
+                    "tooltip": "What you want to ask this round.",
                 }),
                 "extra_text": ("STRING", {
                     "multiline": True,
                     "default": "",
                     "dynamicPrompts": False,
-                    "tooltip": "额外文本，拼在提问后面。放补充要求、风格约束、要参考的字段这类东西。",
+                    "tooltip": "Extra text appended after the prompt. Good for additional requirements, style constraints, fields to reference.",
                 }),
             },
             "optional": {
                 "image": ("IMAGE", {
-                    "tooltip": "要给它看的图。不接就是纯文本。需要模型目录里有 mmproj 文件，否则识图不起作用。",
+                    "tooltip": "Images for the model to look at. Without it the run is text only. Needs an mmproj file next to the model, otherwise vision does nothing.",
                 }),
                 "skill": ("M8_SKILL", {
-                    "tooltip": "接 skill 装载节点的输出，当知识包用。不接就不带。",
+                    "tooltip": "Wire the output of a skill loader node here to use it as a knowledge pack.",
                 }),
                 "mmproj": (mm, {
-                    "tooltip": "多模态投影文件。默认按名字自动配；配错了或者想指定就手动挑。",
+                    "tooltip": "Multimodal projection file. Auto-paired by name; pick one manually if that guessed wrong.",
                 }),
                 "max_tokens": ("INT", {"default": 512, "min": 16, "max": 8192, "step": 16}),
                 "temperature": ("FLOAT", {"default": 0.7, "min": 0.0, "max": 2.0, "step": 0.05}),
                 "top_p": ("FLOAT", {"default": 0.95, "min": 0.05, "max": 1.0, "step": 0.05}),
                 "ctx": ("INT", {
                     "default": 4096, "min": 512, "max": 32768, "step": 512,
-                    "tooltip": "上下文长度。调大更吃内存，长对话或者多张图才需要。",
+                    "tooltip": "Context length. Larger uses more memory; only needed for long conversations or many images.",
                 }),
                 "gpu_layers": ("INT", {
                     "default": -1, "min": -1, "max": 200, "step": 1,
-                    "tooltip": "-1 = 能上多少层显卡就上多少（推荐，实际能不能上取决于装的 llama-cpp-python 是不是 CUDA 版）。0 = 纯 CPU。",
+                    "tooltip": "-1 = offload as many layers as the GPU allows (recommended; depends on whether llama-cpp-python was built with CUDA). 0 = CPU only.",
                 }),
                 "thinking": ("BOOLEAN", {
                     "default": False,
-                    "tooltip": "要不要让模型把思考过程说出来。关掉输出更干净；有些模型关不掉，那就在提示词里也提一句。",
+                    "tooltip": "Whether the model should show its thinking. Off gives cleaner output; some models ignore it, in which case ask in the prompt too.",
                 }),
             },
         }
@@ -228,7 +233,7 @@ class M8LLMLocal:
         extra_text: str = "",
         image=None,
         skill: Any = None,
-        mmproj: str = "（不用，纯文本）",
+        mmproj: str = NO_MMPROJ,
         max_tokens: int = 512,
         temperature: float = 0.7,
         top_p: float = 0.95,
@@ -241,15 +246,15 @@ class M8LLMLocal:
         if not model or model.startswith("（"):
             raise M8Error(
                 "M8-LLM-014",
-                message="没有可用的本地模型",
-                hint="往 ComfyUI 的 models/LLM 目录里放一个 .gguf 文件，然后重开这个节点",
+                message="No local model available",
+                hint="Drop a .gguf into ComfyUI's models/LLM folder, then re-create this node",
                 detail=str(model),
             )
         if not (user_prompt or "").strip() and not (extra_text or "").strip() and image is None:
             raise M8Error(
                 "M8-LLM-019",
-                message="什么都没问",
-                hint="至少填一下「提问」，或者接一张图进来",
+                message="Nothing was asked",
+                hint="Fill in the prompt, or wire an image in",
             )
 
         # mmproj：选了就用选的，没选就按名字自动配。
@@ -261,7 +266,7 @@ class M8LLMLocal:
         if not picked:
             picked = models.pick_mmproj(model) or ""
             if not picked and image is not None:
-                warn("这个模型目录里没找到 mmproj，识图会用不上", SHELF_LLM)
+                warn("No mmproj found next to this model; vision will not work", SHELF_LLM)
 
         images: list[str] = []
         if image is not None:
@@ -300,8 +305,8 @@ class M8LLMLocal:
         except Exception as exc:
             raise M8Error(
                 "M8-LLM-020",
-                message="推理出错",
-                hint="上下文可能不够（把「上下文长度」调大），或者显卡放不下（把「GPU 层数」改 0 试试）",
+                message="Inference failed",
+                hint="The context may be too small (raise Context length), or the GPU cannot fit it (try setting GPU layers to 0)",
                 detail=f"{type(exc).__name__}: {exc}",
             ) from exc
 
@@ -320,15 +325,15 @@ class M8LLMLocal:
         gpu = models.gpu_offload_available()
         bits = [
             f"{dt:.1f}s",
-            f"出 {n_out} token" if n_out else "出 0 token",
+            f"{n_out} tokens out" if n_out else "0 tokens out",
             (f"{rate:.1f} tok/s" if rate else ""),
-            ("识图" if images else "纯文本"),
-            ("复用了缓存" if reused else "这次新加载"),
-            ("GPU 可用" if gpu else ("CPU（这个 llama-cpp-python 没有 GPU 支持）" if gpu is False else "后端未知")),
+            ("vision" if images else "text only"),
+            ("reused cache" if reused else "loaded fresh"),
+            ("GPU available" if gpu else ("CPU (this llama-cpp-python has no GPU support)" if gpu is False else "backend unknown")),
         ]
         status = " · ".join(b for b in bits if b)
         return (text, status)
 
 
 NODE_CLASS_MAPPINGS = {"M8LLMLocal": M8LLMLocal}
-NODE_DISPLAY_NAME_MAPPINGS = {"M8LLMLocal": "M8 · 本地大模型推理"}
+NODE_DISPLAY_NAME_MAPPINGS = {"M8LLMLocal": "M8 · Local LLM Inference"}

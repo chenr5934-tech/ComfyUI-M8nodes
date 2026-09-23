@@ -13,8 +13,9 @@ import { app } from "/scripts/app.js";
 import * as M8 from "../../m8_core.js";
 
 const NODE_TYPE = "M8LLMLocal";
-const PLACEHOLDER = "（models/LLM 里还没有 .gguf）";
-const NO_MMPROJ = "（不用，纯文本）";
+/* 和后端 m8/nodes/llm/llm_local/node.py 里的两个常量必须逐字一致 */
+const PLACEHOLDER = "(no .gguf in models/LLM yet)";
+const NO_MMPROJ = "(none, text only)";
 
 M8.injectTheme();
 
