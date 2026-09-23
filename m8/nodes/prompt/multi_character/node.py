@@ -299,7 +299,7 @@ class M8MultiCharacter:
     RETURN_TYPES = ("STRING",)
     RETURN_NAMES = ("角色提示词",)
     FUNCTION = "execute"
-    CATEGORY = "M8/提示词"
+    CATEGORY = "M8/Prompt"
     DESCRIPTION = "分块编辑多个角色的提示词与画面区域，组装成一段可直接使用的提示词"
 
     def execute(

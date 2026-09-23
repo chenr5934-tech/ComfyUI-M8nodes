@@ -23,8 +23,9 @@ from ....core.errors import M8Error
 from ....core.log import SHELF_LLM, log
 from ....server import skills
 
-# skill 下拉在没有文件时的占位项。前端拉到列表后会把它替换掉。
-NO_SKILL = "（还没有上传 skill）"
+# Placeholder shown in the skill dropdown when nothing is uploaded yet.
+# The frontend replaces it after fetching /m8/skills/list.
+NO_SKILL = "(no skill uploaded yet)"
 
 
 class M8SkillLoader:
@@ -39,19 +40,19 @@ class M8SkillLoader:
         return {
             "required": {
                 "skill": ([NO_SKILL], {
-                    "tooltip": "选择已上传的 skill 文件。点节点上的「上传 Skill」按钮可以新增。",
+                    "tooltip": "Pick an uploaded skill file. Use the Upload button on the node to add one.",
                 }),
             },
             "optional": {
                 "enabled": ("BOOLEAN", {
                     "default": True,
-                    "tooltip": "关掉之后输出空 skill，等于临时断开这条线，不用改工作流。",
+                    "tooltip": "Turn off to output an empty skill, as if unplugging the wire without editing the workflow.",
                 }),
                 "extra_text": ("STRING", {
                     "multiline": True,
                     "default": "",
                     "dynamicPrompts": False,
-                    "tooltip": "附加在这份 skill 后面的补充说明。临时调整不用去改文件。",
+                    "tooltip": "Extra text appended after this skill. Handy for one-off tweaks you do not want to write into the file.",
                 }),
             },
         }
@@ -59,8 +60,8 @@ class M8SkillLoader:
     RETURN_TYPES = ("M8_SKILL",)
     RETURN_NAMES = ("skill",)
     FUNCTION = "load"
-    CATEGORY = "M8/大模型"
-    DESCRIPTION = "装载一份 skill 文件（提示词文本），输出给 M8 · 大模型推理 当知识包。"
+    CATEGORY = "M8/LLM"
+    DESCRIPTION = "Loads a skill file (prompt text) and outputs it as a knowledge pack for M8 · LLM Inference."
     OUTPUT_NODE = False
 
     @classmethod
@@ -88,7 +89,7 @@ class M8SkillLoader:
         try:
             text = skills.read_skill(name)
         except M8Error as exc:
-            raise M8Error(exc.code, message=f"skill 装载失败：{exc.message}", hint=exc.hint, detail=exc.detail) from exc
+            raise M8Error(exc.code, message=f"Skill load failed: {exc.message}", hint=exc.hint, detail=exc.detail) from exc
 
         suffix = (extra_text or "").strip()
         if suffix:
@@ -105,4 +106,4 @@ class M8SkillLoader:
 
 
 NODE_CLASS_MAPPINGS = {"M8SkillLoader": M8SkillLoader}
-NODE_DISPLAY_NAME_MAPPINGS = {"M8SkillLoader": "M8 · Skill 装载"}
+NODE_DISPLAY_NAME_MAPPINGS = {"M8SkillLoader": "M8 · Skill Loader"}

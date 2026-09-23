@@ -21,7 +21,7 @@ import * as M8 from "../../m8_core.js";
 const NODE_TYPE = "M8SkillLoader";
 
 /* 和后端 m8/nodes/llm/skill_loader/node.py 里的 NO_SKILL 必须逐字一致 */
-const NO_SKILL = "（还没有上传 skill）";
+const NO_SKILL = "(no skill uploaded yet)";
 
 const FILE_ACCEPT = ".md,.markdown,.txt,.json,.yaml,.yml,.toml";
 

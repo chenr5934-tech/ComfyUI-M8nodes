@@ -1,0 +1,104 @@
+{
+  "nodeDefs": {
+    "M8SkillLoader": {
+      "display_name": "M8 · Skill 装载",
+      "description": "装载一份 skill 文件（提示词文本），输出给 M8 · 大模型推理 当知识包。",
+      "inputs": {
+        "skill": {
+          "name": "skill",
+          "tooltip": "选择已上传的 skill 文件。点节点上的「上传 Skill」按钮可以新增。"
+        },
+        "enabled": {
+          "name": "enabled",
+          "tooltip": "关掉之后输出空 skill，等于临时断开这条线，不用改工作流。"
+        },
+        "extra_text": {
+          "name": "extra_text",
+          "tooltip": "附加在这份 skill 后面的补充说明。临时调整不用去改文件。"
+        }
+      },
+      "outputs": {
+        "skill": {
+          "name": "skill",
+          "tooltip": "装好的 skill，接给 M8 · 大模型推理 的 skill 输入。"
+        }
+      }
+    },
+    "M8LLMInference": {
+      "display_name": "M8 · 大模型推理",
+      "description": "靠 API 调用大模型：双提示词框 + 模型下拉 + 思考强度；可接 skill / 图片 / 音频，输出文本。",
+      "inputs": {
+        "provider": {
+          "name": "provider",
+          "tooltip": "选择供应商。改这个会自动带出对应的默认 base_url 和思考参数；换成别的服务商就选「自定义」自己填地址。"
+        },
+        "base_url": {
+          "name": "base_url",
+          "tooltip": "接口地址。默认 DeepSeek 的 https://api.deepseek.com/v1，改掉就能接任何 OpenAI 兼容端点。"
+        },
+        "api_key": {
+          "name": "api_key",
+          "tooltip": "留空就用服务端已保存的密钥（推荐：点「保存密钥」存到服务端，工作流文件里就不会带明文）。填在这里只对当前节点生效，并且会写进工作流。"
+        },
+        "model": {
+          "name": "model",
+          "tooltip": "填好地址和密钥后点「刷新模型」拉取，或直接手输模型名。"
+        },
+        "system_prompt": {
+          "name": "system_prompt",
+          "tooltip": "系统提示词：定模型的人格、语气、输出格式。留空则只发对话提示词。"
+        },
+        "user_prompt": {
+          "name": "user_prompt",
+          "tooltip": "这次要问的事。可以接别的节点的文本输出。"
+        },
+        "thinking": {
+          "name": "thinking",
+          "tooltip": "思考强度。关=不额外要求；越高越让模型多想。供应商不支持该参数时会自动去掉它重试。"
+        },
+        "show_thinking": {
+          "name": "show_thinking",
+          "tooltip": "是否把模型的思考过程显示在节点面板上（默认关：思考内容通常很长）。只影响显示，不影响 text 输出。"
+        },
+        "temperature": {
+          "name": "temperature",
+          "tooltip": "随机性。写提示词这类要稳的活儿调低，创意类的调高。"
+        },
+        "max_tokens": {
+          "name": "max_tokens",
+          "tooltip": "回答长度上限。注意这是上限不是目标。"
+        },
+        "timeout": {
+          "name": "timeout",
+          "tooltip": "单次请求超时秒数。长思考的模型建议给到 300 以上。"
+        },
+        "skill": {
+          "name": "skill",
+          "tooltip": "从 M8 · Skill 装载 接进来。内容会附在系统提示词后面当参考资料。"
+        },
+        "skill_auto": {
+          "name": "skill_auto",
+          "tooltip": "打开后把服务端已上传的 skill 一起注入，由模型自己判断该用哪个。默认关：库里内容一多，每轮都会带上几份用不上的，白烧 token。"
+        },
+        "image": {
+          "name": "image",
+          "tooltip": "接图片给能看图的模型。多张会一起发。"
+        },
+        "audio": {
+          "name": "audio",
+          "tooltip": "接音频给能听音频的模型（转成 WAV 发出去）。"
+        },
+        "extra_params": {
+          "name": "extra_params",
+          "tooltip": "额外的请求参数，JSON 对象格式，会合并进请求体。"
+        }
+      },
+      "outputs": {
+        "text": {
+          "name": "text",
+          "tooltip": "模型给的回答。"
+        }
+      }
+    }
+  }
+}

@@ -140,7 +140,7 @@ def build_messages(*, system: str, user: str, extra: str, images: list[str], ski
 class M8LLMLocal:
     """M8 · 本地大模型推理"""
 
-    CATEGORY = "M8/大模型"
+    CATEGORY = "M8/LLM"
     FUNCTION = "run"
     RETURN_TYPES = ("STRING", "STRING")
     RETURN_NAMES = ("文本", "状态")

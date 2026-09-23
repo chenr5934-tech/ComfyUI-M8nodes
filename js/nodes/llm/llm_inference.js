@@ -18,7 +18,7 @@ import * as M8 from "../../m8_core.js";
 const NODE_TYPE = "M8LLMInference";
 
 /* 和后端 m8/nodes/llm/llm_inference.py 里的 MODEL_PLACEHOLDER 必须逐字一致 */
-const MODEL_PLACEHOLDER = "（点「刷新模型」拉取列表）";
+const MODEL_PLACEHOLDER = "(click Refresh models to load the list)";
 
 M8.injectTheme();
 
