@@ -498,7 +498,7 @@ class TestErrorPlaybook(unittest.TestCase):
         exc = self.errors.M8Error("M8-LLM-001")
         text = exc.format_for_node()
         self.assertIn("[M8-LLM-001]", text)
-        self.assertIn("修复：", text)
+        self.assertIn("Fix:", text)
 
     def test_payload_shape_matches_frontend_expectations(self):
         """前端 M8ApiError 读的是 code / error / hint —— 形状变了前端就显示不出码。"""
@@ -2973,7 +2973,7 @@ class TestMultiCharacter(unittest.TestCase):
         with self.assertRaises(Exception) as ctx:
             self.run_it("attn", self.cfg([self.char("x", weight="不是数字")]))
         self.assertEqual(getattr(ctx.exception, "code", ""), "M8-PROMPT-002")
-        self.assertIn("第 1 个角色", str(ctx.exception))
+        self.assertIn("Character 1", str(ctx.exception))
 
     def test_character_without_region_falls_back_to_full_frame(self):
         """参考项目遇到没有 mask 的角色直接 continue，无声丢弃。"""

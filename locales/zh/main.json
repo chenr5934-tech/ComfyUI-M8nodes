@@ -155,6 +155,74 @@
           "tooltip": "这次跑得怎么样：token 数、识图还是纯文本、新加载还是复用缓存。"
         }
       }
+    },
+    "M8CameraControl": {
+      "display_name": "M8 · 相机控制",
+      "description": "可视化控制机位，输出对应的相机提示词（方位比例分配 + 高度/距离/倾斜 + 镜头 / 景深 / 运镜 / 构图 / 风格）",
+      "inputs": {
+        "pos_x": {
+          "name": "pos_x",
+          "tooltip": "左右 (X)：-1 最左，+1 最右。"
+        },
+        "pos_y": {
+          "name": "pos_y",
+          "tooltip": "上下 (Y)：-1 从下往上看，+1 从上往下看。"
+        },
+        "pos_z": {
+          "name": "pos_z",
+          "tooltip": "前后 (Z)：-1 贴近，+1 很远。"
+        },
+        "roll": {
+          "name": "roll",
+          "tooltip": "翻滚：过死区之后画面会倾斜（dutch angle）。"
+        },
+        "config": {
+          "name": "config",
+          "tooltip": "高级 JSON：权重预算、每档输出、镜头 / 景深 / 运镜 / 构图 / 风格开关。"
+        }
+      },
+      "outputs": {
+        "prompt": {
+          "name": "prompt",
+          "tooltip": "相机提示词，直接进正向提示词用。"
+        }
+      }
+    },
+    "M8MultiCharacter": {
+      "display_name": "M8 · 多角色编辑",
+      "description": "分块编辑多个角色的提示词与画面区域，组装成一段可直接使用的提示词。",
+      "inputs": {
+        "format": {
+          "name": "format",
+          "tooltip": "attn = Attention Couple，regional = Regional Prompts，plain = 纯逗号分隔文本、不带区域语法。"
+        },
+        "use_fill": {
+          "name": "use_fill",
+          "tooltip": "没有被任何角色覆盖的区域，用基础提示词填上。"
+        },
+        "config": {
+          "name": "config",
+          "tooltip": "角色列表的 JSON：名字、提示词、区域 (x/y/w/h)、混合权重、羽化、是否启用。"
+        },
+        "base_prompt": {
+          "name": "base_prompt",
+          "tooltip": "基础提示词，和全局提示词合并。"
+        },
+        "width": {
+          "name": "width",
+          "tooltip": "区域所在画布的宽度。"
+        },
+        "height": {
+          "name": "height",
+          "tooltip": "区域所在画布的高度。"
+        }
+      },
+      "outputs": {
+        "prompt": {
+          "name": "prompt",
+          "tooltip": "组装好的提示词，直接进正向提示词用。"
+        }
+      }
     }
   }
 }

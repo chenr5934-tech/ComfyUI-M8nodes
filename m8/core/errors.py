@@ -130,12 +130,16 @@ class M8Error(Exception):
         return parts[1] if len(parts) >= 3 else "CORE"
 
     def format_for_node(self) -> str:
-        """ComfyUI 报错框里显示的样子。三行：码 + 消息 / 修复 / 详情（有才显示）。"""
+        """ComfyUI 报错框里显示的样子。三行：码 + 消息 / 修复 / 详情（有才显示）。
+
+        前缀用英文：这两行会原样出现在 ComfyUI 的报错框里，属于界面文案。
+        各条错误的 message / hint / detail 本身也都是英文，见 errors.py 的表。
+        """
         lines = [f"[{self.code}] {self.message}"]
         if self.hint:
-            lines.append(f"  修复：{self.hint}")
+            lines.append(f"  Fix: {self.hint}")
         if self.detail:
-            lines.append(f"  详情：{self.detail}")
+            lines.append(f"  Detail: {self.detail}")
         return "\n".join(lines)
 
     def to_payload(self) -> dict[str, Any]:

@@ -36,7 +36,7 @@ except ImportError:  # 脱离 ComfyUI（跑单元测试）时
 
 _DUMPS = partial(json.dumps, ensure_ascii=False)
 
-VERSION = "0.4.6"
+VERSION = "0.4.7"
 
 # 由根 __init__.py 在收集完货架后注入，供 /m8/health 使用
 _RUNTIME_INFO: dict[str, Any] = {"shelves": [], "nodeCount": 0, "routeCount": 0}
