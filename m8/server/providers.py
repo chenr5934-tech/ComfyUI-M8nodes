@@ -19,12 +19,33 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-# 档位（节点下拉里显示这几个）
-THINKING_OFF = "关"
-THINKING_LOW = "低"
-THINKING_MEDIUM = "中"
-THINKING_HIGH = "高"
+# 档位。这几个字面量既是取值、也是节点下拉里显示的文字，所以一律英文 ——
+# 界面语言统一走 locales/，代码里不留中文。off / low / medium / high 本身就是
+# 通用写法，中文用户读起来没有障碍。
+THINKING_OFF = "off"
+THINKING_LOW = "low"
+THINKING_MEDIUM = "medium"
+THINKING_HIGH = "high"
 THINKING_OPTIONS = [THINKING_OFF, THINKING_LOW, THINKING_MEDIUM, THINKING_HIGH]
+
+# 0.5.1 之前档位存的是中文。老设置文件和老工作流里还是那几个字，读的时候一并
+# 认下来 —— 不然升级之后「思考强度」会静默掉回默认档，用户看不出是怎么回事。
+_LEGACY_THINKING = {
+    "关": THINKING_OFF,
+    "低": THINKING_LOW,
+    "中": THINKING_MEDIUM,
+    "高": THINKING_HIGH,
+}
+
+
+def normalize_thinking(raw: Any) -> str:
+    """把档位归一成当前取值。认不出来的一律当 off。"""
+    text = str(raw or "").strip()
+    if not text:
+        return THINKING_OFF
+    if text in THINKING_OPTIONS:
+        return text
+    return _LEGACY_THINKING.get(text, THINKING_OFF)
 
 # 响应里可能装「思考过程」的字段名，按顺序试。
 # 这是防御式解析：不同供应商（以及同一供应商的不同模型）用的字段名不一样，

@@ -13,6 +13,9 @@
 
 import * as M8 from "../../m8_core.js";
 
+/* 界面文案：代码里写英文，中文由 locales/zh/main.json 的 ui.M8Whale 段提供。 */
+const T = M8.tFor("M8Whale");
+
 const MIN_SCALE = 0.6;
 const MAX_SCALE = 2.5;
 const SCALE_STEPS = 20;   // 数字框的刻度：1 对应最小，20 对应最大
@@ -30,15 +33,31 @@ export function scaleToStep(scale) {
   return Math.max(1, Math.min(SCALE_STEPS, step));
 }
 
-/** 峰谷提示的三种说法。原版的文案。 */
-const PEAK_LABELS = {
-  default: { on: "高峰时段", off: "空闲时段" },
-  liangwen: { on: "梁文峰", off: "梁文谷" },
-  qiangqiang: { on: "!?峰峰?!", off: "!?谷谷?!" },
-};
+/** 峰谷提示有几种说法，这里只列合法的取值。 */
+export const PEAK_MODES = ["default", "liangwen", "qiangqiang"];
 
+/**
+ * 峰谷提示的三种说法（原版文案）。
+ *
+ * 每次调用现取，不在模块顶层求值 —— 界面文案是异步拉回来的，顶层求值只会
+ * 永远拿到代码里的英文原文，中文环境就换不过去。
+ */
 export function peakLabels(mode) {
-  return PEAK_LABELS[mode] || PEAK_LABELS.default;
+  const all = {
+    default: {
+      on: T("peakDefaultOn", "Peak hours"),
+      off: T("peakDefaultOff", "Off-peak"),
+    },
+    liangwen: {
+      on: T("peakLiangwenOn", "Liang Wenfeng"),
+      off: T("peakLiangwenOff", "Liang Wengu"),
+    },
+    qiangqiang: {
+      on: T("peakQiangqiangOn", "!?Fengfeng?!"),
+      off: T("peakQiangqiangOff", "!?Gugu?!"),
+    },
+  };
+  return all[mode] || all.default;
 }
 
 /* ---------------------------------------------------------------- 小工具 */
@@ -143,19 +162,19 @@ export class WhaleMenu {
       this.save({ scale: value });
     });
 
-    this.el.appendChild(row("大小", scale, scaleNumber));
+    this.el.appendChild(row(T("size", "Size"), scale, scaleNumber));
 
     /* ---- 音效 ---- */
     const soundSelect = el("select", { className: "m8-whale-select" });
-    soundSelect.appendChild(el("option", { value: "duck", textContent: "小黄鸭" }));
-    soundSelect.appendChild(el("option", { value: "fx1", textContent: "音效1" }));
+    soundSelect.appendChild(el("option", { value: "duck", textContent: T("soundDuck", "Duck") }));
+    soundSelect.appendChild(el("option", { value: "fx1", textContent: T("soundFx1", "Effect 1") }));
     soundSelect.value = s.soundSet === "fx1" ? "fx1" : "duck";
     soundSelect.addEventListener("change", () => {
       this.settings.soundSet = soundSelect.value;
       this.save({ soundSet: soundSelect.value });
       this.ctx.widget?.playSound("press");
     });
-    this.el.appendChild(row("音效", soundSelect));
+    this.el.appendChild(row(T("sound", "Sound"), soundSelect));
 
     /* ---- 音量 ---- */
     const volume = el("input", {
@@ -169,41 +188,45 @@ export class WhaleMenu {
       this.settings.volume = Number(volume.value);
     });
     volume.addEventListener("change", () => this.save({ volume: Number(volume.value) }));
-    this.el.appendChild(row("音量", volume, volPct));
+    this.el.appendChild(row(T("volume", "Volume"), volume, volPct));
 
     /* ---- 用量 ---- */
     const usageSelect = el("select", { className: "m8-whale-select" });
-    usageSelect.appendChild(el("option", { value: "ledger", textContent: "小鲸鱼记账 (推荐)" }));
-    const tokenOpt = el("option", { value: "token", textContent: "实时·令牌（本插件不支持）" });
+    usageSelect.appendChild(el("option", { value: "ledger", textContent: T("usageLedger", "Little Whale ledger (recommended)") }));
+    const tokenOpt = el("option", { value: "token", textContent: T("usageToken", "Live tokens (not supported by this plugin)") });
     tokenOpt.disabled = true;
     usageSelect.appendChild(tokenOpt);
     usageSelect.value = "ledger";
-    usageSelect.title = "原版的「实时·令牌」要平台会话令牌，不是 API Key。这里只有记账一条路。";
-    this.el.appendChild(row("用量", usageSelect));
+    usageSelect.title = T("usageTokenTip", "The original's \"live tokens\" mode needs a platform session token, not an API key. Accounting is the only option here.");
+    this.el.appendChild(row(T("usage", "Usage"), usageSelect));
 
     /* ---- 峰谷：只改说法，不改判断 ---- */
     const peakSelect = el("select", { className: "m8-whale-select" });
-    for (const [value, label] of [["default", "默认"], ["liangwen", "梁文峰谷"], ["qiangqiang", "!?强强?!"]]) {
+    for (const [value, label] of [
+      ["default", T("peakDefault", "Default")],
+      ["liangwen", T("peakLiangwen", "Liang Wenfeng valley")],
+      ["qiangqiang", T("peakQiangqiang", "!?Qiangqiang?!")],
+    ]) {
       peakSelect.appendChild(el("option", { value, textContent: label }));
     }
-    peakSelect.value = PEAK_LABELS[s.peakMode] ? s.peakMode : "default";
+    peakSelect.value = PEAK_MODES.includes(s.peakMode) ? s.peakMode : "default";
     peakSelect.addEventListener("change", () => {
       this.settings.peakMode = peakSelect.value;
       this.save({ peakMode: peakSelect.value });
       // 立刻按新说法重描一次气泡上的那行
       this.ctx.widget?.refreshPeakLine?.();
     });
-    this.el.appendChild(row("峰谷", peakSelect));
+    this.el.appendChild(row(T("peak", "Peak / off-peak"), peakSelect));
 
     /* ---- 气泡 ---- */
     const bubble = el("input", { type: "checkbox", className: "m8-whale-check", checked: s.bubble !== false });
-    bubble.title = "开启/关闭思考气泡";
+    bubble.title = T("bubbleTip", "Turn the thinking bubble on or off");
     bubble.addEventListener("change", () => {
       this.settings.bubble = bubble.checked;
       this.save({ bubble: bubble.checked });
       if (!bubble.checked) this.ctx.widget?.hideBubble();
     });
-    this.el.appendChild(row("气泡", bubble));
+    this.el.appendChild(row(T("bubble", "Bubble"), bubble));
 
     /* ---- 每轮消耗提示 ---- */
     const turnCost = el("input", { type: "checkbox", className: "m8-whale-check", checked: s.turnCost !== false });
@@ -213,7 +236,7 @@ export class WhaleMenu {
       value: String(Math.round((s.turnCostCloseMs ?? 5000) / 1000)),
       disabled: s.turnCost === false,
     });
-    turnCostSecs.title = "填 0 表示不自动关闭，要手动点掉";
+    turnCostSecs.title = T("turnCostSecsTip", "Set 0 to stop auto-closing; click the bubble to dismiss it");
     const pushTurnCost = () => {
       const seconds = Math.max(0, Math.round(Number(turnCostSecs.value) || 0));
       this.settings.turnCostCloseMs = seconds * 1000;
@@ -225,7 +248,13 @@ export class WhaleMenu {
       turnCostSecs.disabled = !turnCost.checked;
       this.save({ turnCost: turnCost.checked });
     });
-    this.el.appendChild(row("每轮消耗提示", turnCost, "自动关闭", turnCostSecs, "秒"));
+    this.el.appendChild(row(
+      T("turnCost", "Per-turn cost"),
+      turnCost,
+      T("autoClose", "auto-close"),
+      turnCostSecs,
+      T("seconds", "s"),
+    ));
 
     /* ---- 分隔线 ---- */
     this.el.appendChild(el("div", { className: "m8-whale-menu-sep" }));
@@ -250,7 +279,13 @@ export class WhaleMenu {
       avoidPx.disabled = !avoid.checked;
       pushAvoid();
     });
-    this.el.appendChild(row("避让滚动条", avoid, "宽度", avoidPx, "px"));
+    this.el.appendChild(row(
+      T("avoidScrollbar", "Avoid scrollbar"),
+      avoid,
+      T("width", "width"),
+      avoidPx,
+      "px",
+    ));
   }
 
   show(anchorRect, buttonRect) {

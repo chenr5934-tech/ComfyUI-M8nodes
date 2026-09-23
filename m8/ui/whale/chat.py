@@ -269,7 +269,7 @@ def step(
         except Exception as exc:  # noqa: BLE001 记不住不影响这一轮
             warn(f"自动选的模型没记上（不影响这次对话）：{exc}", SHELF_UI)
 
-    thinking = str(settings.get("thinking") or providers.THINKING_OFF)
+    thinking = providers.normalize_thinking(settings.get("thinking"))
     payload: dict[str, Any] = {
         "model": model,
         "messages": messages,

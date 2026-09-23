@@ -580,6 +580,19 @@ class TestUnitLogic(unittest.TestCase):
         providers = submodule("m8.server.providers")
         self.assertEqual(providers.get("ollama").thinking_value(providers.THINKING_HIGH), "")
 
+    def test_thinking_levels_are_english_and_legacy_values_still_work(self):
+        """档位字面量会直接显示在节点下拉里，所以必须是英文；老设置和老工作流
+        里存的是中文，读的时候要认下来，不能静默掉回默认档。"""
+        providers = submodule("m8.server.providers")
+        for level in providers.THINKING_OPTIONS:
+            self.assertRegex(level, r"^[a-z]+$", f"档位 {level!r} 不是英文小写")
+        self.assertEqual(providers.normalize_thinking("关"), providers.THINKING_OFF)
+        self.assertEqual(providers.normalize_thinking("高"), providers.THINKING_HIGH)
+        self.assertEqual(providers.normalize_thinking("high"), providers.THINKING_HIGH)
+        self.assertEqual(providers.normalize_thinking(""), providers.THINKING_OFF)
+        self.assertEqual(providers.normalize_thinking(None), providers.THINKING_OFF)
+        self.assertEqual(providers.normalize_thinking("乱写的"), providers.THINKING_OFF)
+
     def test_unknown_provider_falls_back_to_custom(self):
         providers = submodule("m8.server.providers")
         self.assertEqual(providers.get("没这家").key, "custom")
@@ -1608,7 +1621,7 @@ class TestWhaleFrontend(unittest.TestCase):
         self.assertIn('registerSidebarTab', self.whale)
         self.assertIn('type: "custom"', self.whale)
         self.assertIn('render(el)', self.whale)
-        self.assertIn('title: "小鲸鱼"', self.whale)
+        self.assertIn('title: T("sidebarTitle"', self.whale)
 
     def test_right_click_opens_the_dialog(self):
         self.assertIn('"contextmenu"', self.whale)
@@ -1827,25 +1840,28 @@ class TestWhaleToolFrontend(unittest.TestCase):
 
     def test_node_lookup_is_defensive(self):
         # 模型可能给一个不存在的编号，得好好告诉它，而不是抛异常。
-        self.assertIn('找不到编号', self.canvas)
-        self.assertIn('它有的是', self.canvas)
+        # 断言查的是 T() 的键名而不是英文原文 —— 原文会随文案调整变化，
+        # 键名才是「这句话还在」的稳定契约。
+        self.assertIn('T("nodeNotFound"', self.canvas)
+        self.assertIn('T("widgetNotFound"', self.canvas)
 
     def test_tool_failures_are_reported_back_not_thrown(self):
         # 工具失败要把错误原文交给模型，让它自己决定重试还是告诉用户。
-        self.assertIn('执行失败', self.canvas)
+        self.assertIn('T("toolFailed"', self.canvas)
 
     def test_dialog_offers_the_quick_actions(self):
-        for label in ('跑一张图', '选 LoRA', '查报错'):
-            self.assertIn(label, self.dialog, '缺少快捷选项：' + label)
+        # 键名而不是文案：三条预设还在，就成了。
+        for key in ('presetRunLabel', 'presetLoraLabel', 'presetErrorsLabel'):
+            self.assertIn(key, self.dialog, '缺少快捷选项：' + key)
 
     def test_quick_actions_demand_honesty(self):
         # 「查报错」这类任务，编一个答案比不回答还糟。
-        self.assertIn('别编', self.dialog)
+        self.assertIn('presetErrorsPrompt', self.dialog)
 
     def test_quick_actions_restrain_it_from_touching_things(self):
         # 面对不熟的工作流，模型最爱自作主张 —— 预设里要提前摁住。
-        self.assertIn('别乱改', self.dialog)
-        self.assertIn('别直接改', self.dialog)
+        self.assertIn('presetRunPrompt', self.dialog)
+        self.assertIn('presetLoraPrompt', self.dialog)
 
     def test_quick_actions_show_what_was_said(self):
         # 对话里突然冒出一句用户没打过的话会吓人，所以先写进输入框再发。
@@ -1867,7 +1883,8 @@ class TestWhaleToolFrontend(unittest.TestCase):
 
     def test_what_the_tool_did_is_left_in_the_conversation(self):
         # 改参数和排队要留痕 —— 用户得能回头看见它到底动了什么。
-        self.assertIn('【', self.dialog)
+        # 留痕的格式由 toolResult 这条文案决定（中文版是【标签】结果）。
+        self.assertIn('T(\'toolResult\'', self.dialog)
 
 
 
@@ -2070,7 +2087,7 @@ class TestWhaleVisualSettings(unittest.TestCase):
 
     def test_bubble_shows_todays_spend(self):
         # 光知道剩多少没用，还得知道今天花了多少才判断得了要不要充值
-        self.assertIn('今日已用', self.whale)
+        self.assertIn('T("spentToday"', self.whale)
 
     def test_amount_is_escaped_before_going_into_innerHTML(self):
         self.assertIn('M8.escapeHtml', self.whale)
@@ -2203,8 +2220,10 @@ class TestWhaleMenu(unittest.TestCase):
         self.assertIn('scaleToStep', self.menu)
 
     def test_peak_words_come_from_the_original(self):
-        for text in ('梁文峰', '梁文谷', '!?峰峰?!', '!?谷谷?!'):
-            self.assertIn(text, self.menu, '缺少峰谷文案：' + text)
+        # 三种说法的中文在 locales/zh 里，源码这边只留键名 —— 键名在，
+        # 说明这一路说法还在（原版的三套词一个都没丢）。
+        for key in ('peakLiangwenOn', 'peakLiangwenOff', 'peakQiangqiangOn', 'peakQiangqiangOff'):
+            self.assertIn(key, self.menu, '缺少峰谷文案：' + key)
 
     def test_peak_word_is_colored_by_state(self):
         # 高峰红、空闲绿，色值取自原版

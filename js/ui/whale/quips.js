@@ -9,7 +9,14 @@
  *
  * 这个模块只负责「该显示什么」，渲染交给 whale.js ——
  * 它要用到挂件那边的资产路径，互相 import 会绕成环。
+ *
+ * 界面文案：代码里写英文，中文由 locales/zh/main.json 的 ui.M8Whale 段提供。
+ * 台词都在函数里现取，不在模块顶层求值 —— 顶层求值只会拿到英文原文。
  * ==========================================================================*/
+
+import * as M8 from "../../m8_core.js";
+
+const T = M8.tFor("M8Whale");
 
 /** 三行样式：A=上行标签 / B=大号金额 / P=时段档 / C=下行小字。 */
 const STYLE = { A: "label", B: "amount", P: "period", C: "hint" };
@@ -30,7 +37,7 @@ function pickOne(list) {
  */
 function buildStatusLines(peak, labels, spentText) {
   return [
-    { t: "当前时间段为:", s: "A", c: "" },
+    { t: T("statusPeriod", "Current period:"), s: "A", c: "" },
     { t: peak ? labels.on : labels.off, s: "P", c: peak ? "#e0433f" : "#2fa24c" },
     { t: spentText, s: "C", c: "" },
   ];
@@ -44,17 +51,24 @@ function buildStatusLines(peak, labels, spentText) {
  */
 export const RANDOM_GROUPS = [
   { w: 45, kind: "status" },
-  { w: 7, kind: "lines", make: () => center("B", pickOne(["好模型... ↓", "好女孩...↓"])) },
+  {
+    w: 7,
+    kind: "lines",
+    make: () => center("B", pickOne([
+      T("quipGoodModel", "Good model... ↓"),
+      T("quipGoodGirl", "Good girl... ↓"),
+    ])),
+  },
   {
     w: 7,
     kind: "lines",
     make: () => center("A", pickOne([
-      "不知道用户有什么用，先赶走吧~",
-      "我...我...我也要挣钱吗？",
-      "我去吃饭啦，测完叫我",
-      "压力一只蓝色大肥鱼？！",
+      T("quipNoIdea", "No idea what the user is for. Shoo~"),
+      T("quipEarnMoney", "D-do I... do I have to earn money too?"),
+      T("quipDinner", "Off to dinner, ping me when the run is done"),
+      T("quipBigFish", "A big blue fat fish, under pressure?!"),
       "DeepSleep...",
-      "坏了...用户彻底怒了！",
+      T("quipFurious", "Oh no... the user is properly furious!"),
     ]), "", true),
   },
   { w: 10, kind: "gif" },
@@ -62,12 +76,12 @@ export const RANDOM_GROUPS = [
     w: 3,
     kind: "lines",
     make: () => center("A", pickOne([
-      "你目录里的dsh是什么...大烧货吗...?",
-      "恭喜你实现token自由！token全跑了！",
-      "真当我是便宜货啊...",
+      T("quipDshFolder", "What is that dsh in your folder... some kind of hot thing...?"),
+      T("quipTokenFreedom", "Congrats on token freedom! The tokens all ran off!"),
+      T("quipCheap", "You really think I come cheap..."),
     ]), "", true),
   },
-  { w: 1, kind: "lines", make: () => center("B", "哦鲸鲸... ") },
+  { w: 1, kind: "lines", make: () => center("B", T("quipOhWhale", "Oh whale... ")) },
 ];
 
 /** 加权抽一组。原版的抽法：先求总和，再一路减下去。 */
@@ -84,9 +98,9 @@ export function pickGroup() {
 /** gif 加载失败时的降级台词 —— 总比一个空白气泡强。 */
 export function gifFallback() {
   return center("A", pickOne([
-    "gif 加载失败了...",
-    "今天没有动图给你看~",
-    "呜呜 动图不见了...",
+    T("gifFailed", "The gif failed to load..."),
+    T("gifNone", "No animation for you today~"),
+    T("gifGone", "Boohoo, the animation is gone..."),
   ]), "", true);
 }
 

@@ -48,7 +48,7 @@ DEFAULT_SETTINGS: dict[str, Any] = {
         "enabled": True,          # 挂件是否显示
         "model": "",              # 空 = 用列表里的第一个
         "systemPrompt": "",
-        "thinking": "关",
+        "thinking": "off",
         "temperature": 1.0,
         "maxTokens": 4096,
         "timeout": 120,
