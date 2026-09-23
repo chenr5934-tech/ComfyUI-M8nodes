@@ -33,11 +33,13 @@ function loadApi() {
   };
   const app = { registerExtension: noop, graph: { setDirtyCanvas: noop } };
   const body = SRC.replace(/^import .*$/gm, '');
-  return new Function('M8', 'app', body + '\nreturn { autoPickMmproj, dirOf, baseOf };')(M8, app);
+  // NO_MMPROJ 也一起带出来：它是模块里的常量，测试不该再抄一份字面量 ——
+  // 抄一份的话界面文案一改这里就红，而它想验的其实是配对规则。
+  return new Function('M8', 'app', body + '\nreturn { autoPickMmproj, dirOf, baseOf, NO_MMPROJ };')(M8, app);
 }
 
-/* 前端把「配不上」表示成下拉里的一个占位项，后端表示成 None —— 断言时对齐 */
-const NO_MMPROJ = '（不用，纯文本）';
+/* 前端把「配不上」表示成下拉里的一个占位项，后端表示成 None —— 断言时对齐。
+   值从模块里取，不在这里抄一份。 */
 
 let api;
 try {
@@ -48,6 +50,7 @@ try {
   return;
 }
 
+const NO_MMPROJ = api.NO_MMPROJ;
 const num = (n) => String(n).padStart(2, ' ');
 let bad = 0;
 CASES.cases.forEach((c, i) => {
