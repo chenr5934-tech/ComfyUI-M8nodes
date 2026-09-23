@@ -74,6 +74,7 @@ m8/nodes/<货架>/<节点>.py       单个节点类
 | POST | `/m8/prompt/presets/load` | 取一套预设的正文 |
 | POST | `/m8/prompt/presets/delete` | 删掉一套预设 |
 | GET | `/m8/llm-local/models` | 列 `models/LLM` 里的 GGUF（前端「刷新模型」用） |
+| GET | `/m8/i18n/{lang}` | 这个插件某个语言的界面文案（读 `locales/<lang>/main.json`）。**语言码先净化字符集、再确认最终路径落在 locales/ 内**，两道都过才读；取不到返回空对象，前端退回英文 |
 | GET | `/m8/data/{kind}` | 读一整类工作台数据（kind = oc / prompts / groups / stickers）。**数据在 `<ComfyUI>/models/M8data/webapp/` 下，不在浏览器里** —— 独立服务也读同一份 |
 | POST | `/m8/data/{kind}/put` | 存一条（没带 id 就分配一个） |
 | POST | `/m8/data/{kind}/delete` | 删一条 |
@@ -207,6 +208,35 @@ class M8Error(Exception):
 
 后端只用**标准库 + ComfyUI 自带**（aiohttp / torch / numpy / av）。
 
-要加第三方依赖必须：写进 `requirements.txt`、在 README 说明、并确认秋叶整合包的 python 里装得上。
+要加第三方依赖必须：写进 `pyproject.toml`、在 README 说明、并确认秋叶整合包的 python 里装得上。
 
-目前：**零新增依赖**。HTTP 请求用 `urllib.request`（标准库），不用 requests。
+**主依赖表 `dependencies` 保持为空。** 装完插件，四个节点和整个网页工作台立刻能用。
+唯一的外部依赖 `llama-cpp-python` 放在 `[project.optional-dependencies]` 的 `local-llm` 里 ——
+只有本地推理节点需要它，不装也只是那个节点报 M8-LLM-015，不影响插件加载。
+
+**故意不提供 `install.py` 和 `requirements.txt`。** 这两个文件会让 ComfyUI 在安装时自动跑 pip，
+而「网络触发的包安装」是审核明确不接受的形态（它等于让插件在别人机器上执行任意构建脚本）。
+HTTP 请求用 `urllib.request`（标准库），不用 requests。
+
+---
+
+## 八、界面语言
+
+**代码里的界面字符串一律英文**，中文放 `locales/zh/main.json`。
+
+为什么：ComfyUI 的审核要求 *"write the node UI strings in English"*，并且给了
+[i18n 的约定](https://github.com/Comfy-Org/ComfyUI/pull/6558)：插件在
+`locales/<语言>/main.json` 下提供翻译，键用 `nodeDefs.<类名>`。
+
+两层落实：
+
+| 层 | 谁读 | 覆盖 |
+| --- | --- | --- |
+| `locales/` | ComfyUI Desktop 的 `/i18n` 端点 | 节点显示名、输入名、tooltip |
+| `GET /m8/i18n/{lang}` + 前端 `M8.t()` | 插件自己的前端 | 节点面板上前端画的按钮、状态行、通知 |
+
+第二层是必要的：普通 ComfyUI（比如 0.35.1）没有那个 `/i18n` 端点，光靠 `locales/`
+中文不会生效。前端读 `Comfy.Locale`（读不到退回 `navigator.language`），中文环境才
+去取 `/m8/i18n/zh`，取不到就用代码里的英文原文。
+
+**代码注释和内部日志不受此限** —— 审核管的是界面文案，注释是给维护者看的。
