@@ -68,7 +68,7 @@ export function injectTheme() {
 /** M8 接口的错误对象。前端拿到 code 就能去 docs/ERROR-PLAYBOOK.md 查。 */
 export class M8ApiError extends Error {
   constructor(payload, status) {
-    super(payload?.error || `接口返回 ${status}`);
+    super(payload?.error || coreT("apiStatus", "The endpoint returned {status}", { status }));
     this.name = "M8ApiError";
     this.code = payload?.code || "M8-SRV-000";
     this.hint = payload?.hint || "";
@@ -83,7 +83,11 @@ async function request(path, options = {}) {
   try {
     response = api?.fetchApi ? await api.fetchApi(url, options) : await fetch(url, options);
   } catch (exc) {
-    throw new M8ApiError({ code: "M8-SRV-001", error: "连不上插件后端", hint: "确认 ComfyUI 还在运行，然后刷新页面" });
+    throw new M8ApiError({
+      code: "M8-SRV-001",
+      error: coreT("unreachable", "Cannot reach the plugin backend"),
+      hint: coreT("unreachableHint", "Check that ComfyUI is still running, then reload the page"),
+    });
   }
 
   const text = await response.text();
@@ -91,7 +95,11 @@ async function request(path, options = {}) {
   try {
     payload = text ? JSON.parse(text) : null;
   } catch {
-    throw new M8ApiError({ code: "M8-SRV-001", error: "后端返回的不是 JSON", detail: text.slice(0, 300) }, response.status);
+    throw new M8ApiError({
+      code: "M8-SRV-001",
+      error: coreT("notJson", "The backend did not return JSON"),
+      detail: text.slice(0, 300),
+    }, response.status);
   }
 
   if (!response.ok || payload?.ok === false) {
@@ -194,7 +202,8 @@ export function notifyError(exc, context = "") {
     });
   }
   error(context, exc);
-  return notify(context || "出错了", { kind: "err", hint: String(exc?.message || exc), timeout: 9000 });
+  return notify(context || coreT("genericError", "Something went wrong"),
+    { kind: "err", hint: String(exc?.message || exc), timeout: 9000 });
 }
 
 /* ---------------------------------------------------------------- 外观 */
@@ -407,6 +416,9 @@ export function t(key, fallback, vars) {
   return text;
 }
 
+/** m8_core 自己的文案。它不能用 tFor（那个是给节点的），直接查 ui 的 M8Core 段。 */
+const coreT = (key, fallback, vars) => t("M8Core." + key, fallback, vars);
+
 /** 绑到一个节点上，省得每处都拼前缀：const T = M8.tFor("M8LLMInference") */
 export function tFor(nodeKey) {
   return (key, fallback, vars) => t(nodeKey + "." + key, fallback, vars);
@@ -488,7 +500,7 @@ export function attachMention(input, {
   getItems = async () => [],
   trigger = "/",
   maxItems = 8,
-  emptyHint = "还没有可引用的内容。",
+  emptyHint = coreT("emptyHint", "Nothing to reference yet."),
 } = {}) {
   if (!input) return null;
 
