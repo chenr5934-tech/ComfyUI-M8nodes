@@ -557,7 +557,7 @@ export function attachMention(input, {
     if (!items.length) {
       panel.innerHTML = `<div class="m8-mention-empty">${escapeHtml(emptyHint)}</div>`;
     } else if (!filtered.length) {
-      panel.innerHTML = `<div class="m8-mention-empty">没有匹配「${escapeHtml(mention.query)}」的 skill</div>`;
+      panel.innerHTML = `<div class="m8-mention-empty">' + coreT("noMatch", "No skill matches \"{q}\"", { q: escapeHtml(mention.query) }) + '</div>`;
     } else {
       filtered.slice(0, maxItems).forEach((item, index) => {
         const row = document.createElement("div");
@@ -587,7 +587,7 @@ export function attachMention(input, {
 
     const hint = document.createElement("div");
     hint.className = "m8-mention-hint";
-    hint.textContent = "↑↓ 选择 · Enter 确认 · Esc 取消";
+    hint.textContent = coreT("mentionKeys", "up/down to choose, Enter to confirm, Esc to cancel");
     panel.appendChild(hint);
 
     panel.classList.add("-show");
@@ -657,7 +657,8 @@ export function attachMention(input, {
         render();
       });
       if (!panel) buildPanel();
-      panel.innerHTML = '<div class="m8-mention-empty">正在读取 skill 列表…</div>';
+      panel.innerHTML = '<div class="m8-mention-empty">'
+        + coreT("readingSkills", "Reading the skill list...") + '</div>';
       panel.classList.add("-show");
       place();
       return;

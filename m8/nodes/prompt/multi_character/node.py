@@ -168,7 +168,7 @@ def _characters(cfg: dict) -> list[dict]:
         raise M8Error(
             "M8-PROMPT-002",
             message="characters must be an array",
-            detail=f"实际类型：{type(raw_list).__name__}",
+            detail=f"Actual type: {type(raw_list).__name__}",
         )
 
     out: list[dict] = []
@@ -177,7 +177,7 @@ def _characters(cfg: dict) -> list[dict]:
             raise M8Error(
                 "M8-PROMPT-002",
                 message=f"Character {index + 1} is not an object",
-                detail=f"实际类型：{type(raw).__name__}",
+                detail=f"Actual type: {type(raw).__name__}",
             )
         if not raw.get("enabled", True):
             continue
