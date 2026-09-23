@@ -24,6 +24,7 @@ import json
 import os
 import re
 import shutil
+import subprocess
 import sys
 import tempfile
 import types
@@ -3612,6 +3613,24 @@ class TestErrorCodeHygiene(unittest.TestCase):
     占着 —— 同一个码两套含义，报错手册只能写一个，查错的人会看到牛头不对马嘴
     的文案。这类错编译器不管、跑起来也不报，只有专门查才拦得住。
     """
+
+    def test_no_malformed_paths_in_repo(self):
+        """仓库里不许出现畸形文件名。
+
+        实际踩过：一条命令的转义写坏了，被 shell 当成重定向，于是生成了一个名字里
+        带换行和引号的**空文件**，随后被 git add 带了进去、还推了上去。这种文件在
+        Windows 上连删都得靠脚本（名字没法直接敲），在评审页面看着就是一堆乱码。
+
+        判据很简单：源码文件名里不该有换行、引号、反斜杠，也不该以 = 开头。
+        那种形状只可能来自被 shell 吃掉的重定向。
+        """
+        out = subprocess.run(["git", "ls-files", "-z"],
+                             cwd=str(PKG_DIR), capture_output=True).stdout
+        names = [n for n in out.decode("utf-8", "replace").split("\0") if n]
+        self.assertGreater(len(names), 100, "一个文件都没列到，断言可能失效了")
+        bad = [n for n in names
+               if any(ch in n for ch in "\n\r\"'\\") or n.startswith("=")]
+        self.assertEqual(bad, [], "仓库里有畸形文件名：" + repr(bad))
 
     def test_pyproject_structure_survives_edits(self):
         """pyproject 的表结构很容易被改坏，而且坏得静默。
