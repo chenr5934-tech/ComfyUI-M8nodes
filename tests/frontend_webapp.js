@@ -400,7 +400,14 @@ step('顶栏找不到容器时不炸', () => {
   document.querySelector = () => null;
   document.body = makeEl('body');
   const src = readSrc('js/m8_web_button.js').replace(/^import .*$/gm, '');
-  new Function('app', src)(globalThis.app);
+  /* m8_web_button.js 现在也 import m8_core（为了取界面文案），剥掉 import 之后
+     得把 M8 递进去。桩一律走英文原文，断言的还是代码里那份。 */
+  new Function('app', 'M8', src)(globalThis.app, {
+    tFor: () => (key, fallback) => fallback,
+    t: (key, fallback) => fallback,
+    isChinese: () => false,
+    loadUiStrings: async () => ({}),
+  });
   globalThis.__ext2.setup();
 });
 
@@ -421,7 +428,14 @@ step('顶栏有三个按钮时插在图标区之前', () => {
   document.body.appendChild(menu);
   document.querySelector = (sel) => (sel.indexOf('comfyui-body-top') >= 0 ? menu : null);
   const src = readSrc('js/m8_web_button.js').replace(/^import .*$/gm, '');
-  new Function('app', src)(globalThis.app);
+  /* m8_web_button.js 现在也 import m8_core（为了取界面文案），剥掉 import 之后
+     得把 M8 递进去。桩一律走英文原文，断言的还是代码里那份。 */
+  new Function('app', 'M8', src)(globalThis.app, {
+    tFor: () => (key, fallback) => fallback,
+    t: (key, fallback) => fallback,
+    isChinese: () => false,
+    loadUiStrings: async () => ({}),
+  });
   globalThis.__ext3.setup();
   if (!inserted) throw new Error('没有插进顶栏');
   if (inserted.id !== 'm8-web-entry') throw new Error('插的不是入口按钮，而是 ' + inserted.id);
@@ -444,7 +458,14 @@ step('重复挂载不会插出两个按钮', () => {
   document.getElementById = (id) => store[id] || null;
   document.querySelector = (sel) => (sel.indexOf('comfyui-body-top') >= 0 ? menu : null);
   const src = readSrc('js/m8_web_button.js').replace(/^import .*$/gm, '');
-  new Function('app', src)(globalThis.app);
+  /* m8_web_button.js 现在也 import m8_core（为了取界面文案），剥掉 import 之后
+     得把 M8 递进去。桩一律走英文原文，断言的还是代码里那份。 */
+  new Function('app', 'M8', src)(globalThis.app, {
+    tFor: () => (key, fallback) => fallback,
+    t: (key, fallback) => fallback,
+    isChinese: () => false,
+    loadUiStrings: async () => ({}),
+  });
   globalThis.__ext4.setup();
   globalThis.__ext4.setup();
   globalThis.__ext4.setup();
@@ -694,7 +715,9 @@ step('顶栏选择器用的是真实存在的类名', () => {
   for (const bad of ['.comfyui-menu', '.comfy-menu', '#comfyui-menu']) {
     if (codeOnly.indexOf(bad) >= 0) throw new Error('还在用不存在的选择器 ' + bad);
   }
-  if (entry.indexOf('没找到顶栏容器') < 0) {
+  /* 文案现在走 T("noHost", ...)，所以查的是那个 key 而不是中文字面量 ——
+     改文案不该让这条检查失效，它真正要守的是「找不到容器时要打日志」。 */
+  if (entry.indexOf('T("noHost"') < 0) {
     throw new Error('找不到顶栏时没有诊断日志，问题会静默消失');
   }
 });

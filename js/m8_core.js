@@ -388,19 +388,28 @@ export function loadUiStrings() {
     });
 }
 
-/** 取一条界面文案。取不到就用 fallback —— 也就是代码里写的英文原文。 */
-export function t(key, fallback) {
+/** 取一条界面文案。取不到就用 fallback —— 也就是代码里写的英文原文。
+ *
+ *  vars 是占位符表：文案里写 `{name}`，这里传 `{ name: 实际值 }`。
+ *  为什么不用 JS 的模板字符串直接拼：中文那份存在 json 里，拼不了模板，只能用占位符。 */
+export function t(key, fallback, vars) {
   let node = uiStrings;
   for (const part of String(key).split(".")) {
-    if (!node || typeof node !== "object") return fallback;
-    node = node[part];
+    if (!node || typeof node !== "object") node = undefined;
+    else node = node[part];
   }
-  return typeof node === "string" && node ? node : fallback;
+  let text = typeof node === "string" && node ? node : fallback;
+  if (vars && typeof text === "string") {
+    for (const [k, v] of Object.entries(vars)) {
+      text = text.split("{" + k + "}").join(String(v));
+    }
+  }
+  return text;
 }
 
 /** 绑到一个节点上，省得每处都拼前缀：const T = M8.tFor("M8LLMInference") */
 export function tFor(nodeKey) {
-  return (key, fallback) => t(nodeKey + "." + key, fallback);
+  return (key, fallback, vars) => t(nodeKey + "." + key, fallback, vars);
 }
 
 export function escapeHtml(text) {

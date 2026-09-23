@@ -10,6 +10,10 @@
  * ==========================================================================*/
 
 import { app } from "/scripts/app.js";
+import * as M8 from "./m8_core.js";
+
+/* 界面文案：代码里写英文，中文由 locales/zh/main.json 的 ui 段提供。 */
+const T = M8.tFor("M8WebButton");
 
 const BTN_ID = "m8-web-entry";
 const WEB_PATH = "m8/web/index.html";
@@ -26,7 +30,7 @@ function makeButton() {
   b.href = webUrl();
   b.target = "_blank";
   b.rel = "noopener";
-  b.title = "打开 M8 工作台（新标签页）";
+  b.title = T("open", "Open the M8 workbench (new tab)");
   b.textContent = "M8";
   b.style.cssText = [
     "display:inline-flex",
@@ -117,11 +121,11 @@ function start() {
       /* 试了 20 秒还是找不到顶栏 —— 与其静默失败，不如把现场打出来。
          这种问题只能靠日志定位：类名随版本变，猜是猜不中的。 */
       console.warn(
-        "[M8] 没找到顶栏容器，工作台入口按钮没挂上。",
-        "\n试过的选择器：", HOST_SELECTORS.join(" / "),
-        "\n#vue-app 的直接子元素：",
+        T("noHost", "[M8] Could not find the top bar container; the workbench button was not mounted."),
+        "\nselectors tried:", HOST_SELECTORS.join(" / "),
+        "\ndirect children of #vue-app:",
         Array.from((document.getElementById("vue-app") || document.body).children)
-          .map((c) => c.tagName + "." + (c.className || "(无类名)"))
+          .map((c) => c.tagName + "." + (c.className || "(no class)"))
           .join(" , "),
       );
     }
@@ -134,7 +138,7 @@ app.registerExtension({
     try {
       start();
     } catch (exc) {
-      console.error("[M8] 工作台入口按钮挂载失败：", exc);
+      console.error(T("mountFailed", "[M8] Failed to mount the workbench button:"), exc);
     }
   },
 });
