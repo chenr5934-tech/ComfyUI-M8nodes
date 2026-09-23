@@ -173,6 +173,13 @@ class M8LLMInference:
             (providers.default_base_url(provider), config.saved_base_url(provider)),
         )
         if not resolved_key:
+            # 分清「没配过」和「配了但不发给这个地址」—— 后者光看「未配置」找不到原因
+            if config.key_target_mismatch(
+                provider,
+                base_url,
+                (providers.default_base_url(provider), config.saved_base_url(provider)),
+            ):
+                raise M8Error("M8-LLM-021", detail=base_url)
             raise M8Error("M8-LLM-001")
 
         skill_blocks = self._collect_skill_blocks(user_prompt, skill, bool(skill_auto))

@@ -212,6 +212,25 @@ def _norm_url(raw: str) -> str:
     return str(raw or "").strip().rstrip("/").lower()
 
 
+def key_target_mismatch(provider: str, target_url: str, allowed_urls: tuple[str, ...]) -> bool:
+    """存着密钥，但目标地址不是它归属的那个。
+
+    用来把两种「没有密钥」分开：
+
+      - 真没配过          -> 提示「去配一个」
+      - 配了但不发给这儿  -> 提示「这个地址不是它归属的，重新保存一次」
+
+    第二种是升级带来的：早先存的密钥文件里没有记录归属地址，谁都能拿去用；
+    现在按归属地址发，老凭据碰上自定义中转地址就会被挡下。只报「未配置」
+    的话用户完全找不到原因 —— 他明明配过。
+    """
+    if not get_api_key(provider):
+        return False
+    want = _norm_url(target_url)
+    allowed = {_norm_url(u) for u in allowed_urls if u}
+    return not (want and want in allowed)
+
+
 def saved_base_url(provider: str) -> str:
     """存这份密钥时一起记下的接口地址。没记过就是空串。"""
     with _LOCK:

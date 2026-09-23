@@ -241,6 +241,12 @@ def step(
         (providers.default_base_url(PROVIDER), config.saved_base_url(PROVIDER)),
     )
     if not key:
+        if config.key_target_mismatch(
+            PROVIDER,
+            providers.default_base_url(PROVIDER),
+            (providers.default_base_url(PROVIDER), config.saved_base_url(PROVIDER)),
+        ):
+            raise M8Error("M8-LLM-021", detail=providers.default_base_url(PROVIDER))
         raise M8Error("M8-UI-001")
 
     # 系统消息由三块拼成：用户设的人格 + 工具使用规矩 + 画布快照

@@ -3524,6 +3524,46 @@ class TestKeyDisclosure(unittest.TestCase):
         self.assertEqual(
             self.config.resolve_api_key("", "deepseek", "https://api.deepseek.com", ()), "")
 
+    def test_legacy_credentials_without_base_url_still_work(self):
+        """升级前存的凭据里没有 base_url 字段 —— 用默认地址的人必须照旧能用。
+
+        这条是「别为了安全把功能改坏」：老文件里没记归属地址，如果一律挡下，
+        所有老用户升级后都会突然报「未配置密钥」，而他们明明配过 —— 报错还指不到
+        原因。所以：走默认地址照给；走别处挡下，但要能被认出来是「配过但不发给这儿」。
+        """
+        self.paths_mod.CREDENTIALS_FILE.write_text(
+            json.dumps({"providers": {"deepseek": {"api_key": "sk-legacy"}}}),
+            encoding="utf-8")
+        default = self.providers.default_base_url("deepseek")
+        self.assertEqual(
+            self.config.resolve_api_key("", "deepseek", default, self._allowed("deepseek")),
+            "sk-legacy", "老凭据在默认地址上不能用了 —— 这是把功能改坏了")
+        self.assertTrue(
+            self.config.key_target_mismatch("deepseek", "https://relay.example/v1",
+                                            self._allowed("deepseek")),
+            "挡下了却报成「没配过」，用户找不到原因")
+
+    def test_webdata_write_accepts_all_known_kinds(self):
+        """白名单不能把正常类别也挡了 —— 四个类别都要能存能读。"""
+        webdata = submodule("m8.core.webdata")
+        orig = self.paths_mod.WEBAPP_DATA_DIR
+        self.paths_mod.WEBAPP_DATA_DIR = self._tmp / "webapp"
+        try:
+            for kind in webdata.KINDS:
+                self.assertEqual(webdata.write(kind, [{"id": 1, "name": kind}]), 1, kind)
+                self.assertEqual(len(webdata.read(kind)), 1, kind)
+        finally:
+            self.paths_mod.WEBAPP_DATA_DIR = orig
+
+    def test_skill_delete_still_removes_normal_skills(self):
+        """正常的 skill 名还得删得掉 —— 加了 containment 不能把它自己挡了。"""
+        src = (PKG_DIR / "m8" / "server" / "skills.py").read_text("utf-8")
+        self.assertIn("def delete_skill", src)
+        # 中文名（这是实际用法）不该被净化成空
+        sanitize = submodule("m8.server.skills").sanitize_name
+        self.assertEqual(sanitize("翻译规范"), "翻译规范")
+        self.assertEqual(sanitize("my-skill_v2"), "my-skill_v2")
+
     def test_webdata_write_rejects_unknown_kind(self):
         """kind 会被拼进文件名，所以 write 也得走白名单（别的路径都查了，这里漏过）。"""
         webdata = submodule("m8.core.webdata")
@@ -3550,6 +3590,21 @@ class TestErrorCodeHygiene(unittest.TestCase):
     占着 —— 同一个码两套含义，报错手册只能写一个，查错的人会看到牛头不对马嘴
     的文案。这类错编译器不管、跑起来也不报，只有专门查才拦得住。
     """
+
+    def test_no_duplicate_code_in_errors_table(self):
+        """ERRORS 这个表里不许有重复的键。
+
+        重复的键 Python 不报错 —— 后面的悄悄覆盖前面那个，表现是「手册里写的
+        文案和实际弹出来的对不上」。这个坑踩过两次：M8-WEB-007 和 M8-LLM-016，
+        两次都是新加码时没先查有没有被占。所以直接从源码文本数一遍。
+        """
+        src = (PKG_DIR / "m8" / "core" / "errors.py").read_text("utf-8")
+        seen: dict[str, int] = {}
+        for m in re.finditer(r'"(M8-[A-Z]+-\d{3})"\s*:', src):
+            seen[m.group(1)] = seen.get(m.group(1), 0) + 1
+        self.assertGreater(len(seen), 20, "一个码都没数到，断言可能失效了")
+        dupes = {c: n for c, n in seen.items() if n > 1}
+        self.assertEqual(dupes, {}, "这些码在 ERRORS 里定义了不止一次：" + str(dupes))
 
     def test_every_code_used_is_registered(self):
         load_plugin(FakeRouteTable())
