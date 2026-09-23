@@ -699,7 +699,7 @@ function setup(node) {
   baseBody.appendChild(baseTa);
 
   const globalTa = el("textarea", BASE_FIELD);
-  globalTa.placeholder = "全局词：追加在基础词后面，对所有区域都生效";
+  globalTa.placeholder = T("globalPlaceholder", "Global prompt: appended after the base prompt, applies to every region");
   globalTa.value = String(state.cfg.global || "");
   baseBody.appendChild(globalTa);
   leftCol.appendChild(baseFold);
@@ -744,7 +744,7 @@ function setup(node) {
     const width = Math.max(64, num(w.width?.value, DEFAULT_W));
     const shown = canvas.clientWidth || 0;
     const pct = shown > 0 ? Math.round((shown / width) * state.view.scale * 100) : 0;
-    zoomLabel.textContent = pct > 0 ? "缩放 " + pct + "%" : "缩放 —";
+    zoomLabel.textContent = pct > 0 ? T("zoom", "Zoom") + " " + pct + "%" : T("zoomLabel", "Zoom —");
   }
 
   /** 让画布的宽高比跟画面一致。不这么做的话，「占左三分之一」在宽画面上会看着不对。 */
@@ -824,7 +824,7 @@ function setup(node) {
     const cb = el("input", "flex-shrink:0;");
     cb.type = "checkbox";
     cb.checked = char.enabled !== false;
-    cb.title = "禁用后这个角色不参与输出，但配置留着";
+    cb.title = T("disableTip", "Disabled means this character stays out of the output, but its config is kept");
     cb.addEventListener("change", () => {
       char.enabled = cb.checked;
       commit();
@@ -834,25 +834,25 @@ function setup(node) {
 
     const nameInput = el("input", SMALL_INPUT + "flex:1;min-width:0;");
     nameInput.type = "text";
-    nameInput.value = String(char.name || "角色 " + (index + 1));
-    nameInput.title = "只用于面板上区分，不进提示词";
+    nameInput.value = String(char.name || T("character", "Character") + " " + (index + 1));
+    nameInput.title = T("nameTip", "Only used to tell them apart on the panel; it never goes into the prompt");
     nameInput.addEventListener("input", () => {
       char.name = nameInput.value;
       commit();
     });
     head.appendChild(nameInput);
 
-    head.appendChild(makeButton("删除", () => {
+    head.appendChild(makeButton(T("remove", "Remove"), () => {
       state.cfg.characters.splice(index, 1);
       if (state.selected >= state.cfg.characters.length) state.selected = state.cfg.characters.length - 1;
       renderCards();
       commit();
-    }, "把这个角色从列表里去掉"));
+    }, T("removeTip", "Remove this character from the list")));
     card.appendChild(head);
 
     /* 提示词 */
     const promptTa = el("textarea", SMALL_INPUT + "width:100%;min-height:46px;resize:vertical;font-family:inherit;line-height:1.45;");
-    promptTa.placeholder = "这个角色的提示词（英文标签更稳，比如 1girl, red hair）";
+    promptTa.placeholder = T("characterPromptPlaceholder", "This character's prompt (English tags work better, e.g. 1girl, red hair)");
     promptTa.value = String(char.prompt || "");
     promptTa.addEventListener("input", () => {
       char.prompt = promptTa.value;
@@ -863,7 +863,7 @@ function setup(node) {
 
     /* 位置 */
     const posRow = el("div", "display:flex;flex-wrap:wrap;gap:8px;align-items:center;");
-    for (const [key, label] of [["x", "x"], ["y", "y"], ["w", "宽"], ["h", "高"]]) {
+    for (const [key, label] of [["x", "x"], ["y", "y"], ["w", T("w", "w")], ["h", T("h", "h")]]) {
       const field = makeNumber(label, num(char[key], key === "w" || key === "h" ? 0.5 : 0), 0.01, null, null, (v) => {
         char[key] = clamp(v, 0, 1);
         commit();
@@ -875,7 +875,7 @@ function setup(node) {
 
     /* 权重与羽化 */
     const tuneRow = el("div", "display:flex;flex-wrap:wrap;gap:8px;align-items:center;");
-    const wField = makeNumber("混合权重", num(char.weight, 1), 0.05, null, null, (v) => {
+    const wField = makeNumber(T("blendWeight", "Blend weight"), num(char.weight, 1), 0.05, null, null, (v) => {
       char.weight = clamp(v, WEIGHT_MIN, WEIGHT_MAX);
       commit();
     });

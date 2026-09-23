@@ -420,7 +420,11 @@
       "presetNotObject": "That preset does not hold a config object",
       "presetNotObjectHint": "Look at the file under m8/data/prompt-presets/",
       "presetLoaded": "Preset loaded: {name}",
-      "loadingPreset": "loading the preset"
+      "loadingPreset": "loading the preset",
+      "globalPlaceholder": "Global prompt: appended after the base prompt, applies to every region",
+      "disableTip": "Disabled means this character stays out of the output, but its config is kept",
+      "nameTip": "Only used to tell them apart on the panel; it never goes into the prompt",
+      "remove": "Remove"
     },
     "M8Core": {
       "apiStatus": "The endpoint returned {status}",
@@ -428,7 +432,10 @@
       "unreachableHint": "Check that ComfyUI is still running, then reload the page",
       "notJson": "The backend did not return JSON",
       "genericError": "Something went wrong",
-      "emptyHint": "Nothing to reference yet."
+      "emptyHint": "Nothing to reference yet.",
+      "noMatch": "No skill matches \"{q}\"",
+      "mentionKeys": "up/down to choose, Enter to confirm, Esc to cancel",
+      "readingSkills": "Reading the skill list..."
     }
   }
 }

@@ -420,7 +420,17 @@
       "presetNotObject": "这个预设的内容不是一个配置对象",
       "presetNotObjectHint": "去 m8/data/prompt-presets/ 看那个文件",
       "presetLoaded": "已载入预设：{name}",
-      "loadingPreset": "载入预设"
+      "loadingPreset": "载入预设",
+      "globalPlaceholder": "全局词：追加在基础词后面，对所有区域都生效",
+      "disableTip": "禁用后这个角色不参与输出，但配置留着",
+      "nameTip": "只用于面板上区分，不进提示词",
+      "remove": "删除",
+      "removeTip": "把这个角色从列表里去掉",
+      "characterPromptPlaceholder": "这个角色的提示词（英文标签更稳，比如 1girl, red hair）",
+      "w": "宽",
+      "h": "高",
+      "blendWeight": "混合权重",
+      "zoom": "缩放"
     },
     "M8Core": {
       "apiStatus": "接口返回 {status}",
@@ -428,7 +438,10 @@
       "unreachableHint": "确认 ComfyUI 还在运行，然后刷新页面",
       "notJson": "后端返回的不是 JSON",
       "genericError": "出错了",
-      "emptyHint": "还没有可引用的内容。"
+      "emptyHint": "还没有可引用的内容。",
+      "noMatch": "没有匹配「{q}」的 skill",
+      "mentionKeys": "↑↓ 选择 · Enter 确认 · Esc 取消",
+      "readingSkills": "正在读取 skill 列表…"
     }
   }
 }
