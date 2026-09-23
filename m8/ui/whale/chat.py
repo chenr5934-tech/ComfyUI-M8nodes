@@ -232,7 +232,14 @@ def step(
     messages_in = normalize_history(history)
     settings = resolve_settings(override)
 
-    key = config.resolve_api_key(api_key, PROVIDER)
+    # 小鲸鱼固定发往该供应商的默认地址（下面几行用的就是它），所以密钥一定匹配得上。
+    # 走 resolve_api_key 而不是直接读，是为了和其它两条路径用同一套规矩。
+    key = config.resolve_api_key(
+        api_key,
+        PROVIDER,
+        providers.default_base_url(PROVIDER),
+        (providers.default_base_url(PROVIDER), config.saved_base_url(PROVIDER)),
+    )
     if not key:
         raise M8Error("M8-UI-001")
 
