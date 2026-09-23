@@ -13,6 +13,10 @@ import { app } from "/scripts/app.js";
 import * as M8 from "../../m8_core.js";
 
 const NODE_TYPE = "M8LLMLocal";
+
+/* 界面文案：代码里只写英文（ComfyUI 审核的硬要求），中文由 locales/zh/main.json
+   的 ui 段提供，取不到就用这里写的英文原文。见 m8_core.js 的 t()。 */
+const T = M8.tFor(NODE_TYPE);
 /* 和后端 m8/nodes/llm/llm_local/node.py 里的两个常量必须逐字一致 */
 const PLACEHOLDER = "(no .gguf in models/LLM yet)";
 const NO_MMPROJ = "(none, text only)";
@@ -98,14 +102,14 @@ function hookNode(node) {
 
   /* 刷新按钮用 m8_core 里那个 addButton —— 它自带防重入和错误弹窗，
      还知道按钮不该写进工作流。自己调 addWidget 这些都得手写一遍。 */
-  M8.addButton(node, "刷新模型列表", async () => {
+  M8.addButton(node, T("refreshModels", "Refresh models"), async () => {
     const data = await fetchList(true);
-    if (!data) throw new Error("后端没回应，确认 ComfyUI 在跑");
+    if (!data) throw new Error(T("noResponse", "No response from the backend; is ComfyUI running?"));
     setOptions(modelW, data.models || [], true);
     setOptions(mmW, [NO_MMPROJ].concat(data.mmproj || []), true);
     if (data.gpu === false && gpuW) {
-      M8.warn("这个 llama-cpp-python 没有 GPU 支持，本地推理会在 CPU 上跑。"
-        + "想用显卡就装 CUDA 版的 wheel。");
+      M8.warn(T("noGpu", "This llama-cpp-python has no GPU support, so "
+        + "inference will run on the CPU. Install a CUDA build of the wheel to use the GPU."));
     }
     app.graph.setDirtyCanvas(true, true);
   });

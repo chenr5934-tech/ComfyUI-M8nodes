@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import re
 from functools import partial
 from pathlib import Path
 from typing import Any, Callable
@@ -36,7 +37,7 @@ except ImportError:  # 脱离 ComfyUI（跑单元测试）时
 
 _DUMPS = partial(json.dumps, ensure_ascii=False)
 
-VERSION = "0.4.7"
+VERSION = "0.4.8"
 
 # 由根 __init__.py 在收集完货架后注入，供 /m8/health 使用
 _RUNTIME_INFO: dict[str, Any] = {"shelves": [], "nodeCount": 0, "routeCount": 0}
@@ -113,6 +114,39 @@ async def handle_llm_test(request: web.Request) -> web.Response:
     地址通、密钥对、协议对，这三件事才是用户想确认的。
     """
     return await handle_llm_models(request)
+
+
+# ------------------------------------------------------------------ 界面文案
+
+# 语言码会被拼进路径，所以只放行这一组字符，其余一律剔掉
+_LANG_OK = re.compile(r"[^A-Za-z0-9_-]")
+
+
+async def handle_i18n(request: web.Request) -> web.Response:
+    """GET /m8/i18n/{lang} —— 这个插件的界面文案。
+
+    ComfyUI Desktop 有自己的 /i18n 端点，会去读各插件 locales/ 下的翻译；普通
+    ComfyUI 还没有那个端点。所以这里自己提供一份：前端拿它把英文原文换成对应
+    语言，于是中文用户在哪个版本上都能看到中文。
+
+    **语言码不能直接拼进路径** —— 先净化字符集，再确认最终路径确实落在 locales/
+    目录内，两道都过才读。取不到就返回空对象，前端会退回英文。
+    """
+    raw = request.match_info.get("lang", "")
+    lang = _LANG_OK.sub("", str(raw))[:8].lower()
+    if not lang:
+        return _ok(strings={}, lang="")
+
+    root = paths.PLUGIN_DIR / "locales"
+    path = root / lang / "main.json"
+    if not paths.is_inside(path, root) or not path.is_file():
+        return _ok(strings={}, lang=lang)
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        warn(f"读不了界面文案 {lang}：{exc}", SHELF_SRV)
+        return _ok(strings={}, lang=lang)
+    return _ok(strings=data if isinstance(data, dict) else {}, lang=lang)
 
 
 # ------------------------------------------------------------------ 密钥
@@ -516,6 +550,7 @@ ROUTES: list[tuple[str, str, Callable]] = [
     ("POST", "/m8/prompt/presets/load", handle_prompt_presets_load),
     ("POST", "/m8/prompt/presets/delete", handle_prompt_presets_delete),
     ("GET", "/m8/llm-local/models", handle_local_models),
+    ("GET", "/m8/i18n/{lang}", handle_i18n),
     ("GET", "/m8/data/{kind}", handle_data_get),
     ("POST", "/m8/data/{kind}/put", handle_data_put),
     ("POST", "/m8/data/{kind}/delete", handle_data_delete),

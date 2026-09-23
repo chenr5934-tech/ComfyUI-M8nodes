@@ -224,5 +224,12 @@
         }
       }
     }
+  },
+  "ui": {
+    "M8LLMLocal": {
+      "refreshModels": "Refresh models",
+      "noResponse": "No response from the backend; is ComfyUI running?",
+      "noGpu": "This llama-cpp-python has no GPU support, so inference will run on the CPU. Install a CUDA build of the wheel to use the GPU."
+    }
   }
 }

@@ -224,5 +224,12 @@
         }
       }
     }
+  },
+  "ui": {
+    "M8LLMLocal": {
+      "refreshModels": "刷新模型列表",
+      "noResponse": "后端没回应，确认 ComfyUI 在跑",
+      "noGpu": "这个 llama-cpp-python 没有 GPU 支持，本地推理会在 CPU 上跑。想用显卡就装 CUDA 版的 wheel。"
+    }
   }
 }

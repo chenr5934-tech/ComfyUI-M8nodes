@@ -114,6 +114,9 @@ function stubM8(log) {
     apiUpload: async () => ({ files: [] }),
     attachMention: noop, attachMentionAutocomplete: noop,
     injectTheme: noop, escapeHtml: (s) => String(s),
+    /* i18n：桩里一律走英文原文（第三个参数），这样断言的还是代码里写的那份 */
+    isChinese: () => false, loadUiStrings: async () => ({}),
+    t: (key, fallback) => fallback, tFor: () => (key, fallback) => fallback,
     brand: noop, setStatus: noop, addButton: noop,
     setComboOptions: noop, relayout: noop,
     findWidget: (node, name) => (node._widgets || {})[name] || null,

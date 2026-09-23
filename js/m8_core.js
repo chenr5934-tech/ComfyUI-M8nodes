@@ -47,6 +47,9 @@ let themeInjected = false;
 /** 把 m8_theme.css 挂进页面。
  *  用 import.meta.url 推导路径，这样插件文件夹被改名也不会失联。 */
 export function injectTheme() {
+  /* 顺手把界面文案拉一次。每个节点文件顶部都会调 injectTheme，所以这里是最早
+     且必然会执行的时机 —— 拉到之后 t() 才有中文可用，拉不到的窗口期用英文兜底。 */
+  loadUiStrings();
   if (themeInjected) return;
   themeInjected = true;
   try {
@@ -347,6 +350,58 @@ export function showWidget(widget) {
 
 
 /* ---------------------------------------------------------------- / 补全 */
+
+/* ---------------------------------------------------------------- 界面语言 */
+
+/* 代码里的界面字符串一律英文（ComfyUI 审核的硬要求），中文放在
+   locales/zh/main.json 的 ui 段里，由 /m8/i18n/zh 取回来。
+
+   语言从 ComfyUI 的设置项 Comfy.Locale 读；老版本没有那个设置项就退回浏览器语言。
+   只有中文环境才去拉那份翻译，其余一律用代码里的英文原文。 */
+export function isChinese() {
+  let loc = "";
+  try {
+    loc = app?.extensionManager?.setting?.get?.("Comfy.Locale") || "";
+  } catch (exc) {
+    /* 老版本没有这个设置项，走下面的兜底 */
+  }
+  if (!loc) loc = (typeof navigator !== "undefined" && navigator.language) || "";
+  return String(loc).toLowerCase().startsWith("zh");
+}
+
+let uiStrings = {};
+let uiLoaded = false;
+
+/** 拉一次中文界面文案。非中文环境直接返回空表，一次请求都不发。 */
+export function loadUiStrings() {
+  if (uiLoaded) return Promise.resolve(uiStrings);
+  uiLoaded = true;
+  if (!isChinese()) return Promise.resolve(uiStrings);
+  return apiGet("/i18n/zh")
+    .then((data) => {
+      uiStrings = (data && data.strings && data.strings.ui) || {};
+      return uiStrings;
+    })
+    .catch((exc) => {
+      warn("拿界面文案失败，用英文：", exc.message);
+      return uiStrings;
+    });
+}
+
+/** 取一条界面文案。取不到就用 fallback —— 也就是代码里写的英文原文。 */
+export function t(key, fallback) {
+  let node = uiStrings;
+  for (const part of String(key).split(".")) {
+    if (!node || typeof node !== "object") return fallback;
+    node = node[part];
+  }
+  return typeof node === "string" && node ? node : fallback;
+}
+
+/** 绑到一个节点上，省得每处都拼前缀：const T = M8.tFor("M8LLMInference") */
+export function tFor(nodeKey) {
+  return (key, fallback) => t(nodeKey + "." + key, fallback);
+}
 
 export function escapeHtml(text) {
   return String(text).replace(/[&<>"']/g, (ch) => ({
