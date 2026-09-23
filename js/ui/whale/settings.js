@@ -190,7 +190,12 @@ export function buildSettingsPanel(root, ctx) {
       return;
     }
     try {
-      await M8.apiPost("/keys/set", { provider: "deepseek", apiKey: value });
+      // baseUrl 一起存：服务端要记下这份密钥归哪个地址用
+      await M8.apiPost("/keys/set", {
+        provider: "deepseek",
+        apiKey: value,
+        baseUrl: "https://api.deepseek.com/v1",
+      });
       keyInput.value = "";
       const state = await ctx.loadState();
       statusLine.textContent = `已配置密钥 ${state.masked}`;
