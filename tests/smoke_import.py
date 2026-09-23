@@ -605,11 +605,21 @@ class TestUnitLogic(unittest.TestCase):
         self.assertTrue(masked.endswith("WXYZ"))
 
     def test_resolve_api_key_prefers_node_value(self):
-        """节点上填了就用节点的；留空才回落到服务端存的。"""
+        """节点上填了就用节点的；留空才回落到服务端存的。
+
+        target_url / allowed_urls 是必填的 —— 漏传会当场 TypeError，而不是
+        悄悄降级成「没存过密钥」。「密钥只发给可信地址」那组断言在
+        TestKeyDisclosure 里。
+        """
         config = submodule("m8.core.config")
-        self.assertEqual(config.resolve_api_key("sk-node", "deepseek"), "sk-node")
+        allowed = ("https://api.deepseek.com", "")
+        self.assertEqual(
+            config.resolve_api_key("sk-node", "deepseek", "https://evil.example", allowed),
+            "sk-node")
         # 服务端没存过时返回空串而不是抛异常 —— 上层才好给出「未配置」那条友好提示
-        self.assertEqual(config.resolve_api_key("", "一个没存过密钥的供应商"), "")
+        self.assertEqual(
+            config.resolve_api_key("", "一个没存过密钥的供应商", "https://x.example", ()),
+            "")
 
     # ---- 图片 / 音频打包 ----
 

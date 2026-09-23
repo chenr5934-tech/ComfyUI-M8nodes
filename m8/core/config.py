@@ -223,8 +223,8 @@ def saved_base_url(provider: str) -> str:
 def resolve_api_key(
     node_key: str,
     provider: str,
-    target_url: str = "",
-    allowed_urls: tuple[str, ...] = (),
+    target_url: str,
+    allowed_urls: tuple[str, ...],
 ) -> str:
     """节点上填的优先，留空就用服务端存的 —— 但**只在目标地址可信时**。
 
@@ -238,6 +238,10 @@ def resolve_api_key(
 
     所以只有当 target_url 和这个供应商的默认地址（或存密钥时一起记下的那个
     地址）对得上时，才把密钥附上。对不上就当没存过 —— 请求照发，只是不带认证。
+
+    **target_url 和 allowed_urls 是必填的**，不给默认值。原因很实际：第一版
+    给了默认空串，结果漏改了一个调用方（小鲸鱼的对话），它拿不到密钥、表现是
+    「没配密钥」，报错信息完全指不到真正的原因。必填的话漏传当场 TypeError。
     """
     node_key = (node_key or "").strip()
     if node_key:
