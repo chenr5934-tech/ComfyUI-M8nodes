@@ -8,11 +8,16 @@
  * 为什么工具在前端跑：这些能力只存在于浏览器这边。后端拿不到 app.graph，
  * 也没有 ComfyUI 的 api 对象。硬搬过去就得自己解析工作流、绕过 ComfyUI
  * 自己的校验，最后还会因为版本差异到处裂。
+ *
+ * 界面文案：代码里写英文，中文由 locales/zh/main.json 的 ui.M8Whale 段提供。
+ * 这里返回的文本既回给模型、也显示在对话框里，所以两边都要读得顺。
  * ==========================================================================*/
 
 import { app } from "/scripts/app.js";
 import { api } from "/scripts/api.js";
 import * as M8 from "../../m8_core.js";
+
+const T = M8.tFor("M8Whale");
 
 const MAX_NODES = 60;
 const MAX_WIDGETS = 16;
@@ -59,19 +64,22 @@ const HANDLERS = {
     const data = await res.json();
     const running = data.queue_running || [];
     const pending = data.queue_pending || [];
-    const lines = [`正在跑 ${running.length} 个，排队 ${pending.length} 个`];
+    const lines = [T("queueSummary", "Running {running}, queued {pending}", {
+      running: running.length,
+      pending: pending.length,
+    })];
     for (const item of [...running, ...pending].slice(0, 8)) {
       // 队列项是数组：[number, prompt_id, prompt, extra, outputs]
       const number = Array.isArray(item) ? item[0] : "?";
       const id = Array.isArray(item) ? item[1] : "?";
-      lines.push(`- #${number}（${String(id).slice(0, 8)}）`);
+      lines.push(`- #${number} (${String(id).slice(0, 8)})`);
     }
     return lines.join("\n");
   },
 
   async interrupt() {
     await api.fetchApi("/interrupt", { method: "POST" });
-    return "已发送中断请求，正在跑的任务会停下。";
+    return T("interruptDone", "Interrupt sent; the running task will stop.");
   },
 
   async clear_queue() {
@@ -80,17 +88,23 @@ const HANDLERS = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ clear: true }),
     });
-    return "等待中的队列已清空（正在跑的不受影响）。";
+    return T("clearQueueDone", "Pending queue cleared (the running task is unaffected).");
   },
 
   async set_node_widget({ node_id, widget, value } = {}) {
     const node = app.graph?.getNodeById?.(node_id) || (app.graph?._nodes || []).find((n) => n.id === node_id);
-    if (!node) return `找不到编号为 ${node_id} 的节点。`;
+    if (!node) {
+      return T("nodeNotFound", "No node with id {id}.", { id: node_id });
+    }
 
     const target = (node.widgets || []).find((w) => w.name === widget);
     if (!target) {
-      const names = (node.widgets || []).map((w) => w.name).filter(Boolean).join("、");
-      return `节点 #${node_id} 上没有叫 ${widget} 的参数。它有的是：${names || "（没有参数）"}`;
+      const names = (node.widgets || []).map((w) => w.name).filter(Boolean).join(", ");
+      return T("widgetNotFound", "Node #{id} has no widget named {widget}. It has: {names}", {
+        id: node_id,
+        widget,
+        names: names || T("noWidgets", "(no widgets)"),
+      });
     }
 
     const before = target.value;
@@ -103,19 +117,28 @@ const HANDLERS = {
     }
     app.graph.setDirtyCanvas(true, true);
 
-    return `已把节点 #${node_id} 的 ${widget} 从「${String(before).slice(0, 60)}」改成「${String(value).slice(0, 60)}」。`;
+    return T("widgetChanged", "Node #{id}: {widget} changed from \"{before}\" to \"{value}\".", {
+      id: node_id,
+      widget,
+      before: String(before).slice(0, 60),
+      value: String(value).slice(0, 60),
+    });
   },
 
   async list_loras() {
     const data = await M8.apiGet("/whale/loras");
-    if (!data.count) return "这台机器上没有装 LoRA（models/loras 目录是空的）。";
+    if (!data.count) {
+      return T("noLoras", "No LoRA is installed on this machine (the models/loras directory is empty).");
+    }
 
     // LoRA 目录动辄上百个，全塞进上下文不划算。列一截，并说清还有多少 ——
     // 模型知道自己没看全，才会在需要时说「我看到的只是前 N 个」。
     const MAX = 120;
     const shown = data.loras.slice(0, MAX);
-    const tail = data.count > MAX ? `\n（还有 ${data.count - MAX} 个没列出来，需要的话让用户说个关键词）` : "";
-    return `共 ${data.count} 个 LoRA：\n${shown.join("\n")}${tail}`;
+    const tail = data.count > MAX
+      ? "\n" + T("lorasTruncated", "({n} more not listed; ask the user for a keyword if needed)", { n: data.count - MAX })
+      : "";
+    return T("lorasHeader", "{n} LoRAs:\n{list}", { n: data.count, list: shown.join("\n") }) + tail;
   },
 
   async get_recent_errors() {
@@ -142,18 +165,22 @@ const HANDLERS = {
 
     if (!failures.length) {
       // 说清楚查的是哪儿 —— 「没报错」和「没查到」是两件事
-      return "最近的任务记录里没有失败。如果刚看到报错，可能是它发生在更早的记录里，或者已经被清掉了。";
+      return T("noErrors", "No failures in the recent task history. If you just saw an error, it may be in an older entry or already cleared.");
     }
 
     const recent = failures.slice(-5);
-    const lines = [`找到 ${recent.length} 条失败记录（最近的排后面）：`];
+    const lines = [T("errorsFound", "Found {n} failures (most recent last):", { n: recent.length })];
     for (const item of recent) {
       lines.push("");
-      lines.push(`- 任务 ${String(item.promptId).slice(0, 8)}`);
-      if (item.nodeType) lines.push(`  节点：${item.nodeType}${item.nodeId != null ? " (#" + item.nodeId + ")" : ""}`);
-      if (item.type) lines.push(`  异常类型：${item.type}`);
-      if (item.message) lines.push(`  信息：${String(item.message).slice(0, 400)}`);
-      if (item.traceback) lines.push(`  末尾堆栈：\n${String(item.traceback).slice(0, 700)}`);
+      lines.push(`- ${T("errorTask", "task")} ${String(item.promptId).slice(0, 8)}`);
+      if (item.nodeType) {
+        lines.push(`  ${T("errorNode", "node")}: ${item.nodeType}${item.nodeId != null ? " (#" + item.nodeId + ")" : ""}`);
+      }
+      if (item.type) lines.push(`  ${T("errorType", "exception type")}: ${item.type}`);
+      if (item.message) lines.push(`  ${T("errorMessage", "message")}: ${String(item.message).slice(0, 400)}`);
+      if (item.traceback) {
+        lines.push(`  ${T("errorTraceback", "tail of the traceback")}:\n${String(item.traceback).slice(0, 700)}`);
+      }
     }
     return lines.join("\n");
   },
@@ -162,20 +189,26 @@ const HANDLERS = {
     // 用 ComfyUI 自己的提交路径：参数校验、缺模型提示、错误弹窗全都照旧生效。
     // 绕过去自己 POST /prompt 的话，这些保护就都没了。
     await app.queuePrompt(0, 1);
-    return "已提交排队。";
+    return T("queued", "Queued.");
   },
 };
 
-/** 工具在界面上显示的名字。 */
-export const TOOL_LABELS = {
-  get_queue: "看队列",
-  interrupt: "中断任务",
-  clear_queue: "清空队列",
-  set_node_widget: "改参数",
-  queue_prompt: "提交排队",
-  list_loras: "翻 LoRA",
-  get_recent_errors: "查报错",
+/** 工具的界面显示名。每次现取：界面文案是异步拉回来的。 */
+const TOOL_LABEL_KEYS = {
+  get_queue: ["toolLabelGetQueue", "Queue"],
+  interrupt: ["toolLabelInterrupt", "Interrupt"],
+  clear_queue: ["toolLabelClearQueue", "Clear queue"],
+  set_node_widget: ["toolLabelSetWidget", "Set widget"],
+  queue_prompt: ["toolLabelQueuePrompt", "Queue prompt"],
+  list_loras: ["toolLabelListLoras", "List LoRAs"],
+  get_recent_errors: ["toolLabelGetErrors", "Recent errors"],
 };
+
+/** 取某个工具的显示名。认不出来的退回工具名本身。 */
+export function toolLabel(name) {
+  const entry = TOOL_LABEL_KEYS[name];
+  return entry ? T(entry[0], entry[1]) : name;
+}
 
 /** 会改变状态、值得在对话里留痕的工具。 */
 const MUTATING = new Set(["interrupt", "clear_queue", "set_node_widget", "queue_prompt"]);
@@ -189,7 +222,7 @@ const MUTATING = new Set(["interrupt", "clear_queue", "set_node_widget", "queue_
 export async function runToolCall(call) {
   const name = call?.function?.name;
   const handler = HANDLERS[name];
-  if (!handler) return `没有叫 ${name} 的工具。`;
+  if (!handler) return T("noSuchTool", "There is no tool named {name}.", { name });
 
   let args = {};
   const rawArgs = call.function?.arguments;
@@ -197,7 +230,7 @@ export async function runToolCall(call) {
     try {
       args = JSON.parse(rawArgs);
     } catch {
-      return `工具参数不是合法 JSON：${String(rawArgs).slice(0, 200)}`;
+      return T("badToolArgs", "Tool arguments are not valid JSON: {raw}", { raw: String(rawArgs).slice(0, 200) });
     }
   } else if (rawArgs && typeof rawArgs === "object") {
     args = rawArgs;
@@ -207,7 +240,7 @@ export async function runToolCall(call) {
     return await handler(args);
   } catch (exc) {
     M8.warn(`工具 ${name} 执行失败：`, exc);
-    return `执行失败：${exc?.message || exc}`;
+    return T("toolFailed", "Failed: {message}", { message: exc?.message || exc });
   }
 }
 

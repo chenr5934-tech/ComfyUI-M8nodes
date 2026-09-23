@@ -162,6 +162,9 @@ class M8LLMInference:
         audio=None,
         extra_params: str = "",
     ):
+        # 老工作流里档位存的是中文（关/低/中/高），这里归一成当前取值
+        thinking = providers.normalize_thinking(thinking)
+
         self._validate_request(model, user_prompt, image, audio)
 
         # 留空时用服务端存的那份 —— 但只在 base_url 确实是这个供应商的地址时才给。

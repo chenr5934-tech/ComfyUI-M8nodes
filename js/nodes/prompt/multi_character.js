@@ -879,21 +879,21 @@ function setup(node) {
       char.weight = clamp(v, WEIGHT_MIN, WEIGHT_MAX);
       commit();
     });
-    wField.wrap.title = "这是遮罩混合权重，不是提示词权重 —— 控制这块区域对画面的影响强度";
+    wField.wrap.title = T("blendWeightTip", "This is the mask blend weight, not the prompt weight - it controls how strongly this region affects the image");
     tuneRow.appendChild(wField.wrap);
 
-    const fField = makeNumber("羽化", num(char.feather, 0), 1, 0, FEATHER_MAX, (v) => {
+    const fField = makeNumber(T("feather", "Feather"), num(char.feather, 0), 1, 0, FEATHER_MAX, (v) => {
       char.feather = Math.round(clamp(v, 0, FEATHER_MAX));
       commit();
     });
-    fField.wrap.title = "区域边缘的柔和程度（像素）。角色之间有明显接缝就调大一点，5-15 通常够了";
+    fField.wrap.title = T("featherTip", "How soft the region edge is, in pixels. Raise it if characters show visible seams; 5-15 is usually enough");
     tuneRow.appendChild(fField.wrap);
 
     const fillCb = el("input", "flex-shrink:0;");
     fillCb.type = "checkbox";
     fillCb.checked = !!char.fill;
     const fillWrap = el("label", "display:flex;align-items:center;gap:4px;font-size:11px;color:rgba(255,255,255,0.55);");
-    fillWrap.title = "让这个角色的区域去填充画面（FILL，仅 attn 格式）";
+    fillWrap.title = T("fillTip", "Make this character's region fill the frame (FILL, attn format only)");
     fillWrap.appendChild(fillCb);
     fillWrap.appendChild(document.createTextNode("FILL"));
     fillCb.addEventListener("change", () => {
