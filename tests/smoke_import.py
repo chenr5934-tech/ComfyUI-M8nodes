@@ -3613,6 +3613,30 @@ class TestErrorCodeHygiene(unittest.TestCase):
     的文案。这类错编译器不管、跑起来也不报，只有专门查才拦得住。
     """
 
+    def test_pyproject_structure_survives_edits(self):
+        """pyproject 的表结构很容易被改坏，而且坏得静默。
+
+        实际踩过：加 [project.optional-dependencies] 时插错了位置，后面的 keywords
+        就被吸进了新表 —— TOML 里一个表头管到下一个表头为止。`comfy node validate`
+        不查这个，registry 读不到 keywords 也不报错，只有人肉看才发现。
+
+        顺便钉住那条被问过很多次的：主依赖必须是空的。整个包只用标准库，唯一的外部
+        依赖（llama-cpp-python）放在 optional 里，所以装完插件其余功能立刻能用。
+        """
+        import tomllib
+
+        data = tomllib.loads((PKG_DIR / "pyproject.toml").read_text("utf-8"))
+        project = data["project"]
+
+        self.assertEqual(project["dependencies"], [],
+                         "主依赖必须留空 —— 这是这个包的核心承诺，审核也盯着")
+        self.assertEqual(sorted(project.get("optional-dependencies", {})), ["local-llm"],
+                         "optional 里只该有本地推理那一项；表被写坏会多出别的键")
+        self.assertIn("keywords", project, "keywords 被别的表吸走了")
+        self.assertTrue(project["keywords"], "keywords 不能为空")
+        self.assertEqual(project["urls"]["Repository"],
+                         "https://github.com/chenr5934-tech/ComfyUI-M8nodes")
+
     def test_no_duplicate_code_in_errors_table(self):
         """ERRORS 这个表里不许有重复的键。
 
