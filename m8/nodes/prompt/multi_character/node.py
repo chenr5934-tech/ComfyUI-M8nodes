@@ -1,4 +1,4 @@
-"""M8 · 多角色编辑（提示词货架）。
+"""M8 · Multi-Character Editor (Prompt shelf).
 
 把多个角色的提示词分块组装成一段提示词，每个角色带自己的空间区域。
 
@@ -53,14 +53,14 @@ FEATHER_MAX = 512
 DEFAULT_CHARACTERS = [
     {
         "enabled": True,
-        "name": "角色 1",
+        "name": "Character 1",
         "prompt": "",
         "x": 0.0, "y": 0.0, "w": 0.5, "h": 1.0,
         "weight": 1.0, "feather": 0, "fill": False,
     },
     {
         "enabled": True,
-        "name": "角色 2",
+        "name": "Character 2",
         "prompt": "",
         "x": 0.5, "y": 0.0, "w": 0.5, "h": 1.0,
         "weight": 1.0, "feather": 0, "fill": False,
@@ -95,9 +95,9 @@ def _as_float(value: Any, field: str, index: int, default: float) -> float:
     except (TypeError, ValueError) as exc:
         raise M8Error(
             "M8-PROMPT-002",
-            message=f"第 {index + 1} 个角色的 {field} 不是数字",
-            hint="在节点面板上重新拖一下那个角色的位置，或点重置用回默认",
-            detail=f"收到的值：{value!r}",
+            message=f"Character {index + 1}: {field} is not a number",
+            hint="Drag that character again on the node panel, or hit reset to go back to defaults",
+            detail=f"Received: {value!r}",
         ) from exc
 
 
@@ -110,15 +110,15 @@ def _load(raw: str) -> dict:
     except (ValueError, TypeError) as exc:
         raise M8Error(
             "M8-PROMPT-001",
-            message="角色配置不是合法 JSON",
+            message="The character config is not valid JSON",
             detail=f"{type(exc).__name__}: {exc}",
         ) from exc
     if not isinstance(cfg, dict):
         raise M8Error(
             "M8-PROMPT-001",
-            message="角色配置的顶层必须是一个对象",
-            hint="要写成 {...} 这种键值对形式",
-            detail=f"实际类型：{type(cfg).__name__}",
+            message="The character config must be a JSON object at the top level",
+            hint="Write it as key/value pairs, e.g. {...}",
+            detail=f"Actual type: {type(cfg).__name__}",
         )
     # 缺字段补默认。不删多余的键 —— 多出来的键不影响输出，删了反而会在
     # 用户切回旧版时丢设置。
@@ -135,16 +135,16 @@ def _region(raw: dict, index: int) -> tuple[float, float, float, float]:
     min(1.0, x1 + 0.1)，x1 正好等于 1.0 时 x2 还是 1.0，输出一个零宽遮罩 ——
     那种遮罩在 prompt-control 那边等于什么都不画。
     """
-    x = _clamp(_as_float(raw.get("x"), "横向位置 x", index, 0.0), 0.0, 1.0)
-    y = _clamp(_as_float(raw.get("y"), "纵向位置 y", index, 0.0), 0.0, 1.0)
-    w = _as_float(raw.get("w"), "宽度 w", index, 1.0)
-    h = _as_float(raw.get("h"), "高度 h", index, 1.0)
+    x = _clamp(_as_float(raw.get("x"), "horizontal position x", index, 0.0), 0.0, 1.0)
+    y = _clamp(_as_float(raw.get("y"), "vertical position y", index, 0.0), 0.0, 1.0)
+    w = _as_float(raw.get("w"), "width w", index, 1.0)
+    h = _as_float(raw.get("h"), "height h", index, 1.0)
 
     if w <= 0 or h <= 0:
         raise M8Error(
             "M8-PROMPT-002",
-            message=f"第 {index + 1} 个角色的宽或高不是正数",
-            hint="区域要有一点点面积；在面板上把那个框拉大一点",
+            message=f"Character {index + 1}: width or height is not positive",
+            hint="A region needs some area; drag that box a bit larger on the panel",
             detail=f"w={w}, h={h}",
         )
 
@@ -167,7 +167,7 @@ def _characters(cfg: dict) -> list[dict]:
     if not isinstance(raw_list, list):
         raise M8Error(
             "M8-PROMPT-002",
-            message="characters 必须是一个数组",
+            message="characters must be an array",
             detail=f"实际类型：{type(raw_list).__name__}",
         )
 
@@ -176,7 +176,7 @@ def _characters(cfg: dict) -> list[dict]:
         if not isinstance(raw, dict):
             raise M8Error(
                 "M8-PROMPT-002",
-                message=f"第 {index + 1} 个角色不是一个对象",
+                message=f"Character {index + 1} is not an object",
                 detail=f"实际类型：{type(raw).__name__}",
             )
         if not raw.get("enabled", True):
@@ -190,21 +190,21 @@ def _characters(cfg: dict) -> list[dict]:
         # 原版这里是 if not mask: continue —— 一个没配区域的角色会被无声丢掉。
         # 缺坐标就当它占满整幅，并说一声。
         if "x" not in raw and "y" not in raw and "w" not in raw and "h" not in raw:
-            log(f"第 {index + 1} 个角色没配区域，按整幅画面处理", SHELF_PROMPT)
+            log(f"Character {index + 1} has no region; treating it as the whole frame", SHELF_PROMPT)
             raw = {**raw, "x": 0.0, "y": 0.0, "w": 1.0, "h": 1.0}
 
         x1, x2, y1, y2 = _region(raw, index)
         weight = _clamp(
-            _as_float(raw.get("weight"), "混合权重 weight", index, 1.0),
+            _as_float(raw.get("weight"), "blend weight", index, 1.0),
             WEIGHT_MIN, WEIGHT_MAX,
         )
         feather = int(_clamp(
-            _as_float(raw.get("feather"), "羽化 feather", index, 0),
+            _as_float(raw.get("feather"), "feather", index, 0),
             0, FEATHER_MAX,
         ))
 
         out.append({
-            "name": str(raw.get("name") or f"角色 {index + 1}"),
+            "name": str(raw.get("name") or f"Character {index + 1}"),
             "prompt": prompt,
             "x1": x1, "x2": x2, "y1": y1, "y2": y2,
             "weight": weight,
@@ -297,10 +297,10 @@ class M8MultiCharacter:
         }
 
     RETURN_TYPES = ("STRING",)
-    RETURN_NAMES = ("角色提示词",)
+    RETURN_NAMES = ("prompt",)
     FUNCTION = "execute"
     CATEGORY = "M8/Prompt"
-    DESCRIPTION = "分块编辑多个角色的提示词与画面区域，组装成一段可直接使用的提示词"
+    DESCRIPTION = "Edit several characters' prompts and on-canvas regions, assembled into one ready-to-use prompt"
 
     def execute(
         self,
@@ -320,8 +320,8 @@ class M8MultiCharacter:
         if mode not in FORMATS:
             raise M8Error(
                 "M8-PROMPT-004",
-                message=f"不认识的输出格式：{mode}",
-                hint="格式只能是 " + " / ".join(FORMATS) + " 里的一个",
+                message=f"Unknown output format: {mode}",
+                hint="The format must be one of: " + " / ".join(FORMATS)
             )
 
         cfg = _load(config)
@@ -337,9 +337,9 @@ class M8MultiCharacter:
         if mode != "plain" and not chars:
             raise M8Error(
                 "M8-PROMPT-003",
-                message="没有任何启用的角色",
-                hint="勾上至少一个角色并填好提示词；或把格式切成 plain",
-                detail=f"配置里共 {len(cfg.get('characters') or [])} 个角色",
+                message="No character is enabled",
+                hint="Enable at least one character and fill in its prompt; or switch the format to plain",
+                detail=f"Config contains {len(cfg.get('characters') or [])} characters",
             )
 
         if mode == "attn":
@@ -350,7 +350,7 @@ class M8MultiCharacter:
             text = _render_plain(head, chars)
 
         log(
-            f"{mode} 格式，{len(chars)} 个角色 → {len(text)} 字（画布 {int(width)}×{int(height)}）",
+            f"{mode}, {len(chars)} characters -> {len(text)} chars (canvas {int(width)}x{int(height)})",
             SHELF_PROMPT,
         )
         return (text,)
@@ -360,5 +360,5 @@ NODE_CLASS_MAPPINGS = {
     "M8MultiCharacter": M8MultiCharacter,
 }
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "M8MultiCharacter": "M8 · 多角色编辑",
+    "M8MultiCharacter": "M8 · Multi-Character Editor",
 }

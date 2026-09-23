@@ -155,6 +155,74 @@
           "tooltip": "How this run went: token count, vision or text, cache hit or fresh load."
         }
       }
+    },
+    "M8CameraControl": {
+      "display_name": "M8 · Camera Control",
+      "description": "Visual camera positioning: outputs the matching camera prompt (direction split by ratio + height / distance / tilt + lens / depth / motion / composition / style).",
+      "inputs": {
+        "pos_x": {
+          "name": "pos_x",
+          "tooltip": "Left / Right (X): -1 is fully left, +1 fully right."
+        },
+        "pos_y": {
+          "name": "pos_y",
+          "tooltip": "Up / Down (Y): -1 is looking up from below, +1 from above."
+        },
+        "pos_z": {
+          "name": "pos_z",
+          "tooltip": "Near / Far (Z): -1 is close, +1 is distant."
+        },
+        "roll": {
+          "name": "roll",
+          "tooltip": "Roll: tilts the horizon (dutch angle) once past the dead zone."
+        },
+        "config": {
+          "name": "config",
+          "tooltip": "Advanced JSON: weight budgets, per-step output, lens / depth / motion / composition / style switches."
+        }
+      },
+      "outputs": {
+        "prompt": {
+          "name": "prompt",
+          "tooltip": "The camera prompt, ready to go into a positive prompt."
+        }
+      }
+    },
+    "M8MultiCharacter": {
+      "display_name": "M8 · Multi-Character Editor",
+      "description": "Edit several characters' prompts and on-canvas regions, assembled into one ready-to-use prompt.",
+      "inputs": {
+        "format": {
+          "name": "format",
+          "tooltip": "attn = Attention Couple, regional = Regional Prompts, plain = comma-separated text with no region syntax."
+        },
+        "use_fill": {
+          "name": "use_fill",
+          "tooltip": "Fill the areas no character covers with the base prompt."
+        },
+        "config": {
+          "name": "config",
+          "tooltip": "The character list as JSON: name, prompt, region (x/y/w/h), blend weight, feather, enabled."
+        },
+        "base_prompt": {
+          "name": "base_prompt",
+          "tooltip": "Base prompt, merged with the global prompt."
+        },
+        "width": {
+          "name": "width",
+          "tooltip": "Canvas width the regions are laid out on."
+        },
+        "height": {
+          "name": "height",
+          "tooltip": "Canvas height the regions are laid out on."
+        }
+      },
+      "outputs": {
+        "prompt": {
+          "name": "prompt",
+          "tooltip": "The assembled prompt, ready for a positive prompt."
+        }
+      }
     }
   }
 }

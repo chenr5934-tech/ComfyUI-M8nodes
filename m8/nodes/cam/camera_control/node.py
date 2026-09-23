@@ -1,4 +1,4 @@
-"""M8 · 相机控制（相机货架）。
+"""M8 · Camera Control (Camera shelf).
 
 把抽象的取景意图翻译成提示词：给它一个机位，它输出一串能直接进正向提示词的文字。
 
@@ -128,19 +128,19 @@ class M8CameraControl:
             "required": {
                 "pos_x": ("FLOAT", {
                     "default": 0.0, "min": -1.0, "max": 1.0, "step": 0.01,
-                    "label": "左右 (X)",
+                    "label": "Left / Right (X)",
                 }),
                 "pos_y": ("FLOAT", {
                     "default": 0.0, "min": -1.0, "max": 1.0, "step": 0.01,
-                    "label": "上下 (Y)",
+                    "label": "Up / Down (Y)",
                 }),
                 "pos_z": ("FLOAT", {
                     "default": 0.0, "min": -1.0, "max": 1.0, "step": 0.01,
-                    "label": "前后 (Z)",
+                    "label": "Near / Far (Z)",
                 }),
                 "roll": ("FLOAT", {
                     "default": 0.0, "min": -1.0, "max": 1.0, "step": 0.01,
-                    "label": "翻滚 (Roll)",
+                    "label": "Roll",
                 }),
                 "config": ("STRING", {
                     "multiline": True,
@@ -150,11 +150,11 @@ class M8CameraControl:
         }
 
     RETURN_TYPES = ("STRING",)
-    RETURN_NAMES = ("相机提示词",)
+    RETURN_NAMES = ("prompt",)
     FUNCTION = "execute"
     CATEGORY = "M8/Camera"
-    DESCRIPTION = ("可视化控制机位，输出对应的相机提示词"
-                   "（方位比例分配 + 高度/距离/倾斜 + 镜头 / 景深 / 运镜 / 构图 / 风格）")
+    DESCRIPTION = ("Visual camera positioning: outputs the matching camera prompt "
+                   "(direction split by ratio + height / distance / tilt + lens / depth / motion / composition / style)")
 
     # 平视档的上界，与高角度档的下界重合。
     ELEV_EYE_MAX = 0.2
@@ -214,15 +214,15 @@ class M8CameraControl:
         except (ValueError, TypeError) as exc:
             raise M8Error(
                 "M8-CAM-001",
-                message="相机配置不是合法 JSON",
+                message="The camera config is not valid JSON",
                 detail=f"{type(exc).__name__}: {exc}",
             ) from exc
         if not isinstance(cfg, dict):
             raise M8Error(
                 "M8-CAM-001",
-                message="相机配置的顶层必须是一个对象",
-                hint="配置要写成 {...} 这种键值对形式，不能是数组或单个值",
-                detail=f"实际类型：{type(cfg).__name__}",
+                message="The camera config must be a JSON object at the top level",
+                hint="Write it as key/value pairs, e.g. {...}; not an array or a bare value",
+                detail=f"Actual type: {type(cfg).__name__}",
             )
         return cls._merge_defaults(cfg, json.loads(DEFAULT_CONFIG_JSON))
 
@@ -333,7 +333,7 @@ class M8CameraControl:
         parts.extend(self._extra_parts(cfg, weighted=True))
 
         result = ", ".join(parts)
-        log(f"机位 ({pos_x:.2f}, {pos_y:.2f}, {pos_z:.2f}) 翻滚 {roll:.2f} → {len(parts)} 段", SHELF_CAM)
+        log(f"Camera ({pos_x:.2f}, {pos_y:.2f}, {pos_z:.2f}) roll {roll:.2f} -> {len(parts)} parts", SHELF_CAM)
         return (result + "," if result else "",)
 
     @classmethod
@@ -487,5 +487,5 @@ NODE_CLASS_MAPPINGS = {
     "M8CameraControl": M8CameraControl,
 }
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "M8CameraControl": "M8 · 相机控制",
+    "M8CameraControl": "M8 · Camera Control",
 }
