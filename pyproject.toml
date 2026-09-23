@@ -1,6 +1,6 @@
 [project]
 name = "comfyui-m8-nodes"
-version = "0.5.0"
+version = "0.5.1"
 description = "M8 节点包：按货架分类的 ComfyUI 自定义节点 —— 大模型推理（远程 / 本地）、skill 装载、相机机位、多角色提示词，另带一个独立网页工作台"
 readme = "README.md"
 license = { text = "MIT" }
