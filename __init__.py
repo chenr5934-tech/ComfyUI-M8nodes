@@ -22,7 +22,7 @@ from .m8.core.registry import collect
 from .m8.server import routes
 from .m8.ui import collect_extensions
 
-VERSION = "0.4.4"
+VERSION = "0.4.5"
 
 # 1. 运行时目录（密钥、skill、缓存都住这儿）
 paths.ensure_data_dirs()

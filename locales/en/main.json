@@ -1,0 +1,104 @@
+{
+  "nodeDefs": {
+    "M8SkillLoader": {
+      "display_name": "M8 · Skill Loader",
+      "description": "Loads a skill file (prompt text) and outputs it as a knowledge pack for M8 · LLM Inference.",
+      "inputs": {
+        "skill": {
+          "name": "skill",
+          "tooltip": "Pick an uploaded skill file. Use the Upload button on the node to add one."
+        },
+        "enabled": {
+          "name": "enabled",
+          "tooltip": "Turn off to output an empty skill, as if unplugging the wire without editing the workflow."
+        },
+        "extra_text": {
+          "name": "extra_text",
+          "tooltip": "Extra text appended after this skill. Handy for one-off tweaks you do not want to write into the file."
+        }
+      },
+      "outputs": {
+        "skill": {
+          "name": "skill",
+          "tooltip": "The loaded skill, feed it into the skill input of M8 · LLM Inference."
+        }
+      }
+    },
+    "M8LLMInference": {
+      "display_name": "M8 · LLM Inference",
+      "description": "Calls an external LLM over an OpenAI-compatible API: two prompt boxes, model dropdown, thinking effort. Accepts a skill, images and audio; outputs text.",
+      "inputs": {
+        "provider": {
+          "name": "provider",
+          "tooltip": "Pick a provider. Changing it fills in that provider's default base_url and thinking options. For anything else choose Custom and enter the address yourself."
+        },
+        "base_url": {
+          "name": "base_url",
+          "tooltip": "API address. Defaults to https://api.deepseek.com/v1; point it at any OpenAI-compatible endpoint."
+        },
+        "api_key": {
+          "name": "api_key",
+          "tooltip": "Leave empty to use the key stored on the server (recommended: Save key keeps it out of the workflow file). Anything typed here applies to this node only and is written into the workflow."
+        },
+        "model": {
+          "name": "model",
+          "tooltip": "Fill in the address and key, then click Refresh models. You can also type a model name directly."
+        },
+        "system_prompt": {
+          "name": "system_prompt",
+          "tooltip": "System prompt: persona, tone, output format. Leave empty to send only the user prompt."
+        },
+        "user_prompt": {
+          "name": "user_prompt",
+          "tooltip": "What you want to ask. Can be wired from another node's text output."
+        },
+        "thinking": {
+          "name": "thinking",
+          "tooltip": "Thinking effort. Off sends no extra request; higher asks the model to think more. If the provider rejects the parameter it is dropped and the request retried."
+        },
+        "show_thinking": {
+          "name": "show_thinking",
+          "tooltip": "Show the model's thinking on the node panel (default off: it is usually long). Display only, the text output is unaffected."
+        },
+        "temperature": {
+          "name": "temperature",
+          "tooltip": "Randomness. Lower for steady work like prompt writing, higher for creative ones."
+        },
+        "max_tokens": {
+          "name": "max_tokens",
+          "tooltip": "Upper bound on the reply length. It is a cap, not a target."
+        },
+        "timeout": {
+          "name": "timeout",
+          "tooltip": "Request timeout in seconds. For slow thinking models give it 300 or more."
+        },
+        "skill": {
+          "name": "skill",
+          "tooltip": "Wire this from M8 · Skill Loader. Its content is appended after the system prompt as reference material."
+        },
+        "skill_auto": {
+          "name": "skill_auto",
+          "tooltip": "Inject every uploaded skill and let the model decide which applies. Off by default: once the library grows, each turn carries a few irrelevant ones and burns tokens."
+        },
+        "image": {
+          "name": "image",
+          "tooltip": "Feed images to a vision model. Multiple images are sent together."
+        },
+        "audio": {
+          "name": "audio",
+          "tooltip": "Feed audio to a model that accepts it (converted to WAV)."
+        },
+        "extra_params": {
+          "name": "extra_params",
+          "tooltip": "Extra request parameters as a JSON object, merged into the request body."
+        }
+      },
+      "outputs": {
+        "text": {
+          "name": "text",
+          "tooltip": "The model's reply."
+        }
+      }
+    }
+  }
+}

@@ -152,7 +152,7 @@ class M8CameraControl:
     RETURN_TYPES = ("STRING",)
     RETURN_NAMES = ("相机提示词",)
     FUNCTION = "execute"
-    CATEGORY = "M8/相机"
+    CATEGORY = "M8/Camera"
     DESCRIPTION = ("可视化控制机位，输出对应的相机提示词"
                    "（方位比例分配 + 高度/距离/倾斜 + 镜头 / 景深 / 运镜 / 构图 / 风格）")
 

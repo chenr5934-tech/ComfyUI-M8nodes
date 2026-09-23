@@ -1,4 +1,4 @@
-"""M8 · 大模型推理（大模型货架）。
+"""M8 · LLM Inference (LLM shelf).
 
 靠 API 调外部大模型。默认指向 DeepSeek，base_url 可以改成任何 OpenAI 兼容端点。
 
@@ -30,19 +30,20 @@ from ....core.errors import M8Error, wrap
 from ....core.log import SHELF_LLM, log, warn
 from ....server import llm_api, providers, skills
 
-# model 下拉在没有拉取过时的占位项。前端拉到之后会替换。
-MODEL_PLACEHOLDER = "（点「刷新模型」拉取列表）"
+# Placeholder for the model dropdown before the list is fetched.
+# The frontend replaces it once /m8/llm/models answers.
+MODEL_PLACEHOLDER = "(click Refresh models to load the list)"
 
 DEFAULT_TIMEOUT = 120
 DEFAULT_MAX_TOKENS = 8192
 
 
 class M8LLMInference:
-    """M8 · 大模型推理
+    """M8 · LLM Inference
 
-    双提示词框：system 定人格和规则，user 是这次要问的事。
-    填好 API Key 后点「刷新模型」拉列表，在下拉里选模型。
-    输入可以接 skill（知识包）、图片、音频；输出是模型给的文本。
+    Two prompt boxes: system sets persona and rules, user is what you want to ask.
+    Fill in the API key, hit Refresh models, pick one from the dropdown.
+    Inputs accept a skill (knowledge pack), images and audio; the output is text.
     """
 
     @classmethod
@@ -51,26 +52,26 @@ class M8LLMInference:
             "required": {
                 "provider": (providers.PROVIDER_OPTIONS, {
                     "default": "deepseek",
-                    "tooltip": "选择供应商。改这个会自动带出对应的默认 base_url 和思考参数；换成别的服务商就选「自定义」自己填地址。",
+                    "tooltip": "Pick a provider. Changing it fills in that provider's default base_url and thinking options. For anything else choose Custom and enter the address yourself.",
                 }),
                 "base_url": ("STRING", {
                     "default": providers.default_base_url("deepseek"),
                     "multiline": False,
-                    "tooltip": "接口地址。默认 DeepSeek 的 https://api.deepseek.com/v1，改掉就能接任何 OpenAI 兼容端点。",
+                    "tooltip": "API address. Defaults to https://api.deepseek.com/v1; point it at any OpenAI-compatible endpoint.",
                 }),
                 "api_key": ("STRING", {
                     "default": "",
                     "multiline": False,
-                    "tooltip": "留空就用服务端已保存的密钥（推荐：点「保存密钥」存到服务端，工作流文件里就不会带明文）。填在这里只对当前节点生效，并且会写进工作流。",
+                    "tooltip": "Leave empty to use the key stored on the server (recommended: Save key keeps it out of the workflow file). Anything typed here applies to this node only and is written into the workflow.",
                 }),
                 "model": ([MODEL_PLACEHOLDER], {
-                    "tooltip": "填好地址和密钥后点「刷新模型」拉取，或直接手输模型名。",
+                    "tooltip": "Fill in the address and key, then click Refresh models. You can also type a model name directly.",
                 }),
                 "system_prompt": ("STRING", {
                     "multiline": True,
                     "default": "",
                     "dynamicPrompts": False,
-                    "tooltip": "系统提示词：定模型的人格、语气、输出格式。留空则只发对话提示词。",
+                    "tooltip": "System prompt: persona, tone, output format. Leave empty to send only the user prompt.",
                 }),
                 "user_prompt": ("STRING", {
                     "multiline": True,
@@ -78,48 +79,48 @@ class M8LLMInference:
                     # 关掉动态提示词：大模型的提示词里花括号太常见了（JSON、代码、模板变量），
                     # 开着会被 {a|b} 语法随机替换，破坏性大于那点便利。要随机就在上游接文本节点。
                     "dynamicPrompts": False,
-                    "tooltip": "这次要问的事。可以接别的节点的文本输出（右键把该输入转成 input 再连线）。",
+                    "tooltip": "What you want to ask. Can be wired from another node's text output (right-click the input and convert it to an input socket).",
                 }),
                 "thinking": (providers.THINKING_OPTIONS, {
                     "default": providers.THINKING_OFF,
-                    "tooltip": "思考强度。关=不额外要求；越高越让模型多想。供应商不支持该参数时会自动去掉它重试（日志里会说明）。",
+                    "tooltip": "Thinking effort. Off sends no extra request; higher asks the model to think more. If the provider rejects the parameter it is dropped and the request retried (the log says so).",
                 }),
                 "show_thinking": ("BOOLEAN", {
                     "default": False,
-                    "tooltip": "是否把模型的思考过程显示在节点面板上（默认关：思考内容通常很长，需要时再打开）。只影响显示，不影响 text 输出。",
+                    "tooltip": "Show the model's thinking on the node panel (default off: it is usually long). Display only, the text output is unaffected.",
                 }),
                 "temperature": ("FLOAT", {
                     "default": 1.0, "min": 0.0, "max": 2.0, "step": 0.05,
-                    "tooltip": "随机性。写提示词这类要稳的活儿调低，创意类的调高。",
+                    "tooltip": "Randomness. Lower for steady work like prompt writing, higher for creative ones.",
                 }),
                 "max_tokens": ("INT", {
                     "default": DEFAULT_MAX_TOKENS, "min": 16, "max": 131072, "step": 16,
-                    "tooltip": "回答长度上限。注意这是上限不是目标，正常回答不会一直写满。",
+                    "tooltip": "Upper bound on the reply length. It is a cap, not a target — normal answers do not fill it.",
                 }),
                 "timeout": ("INT", {
                     "default": DEFAULT_TIMEOUT, "min": 5, "max": 3600, "step": 5,
-                    "tooltip": "单次请求超时秒数。长思考的模型建议给到 300 以上。",
+                    "tooltip": "Request timeout in seconds. For slow thinking models give it 300 or more.",
                 }),
             },
             "optional": {
                 "skill": ("M8_SKILL", {
-                    "tooltip": "从 M8 · Skill 装载 接进来。内容会附在系统提示词后面当参考资料。",
+                    "tooltip": "Wire this from M8 · Skill Loader. Its content is appended after the system prompt as reference material.",
                 }),
                 "skill_auto": ("BOOLEAN", {
                     "default": False,
-                    "tooltip": "打开后把服务端已上传的 skill 一起注入，由模型自己判断该用哪个。默认关：库里内容一多，每轮都会带上几份用不上的，白烧 token —— 要哪份在提示词里打 / 引用更准。份数和长度上限在设置里可调。",
+                    "tooltip": "Inject every uploaded skill and let the model decide which applies. Off by default: once the library grows, each turn carries a few irrelevant ones and burns tokens. Referencing a specific skill with / in the prompt is more precise. Caps are configurable in settings.",
                 }),
                 "image": ("IMAGE", {
-                    "tooltip": "接图片给能看图的模型。多张会一起发；张数和边长上限在设置里可调。不支持图片的模型会返回 400。",
+                    "tooltip": "Feed images to a vision model. Multiple images are sent together; count and edge limits are configurable. Models without image support return 400.",
                 }),
                 "audio": ("AUDIO", {
-                    "tooltip": "接音频给能听音频的模型（转成 WAV 发出去）。不支持音频的模型会返回 400。",
+                    "tooltip": "Feed audio to a model that accepts it (converted to WAV). Models without audio support return 400.",
                 }),
                 "extra_params": ("STRING", {
                     "multiline": True,
                     "default": "",
                     "dynamicPrompts": False,
-                    "tooltip": "额外的请求参数，JSON 对象格式，会合并进请求体。用来传那些本插件没覆盖的供应商专有参数，例如 {\"top_p\": 0.9}。",
+                    "tooltip": "Extra request parameters as a JSON object, merged into the request body. Use it for provider-specific fields this pack does not cover, e.g. {\"top_p\": 0.9}.",
                 }),
             },
         }
@@ -127,13 +128,13 @@ class M8LLMInference:
     RETURN_TYPES = ("STRING",)
     RETURN_NAMES = ("text",)
     FUNCTION = "execute"
-    CATEGORY = "M8/大模型"
-    DESCRIPTION = "靠 API 调用大模型：双提示词框 + 模型下拉 + 思考强度；可接 skill / 图片 / 音频，输出文本。"
+    CATEGORY = "M8/LLM"
+    DESCRIPTION = "Calls an external LLM over an OpenAI-compatible API: two prompt boxes, model dropdown, thinking effort. Accepts a skill, images and audio; outputs text."
     OUTPUT_NODE = False
 
     @classmethod
     def VALIDATE_INPUTS(cls, model):
-        """放行任意模型名。
+        """Accept any model name.
 
         和 M8SkillLoader 同理：候选列表是前端拉 /m8/llm/models 之后动态写进 widget 的，
         服务端只能给占位列表，默认校验必然拦下来。只接管 model 一项。
@@ -200,13 +201,13 @@ class M8LLMInference:
         skill_chars = sum(len(block) for block in skill_blocks)
         if skill_chars > 20000:
             warn(
-                f"这次带了 {skill_chars} 字的知识包，上下文占用较大。"
-                f"若接口报 400（M8-LLM-013），就是它撑爆了输入上限",
+                f"Carrying a {skill_chars}-character knowledge pack this time; it takes up a lot of context."
+                f"If the endpoint returns 400 (M8-LLM-013), the pack blew past the input limit",
                 SHELF_LLM,
             )
         log(
-            f"请求 {model}：消息 {len(messages)} 条 / 知识包 {len(skill_blocks)} 个（{skill_chars} 字）"
-            f" / 思考强度 {thinking}",
+            f"Request {model}: {len(messages)} messages / {len(skill_blocks)} knowledge packs ({skill_chars} chars)"
+            f" / thinking {thinking}",
             SHELF_LLM,
         )
         data = llm_api.chat(base_url, resolved_key, payload, provider, timeout)
@@ -215,13 +216,13 @@ class M8LLMInference:
         if not text and not reasoning:
             raise M8Error(
                 "M8-LLM-005",
-                message="响应里没有正文",
-                hint="确认填的模型名存在，且接口是 OpenAI 兼容的",
+                message="The response carried no text content",
+                hint="Check the model name exists and the endpoint is OpenAI-compatible",
                 detail=json.dumps(data, ensure_ascii=False)[:800],
             )
 
         usage = llm_api.usage_of(data)
-        log(f"返回 {len(text)} 字{('/ 思考 ' + str(len(reasoning)) + ' 字') if reasoning else ''}", SHELF_LLM)
+        log(f"Returned {len(text)} chars{(' / thinking ' + str(len(reasoning)) + ' chars') if reasoning else ''}", SHELF_LLM)
 
         # 正文走连线；思考过程走 UI 消息，显示在节点面板上，不污染下游
         ui_payload: dict[str, Any] = {
@@ -242,8 +243,8 @@ class M8LLMInference:
         if not name or name == MODEL_PLACEHOLDER:
             raise M8Error(
                 "M8-LLM-006",
-                message="还没选模型",
-                hint="点节点上的「刷新模型」拉列表，或直接手输模型名",
+                message="No model selected",
+                hint="Click Refresh models on the node, or type a model name directly",
             )
         if not (user_prompt or "").strip() and image is None and audio is None:
             raise M8Error("M8-LLM-007")
@@ -287,7 +288,7 @@ class M8LLMInference:
         try:
             available = [item["name"] for item in skills.list_skills()]
         except M8Error as exc:
-            warn(f"读不到 skill 列表：{exc.message}", SHELF_LLM)
+            warn(f"Could not read the skill list: {exc.message}", SHELF_LLM)
             available = []
 
         if not available:
@@ -296,11 +297,11 @@ class M8LLMInference:
         # 2. 提示词里的 /名字
         hits, misses = skills.extract_skill_mentions(user_prompt or "", available)
         if hits:
-            log(f"提示词里引用了知识包：{', '.join(hits)}", SHELF_LLM)
+            log(f"Knowledge packs referenced in the prompt: {', '.join(hits)}", SHELF_LLM)
         if misses:
             # 不报错：提示词里出现斜杠太常见了（路径、URL、日期），
             # 没对上就原样留在正文里，模型自己会看着办
-            log(f"斜杠引用没对上任何 skill：{', '.join(misses[:5])}", SHELF_LLM)
+            log(f"Slash references matched no skill: {', '.join(misses[:5])}", SHELF_LLM)
         for name, text in skills.read_many(hits):
             add(name, text)
 
@@ -310,10 +311,10 @@ class M8LLMInference:
             budget = int(config.get_setting("llm.max_skill_chars", 8000) or 8000)
             rest = [name for name in available if name.lower() not in seen]
             if len(rest) > limit:
-                log(f"自动注入只取前 {limit} 个（共 {len(rest)} 个），上限在设置里可调", SHELF_LLM)
+                log(f"Auto-inject took the first {limit} of {len(rest)}; the cap is configurable in settings", SHELF_LLM)
             for name, text in skills.read_many(rest[:limit]):
                 if len(text) > budget:
-                    text = text[:budget] + "\n\n…（内容过长，已截断）"
+                    text = text[:budget] + "\n\n...(content was too long and has been truncated)"
                 add(name, text)
 
         return blocks
@@ -335,8 +336,8 @@ class M8LLMInference:
             # 资料当成一份连续文档来理解，产出会跑偏。
             if len(skill_blocks) > 1:
                 joined += (
-                    "\n\n（以上是多个独立的知识包。请根据用户的问题自行判断该用哪一个，"
-                    "不必全部使用；都不相关就忽略。）"
+                    "\n\n(The above are several independent knowledge packs. Decide from the user's question which ones apply; "
+                    "you do not have to use all of them, and can ignore them if none are relevant.)"
                 )
             system_text = f"{system_text}\n\n{joined}" if system_text else joined
 
@@ -358,7 +359,7 @@ class M8LLMInference:
                 parts.append(audio_part)
 
         if not parts:
-            parts.append({"type": "text", "text": "请描述你收到的内容。"})
+            parts.append({"type": "text", "text": "Describe what you received."})
 
         # 只有文本时用最简单的字符串形式 —— 兼容性最好，
         # 有些中转站对 content 数组支持不全。
@@ -389,7 +390,7 @@ class M8LLMInference:
         if param_name and value:
             payload[param_name] = value
         elif thinking != providers.THINKING_OFF and not param_name:
-            warn(f"{providers.get(provider_key).label} 没有思考强度参数，本次按模型默认行为执行", SHELF_LLM)
+            warn(f"{providers.get(provider_key).label} has no thinking-effort parameter; using the model default this time", SHELF_LLM)
 
         extra = (extra_params or "").strip()
         if extra:
@@ -398,12 +399,12 @@ class M8LLMInference:
             except json.JSONDecodeError as exc:
                 raise M8Error(
                     "M8-LLM-002",
-                    message="extra_params 不是合法 JSON",
-                    hint="要写成对象形式，例如 {\"top_p\": 0.9}",
+                    message="extra_params is not valid JSON",
+                    hint="Write it as an object, e.g. {\"top_p\": 0.9}",
                     detail=str(exc),
                 ) from exc
             if not isinstance(parsed, dict):
-                raise M8Error("M8-LLM-002", message="extra_params 必须是一个 JSON 对象")
+                raise M8Error("M8-LLM-002", message="extra_params must be a JSON object")
             payload.update(parsed)
 
         return payload
@@ -426,8 +427,8 @@ class M8LLMInference:
         except ImportError as exc:
             raise M8Error(
                 "M8-LLM-008",
-                message="缺少 Pillow / numpy，没法处理图片",
-                hint="这两个是 ComfyUI 的标配依赖，检查一下环境是否完整",
+                message="Pillow / numpy are missing, cannot process images",
+                hint="Both ship with ComfyUI; check the environment is complete",
                 detail=str(exc),
             ) from exc
 
@@ -437,16 +438,16 @@ class M8LLMInference:
                 batch = batch.cpu().numpy()
             array = np.asarray(batch)
         except Exception as exc:  # noqa: BLE001 张量形态千奇百怪，统一转成 M8 错误
-            raise wrap("M8-LLM-008", exc, message="图片张量读不出来") from exc
+            raise wrap("M8-LLM-008", exc, message="Could not read the image tensor") from exc
 
         if array.ndim == 3:  # 单张没带 batch 维度
             array = array[None, ...]
         if array.ndim != 4:
-            raise M8Error("M8-LLM-008", message=f"图片张量维度不对：{array.shape}")
+            raise M8Error("M8-LLM-008", message=f"Unexpected image tensor shape: {array.shape}")
 
         count = min(array.shape[0], limit_count)
         if array.shape[0] > limit_count:
-            warn(f"图片 {array.shape[0]} 张，只发前 {limit_count} 张（上限在设置里可调）", SHELF_LLM)
+            warn(f"{array.shape[0]} images, sending only the first {limit_count} (cap is configurable in settings)", SHELF_LLM)
 
         urls: list[str] = []
         for index in range(count):
@@ -454,7 +455,7 @@ class M8LLMInference:
             if frame.shape[-1] == 4:
                 frame = frame[..., :3]
             if frame.shape[-1] != 3:
-                raise M8Error("M8-LLM-008", message=f"第 {index} 张不是 3 通道：{frame.shape}")
+                raise M8Error("M8-LLM-008", message=f"Image {index} is not 3-channel: {frame.shape}")
             pixels = (np.clip(frame, 0.0, 1.0) * 255.0).round().astype("uint8")
             try:
                 picture = PILImage.fromarray(pixels, "RGB")
@@ -462,11 +463,11 @@ class M8LLMInference:
                 buffer = io.BytesIO()
                 picture.save(buffer, format="PNG", optimize=False)
             except Exception as exc:  # noqa: BLE001
-                raise wrap("M8-LLM-008", exc, message=f"第 {index} 张编码失败") from exc
+                raise wrap("M8-LLM-008", exc, message=f"Failed to encode image {index}") from exc
             encoded = base64.b64encode(buffer.getvalue()).decode("ascii")
             urls.append(f"data:image/png;base64,{encoded}")
 
-        log(f"图片打包完成：{len(urls)} 张", SHELF_LLM)
+        log(f"Packed {len(urls)} images", SHELF_LLM)
         return urls
 
     @staticmethod
@@ -496,7 +497,7 @@ class M8LLMInference:
             raise wrap("M8-LLM-009", exc) from exc
 
         if not isinstance(audio, dict) or "waveform" not in audio:
-            raise M8Error("M8-LLM-009", message=f"音频输入形状不对：{type(audio).__name__}")
+            raise M8Error("M8-LLM-009", message=f"Unexpected audio input type: {type(audio).__name__}")
 
         try:
             waveform = audio["waveform"]
@@ -513,7 +514,7 @@ class M8LLMInference:
         if array.ndim == 1:
             array = array[None, :]
         if array.ndim != 2:
-            raise M8Error("M8-LLM-009", message=f"波形维度不对：{array.shape}")
+            raise M8Error("M8-LLM-009", message=f"Unexpected waveform shape: {array.shape}")
 
         channels = array.shape[0]
         samples = np.clip(array, -1.0, 1.0)
@@ -528,9 +529,9 @@ class M8LLMInference:
             handle.writeframes(interleaved.tobytes())
 
         encoded = base64.b64encode(buffer.getvalue()).decode("ascii")
-        log(f"音频打包完成：{channels} 声道 / {sample_rate} Hz / {samples.shape[-1] / sample_rate:.1f} 秒", SHELF_LLM)
+        log(f"Packed audio: {channels} ch / {sample_rate} Hz / {samples.shape[-1] / sample_rate:.1f}s", SHELF_LLM)
         return {"type": "input_audio", "input_audio": {"data": encoded, "format": "wav"}}
 
 
 NODE_CLASS_MAPPINGS = {"M8LLMInference": M8LLMInference}
-NODE_DISPLAY_NAME_MAPPINGS = {"M8LLMInference": "M8 · 大模型推理"}
+NODE_DISPLAY_NAME_MAPPINGS = {"M8LLMInference": "M8 · LLM Inference"}

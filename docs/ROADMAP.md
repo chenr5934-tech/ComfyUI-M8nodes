@@ -272,8 +272,8 @@ Q 弹按压、今日已用记账、每轮消耗统计。
 | --- | --- | --- |
 | 节点类名 | `M8` + 大驼峰 | `M8LLMInference` |
 | 节点内部 ID | 与类名一致 | `M8LLMInference` |
-| 节点显示名 | `M8 · 中文名` | `M8 · 大模型推理` |
-| `CATEGORY` | `M8/中文货架名` | `M8/大模型` |
+| 节点显示名 | `M8 · English Name` | `M8 · LLM Inference` |
+| `CATEGORY` | `M8/<Shelf>`，英文 | `M8/LLM` |
 | 后端路由 | `/m8/<货架>/<动作>` | `/m8/llm/models` |
 | 前端文件 | 与节点类名同名的下划线小写 | `llm_inference.js` |
 | 前端扩展名 | `M8.<节点类名>` | `M8.M8LLMInference` |

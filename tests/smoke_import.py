@@ -289,7 +289,7 @@ class TestNodeContract(unittest.TestCase):
         self.assertEqual(cls.RETURN_TYPES, ("STRING",))
         self.assertEqual(cls.RETURN_NAMES, ("text",))
         self.assertEqual(cls.FUNCTION, "execute")
-        self.assertEqual(cls.CATEGORY, "M8/大模型")
+        self.assertEqual(cls.CATEGORY, "M8/LLM")
 
     def test_skill_loader_signature(self):
         cls = self.module.NODE_CLASS_MAPPINGS["M8SkillLoader"]
@@ -298,7 +298,7 @@ class TestNodeContract(unittest.TestCase):
         self.assertEqual(cls.RETURN_TYPES, ("M8_SKILL",))
         self.assertEqual(cls.RETURN_NAMES, ("skill",))
         self.assertEqual(cls.FUNCTION, "load")
-        self.assertEqual(cls.CATEGORY, "M8/大模型")
+        self.assertEqual(cls.CATEGORY, "M8/LLM")
 
     def test_skill_types_line_up(self):
         """上游产 M8_SKILL、下游吃 M8_SKILL —— 对不上就连不上线，且界面不会报错。"""
@@ -1151,7 +1151,7 @@ class TestSkillInjection(unittest.TestCase):
                 self.assertTrue(block.endswith('</skill>'))
             messages = self.node._build_messages('', '你好', blocks, None, None)
             system = messages[0]['content']
-            self.assertIn('多个独立的知识包', system)
+            self.assertIn('several independent knowledge packs', system)
         finally:
             skills.delete_skill('围栏甲')
             skills.delete_skill('围栏乙')
@@ -2616,9 +2616,15 @@ class TestInferenceExecution(unittest.TestCase):
         self.assertEqual(ctx.exception.code, 'M8-LLM-007')
 
     def test_placeholder_model_is_caught(self):
+        """占位符被当成模型名提交时要带码报错，而不是发给接口换回一个 400。
+
+        这里刻意引用后端的常量而不是抄一份字面量 —— 抄一份的话，界面文案一改
+        这个测试就红，而它想验的其实是「占位符会被拦住」，跟文案长什么样无关。
+        """
         errors = submodule('m8.core.errors')
+        node_mod = submodule('m8.nodes.llm.llm_inference.node')
         with self.assertRaises(errors.M8Error) as ctx:
-            self.run_with(model='（点「刷新模型」拉取列表）')
+            self.run_with(model=node_mod.MODEL_PLACEHOLDER)
         self.assertEqual(ctx.exception.code, 'M8-LLM-006')
 
     def test_skill_from_wire_goes_into_system(self):
@@ -2898,7 +2904,7 @@ class TestMultiCharacter(unittest.TestCase):
         self.assertIn("base_prompt", types["optional"])
         self.assertEqual(self.cls.RETURN_TYPES, ("STRING",))
         self.assertEqual(self.cls.FUNCTION, "execute")
-        self.assertEqual(self.cls.CATEGORY, "M8/提示词")
+        self.assertEqual(self.cls.CATEGORY, "M8/Prompt")
 
     def test_attn_format(self):
         out = self.run_it("attn", self.cfg([self.char("elf archer", w=0.25)]), base="forest")
@@ -3300,7 +3306,7 @@ class TestCameraContract(unittest.TestCase):
             self.assertIn(key, types["required"], "缺输入：" + key)
         self.assertEqual(self.cls.RETURN_TYPES, ("STRING",))
         self.assertEqual(self.cls.FUNCTION, "execute")
-        self.assertEqual(self.cls.CATEGORY, "M8/相机")
+        self.assertEqual(self.cls.CATEGORY, "M8/Camera")
 
     def test_origin_is_front_eye_medium(self):
         """原点 = 正前方、平视、中景。这是「什么都没调」的状态，必须稳定。"""
