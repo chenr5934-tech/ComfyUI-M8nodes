@@ -10,6 +10,12 @@ requires-python = ">=3.10"
 dependencies = []
 keywords = ["comfyui", "comfyui-nodes", "llm", "deepseek", "openai-compatible", "prompt"]
 
+[project.optional-dependencies]
+# 本地推理节点需要它。**故意不放进上面的 dependencies** —— 装完这个插件，
+# 其余节点和整个网页工作台都能用，只有 M8LLMLocal 需要额外装一份。
+# 不装也不影响加载：那个节点会在运行时带错误码说清缺什么（M8-LLM-015）。
+local-llm = ["llama-cpp-python>=0.3"]
+
 [project.urls]
 # 上架前填上（docs/RELEASING.md 的检查清单里有这一条）
 Repository = "https://github.com/chenr5934-tech/ComfyUI-M8nodes"
