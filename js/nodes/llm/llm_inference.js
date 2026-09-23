@@ -17,6 +17,9 @@ import * as M8 from "../../m8_core.js";
 
 const NODE_TYPE = "M8LLMInference";
 
+/* 界面文案：代码里写英文，中文由 locales/zh/main.json 的 ui 段提供。 */
+const T = M8.tFor(NODE_TYPE);
+
 /* 和后端 m8/nodes/llm/llm_inference.py 里的 MODEL_PLACEHOLDER 必须逐字一致 */
 const MODEL_PLACEHOLDER = "(click Refresh models to load the list)";
 
@@ -46,7 +49,7 @@ function widgetValue(node, name) {
 }
 
 async function refreshModels(node) {
-  M8.setStatus(node, "busy", "拉取模型…");
+  M8.setStatus(node, "busy", T("fetching", "Fetching models..."));
   const result = await M8.apiPost("/llm/models", {
     provider: widgetValue(node, "provider"),
     baseUrl: widgetValue(node, "base_url"),
@@ -56,8 +59,9 @@ async function refreshModels(node) {
 
   const modelWidget = M8.findWidget(node, "model");
   M8.setComboOptions(modelWidget, result.models);
-  M8.setStatus(node, "ok", `${result.count} 个模型`);
-  M8.notify(`拿到 ${result.count} 个模型，已填进下拉`, { kind: "ok", timeout: 2600 });
+  M8.setStatus(node, "ok", T("modelCount", "{n} models", { n: result.count }));
+  M8.notify(T("gotModels", "Got {n} models, filled into the dropdown", { n: result.count }),
+    { kind: "ok", timeout: 2600 });
   app.graph?.setDirtyCanvas(true, true);
 }
 
@@ -67,7 +71,7 @@ async function saveKey(node) {
   const value = (keyWidget?.value || "").trim();
 
   if (!value) {
-    M8.notify("输入框是空的，没什么可存的", { kind: "warn" });
+    M8.notify(T("keyBoxEmpty", "The key box is empty, nothing to save"), { kind: "warn" });
     return;
   }
 
@@ -76,10 +80,11 @@ async function saveKey(node) {
   const result = await M8.apiPost("/keys/set", { provider, apiKey: value, baseUrl });
   // 存完就清空：留在框里会被写进工作流文件，分享出去就泄了
   keyWidget.value = "";
-  M8.setStatus(node, "ok", `密钥已存 ${result.masked}`);
-  M8.notify(`密钥已存到服务端（${result.masked}），输入框已清空`, {
+  M8.setStatus(node, "ok", T("keySaved", "Key saved {masked}", { masked: result.masked }));
+  M8.notify(T("keySavedOnServer", "Key saved on the server ({masked}), the box was cleared",
+      { masked: result.masked }), {
     kind: "ok",
-    hint: "以后这个节点留空就会自动用服务端这份，工作流文件里不会带明文",
+    hint: T("keySavedHint", "Leave this node empty from now on and it uses the server copy; the workflow file never carries the plaintext key"),
     timeout: 5000,
   });
   app.graph?.setDirtyCanvas(true, true);
@@ -88,13 +93,13 @@ async function saveKey(node) {
 async function clearKey(node) {
   const provider = widgetValue(node, "provider");
   await M8.apiPost("/keys/set", { provider, apiKey: "" });
-  M8.setStatus(node, "idle", "密钥已清除");
-  M8.notify("服务端已存的密钥已清除", { kind: "warn" });
+  M8.setStatus(node, "idle", T("keyCleared", "key cleared"));
+  M8.notify(T("keyClearedMsg", "The server-stored key was cleared"), { kind: "warn" });
 }
 
 function setup(node) {
   M8.brand(node);
-  M8.setStatus(node, "idle", "未配置");
+  M8.setStatus(node, "idle", T("notConfigured", "not configured"));
 
   // ---- 思考过程显示框 ----------------------------------------------------
   const thinkingBox = ComfyWidgets["STRING"](node, "m8_thinking", ["STRING", { multiline: true }], app).widget;
@@ -105,28 +110,28 @@ function setup(node) {
   M8.hideWidget(thinkingBox);
 
   // ---- 按钮 --------------------------------------------------------------
-  const refreshWidget = M8.addButton(node, "刷新模型", async () => {
+  const refreshWidget = M8.addButton(node, T("refreshModels", "Refresh models"), async () => {
     await refreshModels(node);
-  }, { tooltip: "用当前的地址和密钥向后端要一份模型列表，填进下面的下拉" });
+  }, { tooltip: T("refreshModelsTip", "Ask the backend for the model list using the current address and key, then fill it into the dropdown below.") });
 
-  const saveKeyWidget = M8.addButton(node, "保存密钥到服务端", async () => {
+  const saveKeyWidget = M8.addButton(node, T("saveKey", "Save key to server"), async () => {
     await saveKey(node);
-  }, { tooltip: "存到 m8/data/credentials.json 并清空输入框 —— 这样分享工作流不会泄漏密钥" });
+  }, { tooltip: T("saveKeyTip", "Stores it in m8/data/credentials.json and clears the box, so sharing the workflow does not leak the key.") });
 
-  const clearKeyWidget = M8.addButton(node, "清除服务端密钥", async () => {
+  const clearKeyWidget = M8.addButton(node, T("clearKey", "Clear server key"), async () => {
     await clearKey(node);
-  }, { tooltip: "删掉服务端存的那份密钥" });
+  }, { tooltip: T("clearKeyTip", "Deletes the key stored on the server.") });
 
-  const thinkingToggle = M8.addButton(node, "思考过程", async () => {
+  const thinkingToggle = M8.addButton(node, T("thinking", "Thinking"), async () => {
     const hidden = !!thinkingBox.m8Hidden;
     if (hidden) {
       M8.showWidget(thinkingBox);
-      if (!thinkingBox.value) thinkingBox.value = "（运行一次之后，模型的思考过程会显示在这里）";
+      if (!thinkingBox.value) thinkingBox.value = T("thinkingPlaceholder", "(the model's thinking shows up here after one run)");
     } else {
       M8.hideWidget(thinkingBox);
     }
     M8.relayout(node);
-  }, { tooltip: "展开 / 收起模型的思考过程（只影响显示，不影响 text 输出）" });
+  }, { tooltip: T("thinkingTip", "Expand or collapse the model's thinking (display only, the text output is unaffected).") });
 
   // **不重排 widget。**
   //
@@ -163,17 +168,17 @@ function setup(node) {
   // ---- 初始化：看看服务端有没有存过密钥 -----------------------------------
   loadProviders().then((map) => {
     const provider = widgetValue(node, "provider");
-    const label = map[provider]?.label || provider || "未选供应商";
+    const label = map[provider]?.label || provider || T("noProvider", "no provider selected");
     M8.apiGet("/keys/list")
       .then((result) => {
         const masked = result.keys?.[provider];
         if (masked) {
           M8.setStatus(node, "ok", `${label} · ${masked}`);
         } else {
-          M8.setStatus(node, "idle", `${label} · 待填密钥`);
+          M8.setStatus(node, "idle", label + " · " + T("needsKey", "key required"));
         }
       })
-      .catch(() => M8.setStatus(node, "warn", "接口没响应"));
+      .catch(() => M8.setStatus(node, "warn", T("noEndpoint", "endpoint not responding")));
   });
 }
 
@@ -189,15 +194,15 @@ function applyResult(node, payload) {
         M8.relayout(node);
       }
     } else if (!thinkingBox.value) {
-      thinkingBox.value = "（这次没有思考内容 —— 模型没输出，或开关关着）";
+      thinkingBox.value = T("noThinking", "(no thinking this run: the model produced none, or the switch is off)");
     }
   }
 
   const usage = payload.usage || {};
   const parts = [];
   if (usage.total_tokens) parts.push(`${usage.total_tokens} tok`);
-  else if (payload.chars) parts.push(`${payload.chars} 字`);
-  M8.setStatus(node, "ok", parts.join(" · ") || payload.model || "完成");
+  else if (payload.chars) parts.push(T("chars", "{n} chars", { n: payload.chars }));
+  M8.setStatus(node, "ok", parts.join(" · ") || payload.model || T("done", "done"));
   M8.log("执行完成：", payload.model, usage);
 }
 

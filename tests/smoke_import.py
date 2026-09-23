@@ -1209,7 +1209,7 @@ class TestMentionFrontend(unittest.TestCase):
 
     def test_skill_node_still_offers_the_info_another_way(self):
         """拿掉文本框不等于拿掉信息 —— 资源情况要能在别处看到。"""
-        self.assertIn('"资源清单"', self.skill_js)
+        self.assertIn('T("inventory"', self.skill_js)
         self.assertIn('/skills/tree', self.skill_js)
 
     def test_inference_node_attaches_the_picker(self):
