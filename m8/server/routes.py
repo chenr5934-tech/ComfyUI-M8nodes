@@ -36,7 +36,7 @@ except ImportError:  # 脱离 ComfyUI（跑单元测试）时
 
 _DUMPS = partial(json.dumps, ensure_ascii=False)
 
-VERSION = "0.4.2"
+VERSION = "0.4.3"
 
 # 由根 __init__.py 在收集完货架后注入，供 /m8/health 使用
 _RUNTIME_INFO: dict[str, Any] = {"shelves": [], "nodeCount": 0, "routeCount": 0}
@@ -83,8 +83,15 @@ async def handle_llm_models(request: web.Request) -> web.Response:
     try:
         body = await _read_json(request)
         provider_key = str(body.get("provider") or "custom")
-        api_key = config.resolve_api_key(str(body.get("apiKey") or ""), provider_key)
         base_url = body.get("baseUrl") or providers.default_base_url(provider_key)
+        # 密钥只在这个地址可信时才附上（见 config.resolve_api_key）——
+        # base_url 是调用方给的，不能因为它就交出服务端存的密钥
+        api_key = config.resolve_api_key(
+            str(body.get("apiKey") or ""),
+            provider_key,
+            base_url,
+            (providers.default_base_url(provider_key), config.saved_base_url(provider_key)),
+        )
         timeout = float(body.get("timeout") or 30)
 
         models = await asyncio.to_thread(
@@ -122,7 +129,10 @@ async def handle_keys_set(request: web.Request) -> web.Response:
         provider = str(body.get("provider") or "").strip()
         if not provider:
             raise M8Error("M8-SRV-002", message="没给 provider")
-        masked = config.set_api_key(provider, str(body.get("apiKey") or ""))
+        # baseUrl 一起记下：这份密钥归哪个地址用，以后只有发往它才带上
+        masked = config.set_api_key(
+            provider, str(body.get("apiKey") or ""), str(body.get("baseUrl") or "")
+        )
     except M8Error as exc:
         return _err(exc)
     return _ok(provider=provider, masked=masked)

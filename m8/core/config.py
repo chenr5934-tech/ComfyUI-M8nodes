@@ -175,14 +175,19 @@ def get_api_key(provider: str) -> str:
         return str(entry.get("api_key") or "")
 
 
-def set_api_key(provider: str, key: str) -> str:
-    """存密钥，返回掩码（给前端显示用）。"""
+def set_api_key(provider: str, key: str, base_url: str = "") -> str:
+    """存密钥，返回掩码（给前端显示用）。
+
+    base_url 是**一起记下**的接口地址：用户把 DeepSeek 的密钥配上自己的中转
+    地址，那就是这份密钥归哪个地址用。以后只有请求发往这个地址时才把密钥附上。
+    """
     key = (key or "").strip()
     with _LOCK:
         data = _load_credentials()
         if key:
             data["providers"][provider] = {
                 "api_key": key,
+                "base_url": str(base_url or "").strip(),
                 "updated_at": time.strftime("%Y-%m-%d %H:%M:%S"),
             }
         else:
@@ -202,13 +207,48 @@ def list_credentials() -> dict[str, str]:
         return {name: mask_key(str(item.get("api_key") or "")) for name, item in entries.items()}
 
 
-def resolve_api_key(node_key: str, provider: str) -> str:
-    """节点上填的优先，留空就用服务端存的。
+def _norm_url(raw: str) -> str:
+    """比地址用的归一形式：去空白、去尾斜杠、转小写。"""
+    return str(raw or "").strip().rstrip("/").lower()
 
-    这是「工作流文件里不带明文」那条规矩的落地：
-    用户把密钥存在服务端，节点上的输入框留空，分享工作流就不会泄漏。
+
+def saved_base_url(provider: str) -> str:
+    """存这份密钥时一起记下的接口地址。没记过就是空串。"""
+    with _LOCK:
+        entries = _load_credentials().get("providers", {}) or {}
+        entry = entries.get(provider) or {}
+        return str(entry.get("base_url") or "")
+
+
+def resolve_api_key(
+    node_key: str,
+    provider: str,
+    target_url: str = "",
+    allowed_urls: tuple[str, ...] = (),
+) -> str:
+    """节点上填的优先，留空就用服务端存的 —— 但**只在目标地址可信时**。
+
+    这是「工作流文件里不带明文」那条规矩的落地：用户把密钥存在服务端，
+    节点上的输入框留空，分享工作流就不会泄漏。
+
+    **但不是无条件地交出去。** 任何能访问 ComfyUI 的页面都能调这些接口，而
+    base_url 是调用方说了算的 —— 只管把存着的密钥填进去、再把请求发到调用方
+    给的地址，就等于开了一个「把用户密钥寄到任意地方」的口子。分享出去的工作流
+    也一样：里面带一个指向别人服务器的 base_url、密钥留空，一跑密钥就跟着走了。
+
+    所以只有当 target_url 和这个供应商的默认地址（或存密钥时一起记下的那个
+    地址）对得上时，才把密钥附上。对不上就当没存过 —— 请求照发，只是不带认证。
     """
     node_key = (node_key or "").strip()
     if node_key:
-        return node_key
-    return get_api_key(provider)
+        return node_key          # 用户自己填的，那就是他自己要用的，直接给
+
+    stored = get_api_key(provider)
+    if not stored:
+        return ""
+
+    want = _norm_url(target_url)
+    allowed = {_norm_url(u) for u in allowed_urls if u}
+    if want and want in allowed:
+        return stored
+    return ""

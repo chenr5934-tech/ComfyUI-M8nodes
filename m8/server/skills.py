@@ -572,8 +572,16 @@ def delete_skill(name: str) -> bool:
         log(f"skill 已删除：{target.name}", SHELF_SRV)
         return True
 
-    # 老格式：给的是显示名（如 翻译规范），实际文件是 翻译规范.md
-    for path in (paths.SKILLS_DIR / name, paths.SKILLS_DIR / f"{name}.md"):
+    # 老格式：给的是显示名（如 翻译规范），实际文件是 翻译规范.md。
+    # 这里必须自己再查一次 containment：上面 _resolve 走过的那道检查管不到
+    # 这个分支，而 Python 的 pathlib 遇到绝对路径会把左边整个换掉 ——
+    # name 传 "/etc/passwd" 就不再是「skills 目录下的文件」了。
+    for path in (
+        paths.SKILLS_DIR / sanitize_name(name),
+        paths.SKILLS_DIR / (sanitize_name(name) + ".md"),
+    ):
+        if not paths.is_inside(path, paths.SKILLS_DIR):
+            continue
         if path.is_file():
             path.unlink(missing_ok=True)
             log(f"skill 已删除：{path.name}", SHELF_SRV)

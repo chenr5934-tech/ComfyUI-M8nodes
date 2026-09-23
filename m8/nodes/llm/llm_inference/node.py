@@ -163,7 +163,15 @@ class M8LLMInference:
     ):
         self._validate_request(model, user_prompt, image, audio)
 
-        resolved_key = config.resolve_api_key(api_key, provider)
+        # 留空时用服务端存的那份 —— 但只在 base_url 确实是这个供应商的地址时才给。
+        # 别人分享的工作流里可以塞一个指向他自己服务器的 base_url，密钥留空；
+        # 不这么挡的话，用户一跑就把自己的密钥送出去了。
+        resolved_key = config.resolve_api_key(
+            api_key,
+            provider,
+            base_url,
+            (providers.default_base_url(provider), config.saved_base_url(provider)),
+        )
         if not resolved_key:
             raise M8Error("M8-LLM-001")
 
