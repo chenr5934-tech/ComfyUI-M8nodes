@@ -99,6 +99,62 @@
           "tooltip": "The model's reply."
         }
       }
+    },
+    "M8LLMLocal": {
+      "display_name": "M8 · Local LLM Inference",
+      "description": "Runs inference on a local GGUF model: no network, no API key. Models live in ComfyUI's models/LLM folder. Pair it with an mmproj file in the same folder to enable vision; a skill node can supply a knowledge pack.",
+      "inputs": {
+        "model": {
+          "name": "model",
+          "tooltip": "The main .gguf in models/LLM. If the list is empty, check that folder."
+        },
+        "system_prompt": {
+          "name": "system_prompt",
+          "tooltip": "System prompt. Combined with any skill into the system block, skill first."
+        },
+        "user_prompt": {
+          "name": "user_prompt",
+          "tooltip": "What you want to ask this round."
+        },
+        "extra_text": {
+          "name": "extra_text",
+          "tooltip": "Extra text appended after the prompt. Good for additional requirements, style constraints, fields to reference."
+        },
+        "image": {
+          "name": "image",
+          "tooltip": "Images for the model to look at. Without it the run is text only. Needs an mmproj file next to the model."
+        },
+        "skill": {
+          "name": "skill",
+          "tooltip": "Wire the output of a skill loader node here to use it as a knowledge pack."
+        },
+        "mmproj": {
+          "name": "mmproj",
+          "tooltip": "Multimodal projection file. Auto-paired by name; pick one manually if that guessed wrong."
+        },
+        "ctx": {
+          "name": "ctx",
+          "tooltip": "Context length. Larger uses more memory; only needed for long conversations or many images."
+        },
+        "gpu_layers": {
+          "name": "gpu_layers",
+          "tooltip": "-1 = offload as many layers as the GPU allows. 0 = CPU only."
+        },
+        "thinking": {
+          "name": "thinking",
+          "tooltip": "Whether the model should show its thinking. Off gives cleaner output."
+        }
+      },
+      "outputs": {
+        "text": {
+          "name": "text",
+          "tooltip": "The model's reply."
+        },
+        "status": {
+          "name": "status",
+          "tooltip": "How this run went: token count, vision or text, cache hit or fresh load."
+        }
+      }
     }
   }
 }

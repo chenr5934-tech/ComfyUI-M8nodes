@@ -99,6 +99,62 @@
           "tooltip": "模型给的回答。"
         }
       }
+    },
+    "M8LLMLocal": {
+      "display_name": "M8 · 本地大模型推理",
+      "description": "用本地的 GGUF 模型跑推理，不联网、不要密钥。模型放在 ComfyUI 的 models/LLM 目录下。配上同目录的 mmproj 文件就有识图能力；可以接 skill 节点当知识包。",
+      "inputs": {
+        "model": {
+          "name": "model",
+          "tooltip": "models/LLM 目录里的 .gguf 主模型。列不出来就去看看那个目录。"
+        },
+        "system_prompt": {
+          "name": "system_prompt",
+          "tooltip": "系统提示词。和 skill 一起拼进系统段，skill 在前。"
+        },
+        "user_prompt": {
+          "name": "user_prompt",
+          "tooltip": "这一轮要问的话。"
+        },
+        "extra_text": {
+          "name": "extra_text",
+          "tooltip": "额外文本，拼在提问后面。放补充要求、风格约束、要参考的字段这类东西。"
+        },
+        "image": {
+          "name": "image",
+          "tooltip": "要给它看的图。不接就是纯文本。需要模型目录里有 mmproj 文件。"
+        },
+        "skill": {
+          "name": "skill",
+          "tooltip": "接 skill 装载节点的输出，当知识包用。"
+        },
+        "mmproj": {
+          "name": "mmproj",
+          "tooltip": "多模态投影文件。默认按名字自动配；配错了就手动挑。"
+        },
+        "ctx": {
+          "name": "ctx",
+          "tooltip": "上下文长度。调大更吃内存，长对话或者多张图才需要。"
+        },
+        "gpu_layers": {
+          "name": "gpu_layers",
+          "tooltip": "-1 = 能上多少层显卡就上多少。0 = 纯 CPU。"
+        },
+        "thinking": {
+          "name": "thinking",
+          "tooltip": "要不要让模型把思考过程说出来。关掉输出更干净。"
+        }
+      },
+      "outputs": {
+        "text": {
+          "name": "text",
+          "tooltip": "模型给的回答。"
+        },
+        "status": {
+          "name": "status",
+          "tooltip": "这次跑得怎么样：token 数、识图还是纯文本、新加载还是复用缓存。"
+        }
+      }
     }
   }
 }
