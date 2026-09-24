@@ -386,7 +386,7 @@ step('没有贴纸时生成了也不该有东西', () => {
   m = boot();
   m.generate();
   const note = m._el().status.textContent;
-  if (note.indexOf('还没贴') < 0) throw new Error('应该提示还没贴贴纸，实际是：' + note);
+  if (note.indexOf('No stickers placed yet') < 0) throw new Error('应该提示还没贴贴纸，实际是：' + note);
 });
 
 
@@ -424,7 +424,7 @@ step('没有底图时点库里的贴纸会提示，而不是悄悄失败', () =>
   m._loadLibrary();
   m._useLibraryItem(m.state.library[0]);
   if (m.state.stickers.length) throw new Error('没有底图却贴上去了');
-  if (m._el().status.textContent.indexOf('先选') < 0) {
+  if (m._el().status.textContent.indexOf('Choose a base image first') < 0) {
     throw new Error('没提示要先选底图，实际是：' + m._el().status.textContent);
   }
 });
@@ -517,7 +517,7 @@ step('浏览器不给存时不炸，也不假装存上了', () => {
   m._saveToLibrary('blob:x');
   m._loadLibrary();
   if (m.state.library.length !== 1) throw new Error('内置那张还是该在');
-  if (m._el().libNote.textContent.indexOf('不给存') < 0) {
+  if (m._el().libNote.textContent.indexOf('will not store anything') < 0) {
     throw new Error('应该说清楚存不了，实际是：' + m._el().libNote.textContent);
   }
 });

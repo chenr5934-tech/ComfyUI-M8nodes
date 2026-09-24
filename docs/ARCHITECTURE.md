@@ -74,7 +74,7 @@ m8/nodes/<货架>/<节点>.py       单个节点类
 | POST | `/m8/prompt/presets/load` | 取一套预设的正文 |
 | POST | `/m8/prompt/presets/delete` | 删掉一套预设 |
 | GET | `/m8/llm-local/models` | 列 `models/LLM` 里的 GGUF（前端「刷新模型」用） |
-| GET | `/m8/i18n/{lang}` | 这个插件某个语言的界面文案（读 `locales/<lang>/main.json`）。**语言码先净化字符集、再确认最终路径落在 locales/ 内**，两道都过才读；取不到返回空对象，前端退回英文 |
+| GET | `/m8/i18n/{lang}` | 这个插件某个语言的界面文案（读 `locales/<lang>/main.json`，含 `ui` / `web` 段）。**语言码先净化字符集、再确认最终路径落在 locales/ 内**，两道都过才读；取不到返回空对象，前端退回英文 |
 | GET | `/m8/data/{kind}` | 读一整类工作台数据（kind = oc / prompts / groups / stickers）。**数据在 `<ComfyUI>/models/M8data/webapp/` 下，不在浏览器里** —— 独立服务也读同一份 |
 | POST | `/m8/data/{kind}/put` | 存一条（没带 id 就分配一个） |
 | POST | `/m8/data/{kind}/delete` | 删一条 |
@@ -228,15 +228,33 @@ HTTP 请求用 `urllib.request`（标准库），不用 requests。
 [i18n 的约定](https://github.com/Comfy-Org/ComfyUI/pull/6558)：插件在
 `locales/<语言>/main.json` 下提供翻译，键用 `nodeDefs.<类名>`。
 
+`main.json` 下按用途分段，互不干扰：
+
+| 段 | 谁用 | 键的样子 |
+| --- | --- | --- |
+| `nodeDefs` | ComfyUI Desktop 的 `/i18n` 端点 | `nodeDefs.M8LLMInference.inputs.model.name` |
+| `ui` | 插件自己的前端（节点面板、小鲸鱼） | `ui.M8Whale.balanceLabel` |
+| `web` | M8web 工作台 | `web.toolCut` |
+
 两层落实：
 
 | 层 | 谁读 | 覆盖 |
 | --- | --- | --- |
 | `locales/` | ComfyUI Desktop 的 `/i18n` 端点 | 节点显示名、输入名、tooltip |
 | `GET /m8/i18n/{lang}` + 前端 `M8.t()` | 插件自己的前端 | 节点面板上前端画的按钮、状态行、通知 |
+| 同一个路由 + `M8web/assets/js/i18n.js` | M8web 工作台 | 外壳、七个功能页、各功能模块的状态与报错 |
 
 第二层是必要的：普通 ComfyUI（比如 0.35.1）没有那个 `/i18n` 端点，光靠 `locales/`
 中文不会生效。前端读 `Comfy.Locale`（读不到退回 `navigator.language`），中文环境才
 去取 `/m8/i18n/zh`，取不到就用代码里的英文原文。
 
+**M8web 那条路走的是同一个文件**：工作台在 ComfyUI 里打开时本来就与插件同源，
+直接用 `/m8/i18n/{lang}`；独立跑（ComfyUI 关着）时由 `M8web/m8-serve.py` 提供
+同名路由，读的是同一份 `locales/<lang>/main.json` 的 `web` 段。所以「同一份文件」
+是字面意义上的同一份，不是各自维护两套。
+
+工作台的语言判定顺序是 `?lang=` 参数 → `localStorage` → `navigator.language`。
+第一档是为了调试，也让「我就想固定用中文」有个说法。
+
 **代码注释和内部日志不受此限** —— 审核管的是界面文案，注释是给维护者看的。
+`console.log` / `console.warn` 同理，它们只出现在开发者工具里。

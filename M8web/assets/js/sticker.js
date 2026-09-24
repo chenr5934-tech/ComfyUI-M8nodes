@@ -10,6 +10,34 @@
  * （容差怎么映射、边缘要不要过渡），纯函数才能单独测。
  * ==========================================================================*/
 
+/* 界面文案走 i18n.js。它是 module，而这些功能脚本是普通脚本，拿不到 import ——
+   i18n.js 因此挂了一份到 window。
+
+   用 var 而不是 const：普通脚本共享全局作用域，const 在这里重复声明会直接报
+   "Identifier 'T' has already been declared"，一个页面同时加载几个脚本就白屏。
+   var 重复声明是合法的，每个文件仍然自足，不依赖加载顺序。
+
+   宿主对象用 globalThis 取而不是直接写 window：前端测试在 Node 里跑这些脚本，
+   那边没有 window，直接解引用会当场 "window is not defined"。
+
+   i18n 没加载成功时走这里的兜底：**必须自己填占位符** —— 直接返回 fallback 的话，
+   界面上会原样显示 "{h} h {m} min" 这种花括号，比换不成中文更糟。 */
+var T = function (key, fallback, vars) {
+  var host = typeof globalThis !== "undefined" ? globalThis : {};
+  var i18n = host.M8I18n;
+  if (i18n && typeof i18n.t === "function") return i18n.t(key, fallback, vars);
+
+  var text = fallback === undefined ? key : fallback;
+  if (vars && typeof text === "string") {
+    for (var k in vars) {
+      if (Object.prototype.hasOwnProperty.call(vars, k)) {
+        text = text.split("{" + k + "}").join(String(vars[k]));
+      }
+    }
+  }
+  return text;
+};
+
 const M8Sticker = (() => {
   "use strict";
 
@@ -23,7 +51,7 @@ const M8Sticker = (() => {
 
   /* 内置贴纸。是文件不是 dataURL —— 走静态资源加载，不占存储空间，也删不掉。 */
   const BUILTIN = [
-    { id: "builtin-default", name: "默认贴纸", url: "../assets/stickers/default-sticker.png", builtin: true },
+    { id: "builtin-default", name: "Default sticker", url: "../assets/stickers/default-sticker.png", builtin: true },
   ];
 
   const state = {
@@ -90,7 +118,7 @@ const M8Sticker = (() => {
     el.modal.classList.remove("is-hidden");
     document.body.classList.add("modal-open");
     resetDraft();
-    setTip("先选一张贴纸图片。");
+    setTip(T("siPickFirst", "Start by choosing a sticker image."));
   }
 
   function closeModal() {
@@ -123,7 +151,7 @@ const M8Sticker = (() => {
   function loadStickerFile(file) {
     if (!file) return;
     if (!/^image\//.test(file.type)) {
-      setTip("这个文件不是图片。");
+      setTip(T("siNotImage", "That file is not an image."));
       return;
     }
     const url = URL.createObjectURL(file);
@@ -139,10 +167,10 @@ const M8Sticker = (() => {
       el.stage.classList.remove("is-hidden");
       el.tools.classList.remove("is-hidden");
       el.apply.disabled = false;
-      setTip("点图上要去掉的背景色 —— 想换颜色就再点一下。");
+      setTip(T("keyTip", "Click the background colour you want removed - click again to pick a different one"));
     };
     img.onerror = function () {
-      setTip("这张图读不出来，换一张。");
+      setTip(T("siImageUnreadable", "This image could not be read - try another one."));
       try { URL.revokeObjectURL(url); } catch (e) { /* 无所谓 */ }
     };
     img.src = url;
@@ -187,10 +215,14 @@ const M8Sticker = (() => {
     if (!el.keyInfo) return;
     if (!draft.base) { el.keyInfo.textContent = ""; return; }
     if (!draft.target) {
-      el.keyInfo.textContent = "还没取色 —— 抠图不做任何事";
+      el.keyInfo.textContent = T("keyNoPick", "No colour picked yet - keying does nothing");
       return;
     }
-    el.keyInfo.textContent = "取样 rgb(" + draft.target.join(", ") + ") · 抹掉 " + draft.cleared + " 个像素";
+    el.keyInfo.textContent = T("keyInfo", "Sampled rgb({rgb}) · {n} pixel{plural} cleared", {
+      rgb: draft.target.join(", "),
+      n: draft.cleared,
+      plural: draft.cleared === 1 ? "" : "s",
+    });
   }
 
   /* 在画布上点一下取色。必须从 draft.base 取，不能从画布取 ——
@@ -207,7 +239,8 @@ const M8Sticker = (() => {
     const d = draft.base.data;
     draft.target = [d[i], d[i + 1], d[i + 2]];
     applyKey();
-    setTip("点别的颜色可以重新取；容差调大能抹掉更多相近色。");
+    setTip(T("keyPickedAgain",
+      "Click another colour to pick it again; a bigger tolerance clears more of the similar ones."));
   }
 
   /* ------------------------------------------------------------ 贴纸库 */
@@ -230,7 +263,7 @@ const M8Sticker = (() => {
       list.forEach(function (r) {
         state.library.push({
           id: r.id,
-          name: r.name || ("贴纸 " + r.id),
+          name: r.name || T("siStickerName", "Sticker {id}", { id: r.id }),
           url: r.data,
           builtin: false,
         });
@@ -244,11 +277,13 @@ const M8Sticker = (() => {
     if (!el.libNote) return;
     const mine = state.library.filter(function (x) { return !x.builtin; }).length;
     if (!storeReady()) {
-      el.libNote.textContent = "这个浏览器不给存东西，导入的贴纸这次用完就没了。";
+      el.libNote.textContent = T("siNoStore",
+        "This browser will not store anything - stickers you import are gone once this session ends.");
       return;
     }
-    el.libNote.textContent = "共 " + state.library.length + " 张 · 我导入的 " + mine +
-      " 张（自动存下来，下次还在）";
+    el.libNote.textContent = T("siLibNote",
+      "Total {total} · imported by me {mine} (saved automatically, still here next time)",
+      { total: state.library.length, mine: mine });
   }
 
   function renderLibrary() {
@@ -261,17 +296,20 @@ const M8Sticker = (() => {
       cell.type = "button";
       cell.className = "lib-item" + (item.builtin ? " builtin" : "");
       cell.dataset.id = String(item.id);
-      cell.title = item.name + (item.builtin ? "（内置）" : " · 点一下贴上去");
+      /* 内置那张的名字得在这儿取译文：BUILTIN 在模块顶层，那时 i18n.js 还没执行 */
+      const label = item.builtin ? T("siBuiltinName", item.name) : item.name;
+      cell.title = label
+        + (item.builtin ? T("siBuiltinTag", " (built-in)") : T("siPlaceTip", " - click to place it on the image"));
       const im = document.createElement("img");
       im.src = item.url;
-      im.alt = item.name;
+      im.alt = label;
       cell.appendChild(im);
       cell.addEventListener("click", function () { useLibraryItem(item); });
       if (!item.builtin) {
         const del = document.createElement("span");
         del.className = "lib-del";
         del.textContent = "×";
-        del.title = "从库里删掉";
+        del.title = T("siRemoveFromLib", "Remove from the library");
         del.addEventListener("click", function (ev) {
           ev.stopPropagation();
           removeLibraryItem(item);
@@ -285,12 +323,12 @@ const M8Sticker = (() => {
 
   function useLibraryItem(item) {
     if (!state.img) {
-      setStatus("先选一张底图，再挑贴纸。", true);
+      setStatus(T("siNeedBase", "Choose a base image first, then pick a sticker."), true);
       return;
     }
     const im = new Image();
     im.onload = function () { addSticker(im, item.url); };
-    im.onerror = function () { setStatus("这张贴纸加载不出来。", true); };
+    im.onerror = function () { setStatus(T("siStickerBroken", "This sticker failed to load."), true); };
     im.src = item.url;
   }
 
@@ -299,7 +337,7 @@ const M8Sticker = (() => {
     if (!storeReady()) return;
     M8StickerStore.put({
       data: dataUrl,
-      name: name || "我的贴纸",
+      name: name || T("siMySticker", "My sticker"),
       at: Date.now(),
     }).then(function () { loadLibrary(); });
   }
@@ -309,7 +347,7 @@ const M8Sticker = (() => {
     if (!storeReady()) return;
     M8StickerStore.remove(item.id).then(function () {
       loadLibrary();
-      setStatus("从库里删掉了。");
+      setStatus(T("siLibRemoved", "Removed from the library."));
     });
   }
 
@@ -322,19 +360,24 @@ const M8Sticker = (() => {
 
   function backupOut() {
     if (!storeReady()) {
-      setStatus("这个浏览器不给存东西，也就没有什么可导出的。", true);
+      setStatus(T("siNoStoreNoExport",
+        "This browser will not store anything, so there is nothing to export."), true);
       return;
     }
     M8StickerStore.all().then(function (rows) {
       const list = (rows || []).filter(function (r) { return r && r.data; });
       if (!list.length) {
-        setStatus("贴纸库里还没有你自己导入的贴纸（内置那几张不用备份）。", true);
+        setStatus(T("siNothingToExport",
+          "No stickers of your own in the library yet - the built-in ones need no backup."), true);
         return;
       }
       const text = M8Backup.envelope("stickers", list);
       M8Backup.download(M8Backup.fileNameFor("stickers"), text);
-      setStatus("导出好了：" + list.length + " 张，"
-        + M8Backup.fmtSize(text.length) + "。存到一个安全的地方去。");
+      setStatus(T("siExportDone", "Exported: {n} sticker{plural}, {size}. Keep it somewhere safe.", {
+        n: list.length,
+        plural: list.length === 1 ? "" : "s",
+        size: M8Backup.fmtSize(text.length),
+      }));
     });
   }
 
@@ -348,7 +391,8 @@ const M8Sticker = (() => {
   function backupIn() {
     if (busyModal()) return;
     if (!storeReady()) {
-      setStatus("这个浏览器不给存东西，导进来也留不住。", true);
+      setStatus(T("siNoStoreImport",
+        "This browser will not store anything - anything imported would not survive."), true);
       return;
     }
     M8Backup.pickFile().then(function (f) {
@@ -357,11 +401,13 @@ const M8Sticker = (() => {
         const obj = M8Backup.parse(text);
         if (obj.kind !== "stickers") {
           const other = M8Backup.KINDS[obj.kind];
-          throw new Error("这份备份是「" + (other ? other.title : obj.kind) + "」的，不是贴纸库的。");
+          throw new Error(T("siBackupKind",
+            "This backup is for {kind}, not the sticker library.",
+            { kind: other ? other.title : obj.kind }));
         }
         return M8StickerStore.all().then(function (current) {
           const have = (current || []).filter(function (r) { return r && r.data; });
-          return M8Backup.confirmImport("贴纸库", obj.data.length, have.length)
+          return M8Backup.confirmImport(M8Backup.KINDS.stickers.title, obj.data.length, have.length)
             .then(function (mode) {
               if (!mode) return null;
               if (mode === "replace") {
@@ -369,19 +415,25 @@ const M8Sticker = (() => {
                   return writeAll(obj.data);
                 }).then(function (n) {
                   loadLibrary();
-                  setStatus("替换完成：现在有 " + n + " 张。");
+                  setStatus(T("siImportReplaced", "Replaced: {n} sticker{plural} now.", {
+                    n: n,
+                    plural: n === 1 ? "" : "s",
+                  }));
                 });
               }
               const plan = M8Backup.mergeRows(have, obj.data, function (x) { return x.name; });
               return writeAll(plan.fresh).then(function (n) {
                 loadLibrary();
-                setStatus("导入完成：新增 " + n + " 张，跳过同名 " + plan.skipped.length + " 张。");
+                setStatus(T("siImportMerged", "Imported: {added} new, {skipped} with matching names skipped.", {
+                  added: n,
+                  skipped: plan.skipped.length,
+                }));
               });
             });
         });
       });
     }).catch(function (e) {
-      setStatus(e && e.message ? e.message : "导入失败。", true);
+      setStatus(e && e.message ? e.message : T("importFailed", "Import failed."), true);
     });
   }
 
@@ -399,12 +451,16 @@ const M8Sticker = (() => {
 
   function updateCount() {
     if (!el.count) return;
-    if (!state.img) { el.count.textContent = "还没有贴纸。"; return; }
+    if (!state.img) { el.count.textContent = T("siCountNone", "No stickers yet."); return; }
     if (!state.stickers.length) {
-      el.count.textContent = "还没有贴纸。导入一张图片，可以在框里把背景抠掉。";
+      el.count.textContent = T("siCountNoneHint",
+        "No stickers yet. Import an image and you can key its background out in the frame.");
       return;
     }
-    el.count.textContent = state.stickers.length + " 张贴纸 · 导出的是一整张图";
+    el.count.textContent = T("siCount", "{n} sticker{plural} · the export is one single image", {
+      n: state.stickers.length,
+      plural: state.stickers.length === 1 ? "" : "s",
+    });
   }
 
   function addSticker(image, url) {
@@ -422,7 +478,7 @@ const M8Sticker = (() => {
     });
     state.selected = state.stickers.length - 1;
     render();
-    setStatus("贴纸加好了，拖它挪位置，滚轮缩放。");
+    setStatus(T("siAdded", "Sticker added - drag it to move it, scroll to scale it."));
   }
 
   function removeSticker(i) {
@@ -432,7 +488,7 @@ const M8Sticker = (() => {
     if (!state.stickers.length) state.selected = -1;
     else if (state.selected >= state.stickers.length) state.selected = state.stickers.length - 1;
     render();
-    setStatus("删掉了。");
+    setStatus(T("delDone", "Deleted."));
   }
 
   /* 挪到最上层：几张叠在一起时，越靠后的画在越上面 */
@@ -473,7 +529,7 @@ const M8Sticker = (() => {
       const node = document.createElement("img");
       node.className = "sticker-item" + (i === state.selected ? " on" : "");
       node.src = s.url;
-      node.alt = "贴纸 " + (i + 1);
+      node.alt = T("siStickerAlt", "Sticker {n}", { n: i + 1 });
       node.dataset.index = String(i);
       node.style.left = s.x + "%";
       node.style.top = s.y + "%";
@@ -571,20 +627,20 @@ const M8Sticker = (() => {
   function generate() {
     if (!state.img) return;
     if (!state.stickers.length) {
-      setStatus("还没贴任何贴纸。", true);
+      setStatus(T("siNoStickersPlaced", "No stickers placed yet."), true);
       return;
     }
     clearPreview();
-    setStatus("正在生成…");
+    setStatus(T("busyGenerating", "Generating..."));
     const cv = document.createElement("canvas");
     drawTo(cv);
     const name = M8Studio.state.name + "-sticker.png";
     if (typeof cv.toBlob !== "function") {
-      setStatus("这个浏览器不支持导出。", true);
+      setStatus(T("browserNoExport", "This browser cannot export."), true);
       return;
     }
     cv.toBlob(function (blob) {
-      if (!blob) { setStatus("生成失败。", true); return; }
+      if (!blob) { setStatus(T("generateFailed", "Generation failed."), true); return; }
       state.shot = URL.createObjectURL(blob);
       showPreview(name, cv.width, cv.height);
     }, "image/png");
@@ -599,7 +655,7 @@ const M8Sticker = (() => {
     shot.className = "pv-shot";
     const im = document.createElement("img");
     im.src = state.shot;
-    im.alt = "贴纸遮挡预览";
+    im.alt = T("siPreviewAlt", "Sticker composite preview");
     shot.appendChild(im);
     const meta = document.createElement("div");
     meta.className = "pv-meta";
@@ -611,14 +667,19 @@ const M8Sticker = (() => {
     save.className = "pv-save";
     save.href = state.shot;
     save.download = name;
-    save.textContent = "导出这张图";
+    save.textContent = T("exportThisImage", "Export this image");
     card.appendChild(shot);
     card.appendChild(meta);
     card.appendChild(save);
     box.appendChild(card);
     el.preview.classList.remove("is-hidden");
-    if (el.previewNote) el.previewNote.textContent = state.stickers.length + " 张贴纸已合成";
-    setStatus("生成好了，确认没问题就导出。");
+    if (el.previewNote) {
+      el.previewNote.textContent = T("siPreviewNote", "{n} sticker{plural} composited", {
+        n: state.stickers.length,
+        plural: state.stickers.length === 1 ? "" : "s",
+      });
+    }
+    setStatus(T("previewReadyExport", "Done. Export it once it looks right."));
   }
 
   /* ------------------------------------------------------------ 入口 */
@@ -734,7 +795,7 @@ const M8Sticker = (() => {
       draft.target = null;
       draft.cleared = 0;
       applyKey();
-      setTip("还原了。重新点一下要去掉的背景色。");
+      setTip(T("keyRestored", "Restored. Click the background colour you want removed again."));
     });
     el.apply.addEventListener("click", function () {
       if (!draft.base) return;
@@ -796,7 +857,8 @@ const M8Sticker = (() => {
     if (typeof M8Backup !== "undefined" && M8Backup.requestPersist) {
       M8Backup.requestPersist().then(function (r) {
         if (r && r.granted === false && el.libNote) {
-          el.libNote.textContent = "浏览器没给持久化权限：磁盘紧张时贴纸库可能被清掉，记得偶尔导出备份。";
+          el.libNote.textContent = T("siNoPersist",
+            "Persistent storage was not granted: when the disk gets tight the sticker library may be cleared, so export a backup now and then.");
         }
       });
     }

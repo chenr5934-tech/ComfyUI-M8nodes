@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en" data-i18n-title="feat.obfuscate.pageTitle">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>混淆图 · M8 工作台</title>
+  <title>Image Obfuscation - M8 Workbench</title>
   <link rel="icon" type="image/svg+xml" href="../assets/img/favicon.svg">
   <link rel="stylesheet" href="../assets/css/base.css">
   <link rel="stylesheet" href="../assets/css/shell.css">
@@ -29,39 +29,39 @@
 
           <header class="obf-head">
             <div>
-              <h1>混淆图</h1>
-              <p>三种打法：<strong>小番茄</strong>沿曲线循环移位、<strong>置乱</strong>按块加密钥打散、
-                <strong>嵌套</strong>把另一张图藏进低位。都是可逆的，全程在本机算，图片不会上传。</p>
+              <h1 data-i18n="feat.obfuscate.name">Image Obfuscation</h1>
+              <p data-i18n-html="obfLede">Three modes: <strong>Tomato</strong> cycles pixels along a curve, <strong>scramble</strong> shuffles in keyed blocks, and <strong>nest</strong> hides another image in the low bits. All three are reversible and computed on this machine; the image is never uploaded.</p>
             </div>
           </header>
 
           <p class="obf-note">
-            <b>混淆出来的图一定要存成 PNG。</b>
-            <b>也别裁剪、别缩放</b> —— 三种打法都要按原尺寸才能解。
-            置乱那张是纯像素置换，嵌套那张把内容放在每个像素的最低位 ——
-            一旦转成 JPEG，低位会被压掉，之后就谁都解不回来了。
+            <b data-i18n="obfNoteLead">Always save an obfuscated image as PNG.</b>
+            <b data-i18n="obfNoteMid">Do not crop or resize it either</b>
+            <span data-i18n="obfNoteBody">- all three modes need the original dimensions to reverse. Scramble is a pure pixel permutation, and nest puts its payload in the least significant bit of every pixel: once the file becomes a JPEG, those low bits are thrown away and nobody can undo it.</span>
           </p>
 
           <div class="obf-bar">
             <div class="obf-seg" id="obfMode">
-              <button type="button" class="is-on" data-mode="tomato">小番茄</button>
-              <button type="button" data-mode="scramble">置乱</button>
-              <button type="button" data-mode="nest">嵌套</button>
+              <button type="button" class="is-on" data-mode="tomato" data-i18n="obfModeTomato">Tomato</button>
+              <button type="button" data-mode="scramble" data-i18n="obfModeScramble">Scramble</button>
+              <button type="button" data-mode="nest" data-i18n="obfModeNest">Nest</button>
             </div>
             <div class="obf-seg" id="obfDir">
-              <button type="button" class="is-on" data-dir="lock">混淆</button>
-              <button type="button" data-dir="unlock">解混淆</button>
+              <button type="button" class="is-on" data-dir="lock" data-i18n="obfLock">Obfuscate</button>
+              <button type="button" data-dir="unlock" data-i18n="obfUnlock">Reverse</button>
             </div>
           </div>
 
           <div class="obf-form">
             <label class="obf-field" id="obfKeyField">
-              <span>密钥</span>
-              <input id="obfKey" type="text" autocomplete="off" spellcheck="false" placeholder="随手几个字，解的时候要一模一样">
+              <span data-i18n="obfKey">Key</span>
+              <input id="obfKey" type="text" autocomplete="off" spellcheck="false"
+                data-i18n-attr="placeholder:obfKeyPlaceholder"
+                placeholder="Any few characters; reversing needs exactly the same ones">
             </label>
 
             <label class="obf-field" id="obfBlockField">
-              <span>块大小</span>
+              <span data-i18n="obfBlock">Block size</span>
               <select id="obfBlock">
                 <option value="8">8 px</option>
                 <option value="16">16 px</option>
@@ -76,55 +76,55 @@
 
             <label class="obf-check" id="obfPixelsField">
               <input id="obfPixels" type="checkbox" checked>
-              <span>块内像素也打散，更乱</span>
+              <span data-i18n="obfPixels">Also shuffle pixels within each block; messier</span>
             </label>
           </div>
 
-          <p class="obf-warn" id="obfKeyWarn">没填密钥的话，谁拿到这张图都能解回来。</p>
-          <p class="obf-warn" id="obfTomatoNote">
-            小番茄这一种<strong>没有密钥</strong>，也没有别的参数 —— 移位量是固定的。
-            这是照原版算法搬过来的，故意不改：这样它那边混淆出来的图，这里能解；这里混淆出来的，那边也能解。
+          <p class="obf-warn" id="obfKeyWarn" data-i18n="obfKeyWarn">With no key filled in, anyone who has the image can reverse it.</p>
+          <p class="obf-warn" id="obfTomatoNote" data-i18n-html="obfTomatoNote">
+            Tomato takes <strong>no key</strong> and has no other parameters - the shift amount is fixed. This is carried over from the original algorithm on purpose: an image obfuscated there can be reversed here, and one obfuscated here can be reversed there.
           </p>
 
           <div class="obf-drops">
             <div>
-              <p class="obf-drop-label" id="obfDropLabel">要混淆的图</p>
+              <p class="obf-drop-label" id="obfDropLabel" data-i18n="obfDropLabel">Image to obfuscate</p>
               <div class="drop" id="obfDrop">
                 <input id="obfFile" type="file" accept="image/png,image/jpeg,image/webp">
-                <img class="drop-thumb is-hidden" id="obfThumb1" alt="待处理的图">
+                <img class="drop-thumb is-hidden" id="obfThumb1" alt="" data-i18n-attr="alt:fileToProcessAlt">
                 <span class="drop-ico" id="obfIco1" aria-hidden="true">＋</span>
-                <strong>点击选择、拖进来，或者 Ctrl+V 粘贴</strong>
+                <strong data-i18n="dropPrompt">Click to choose, drag it in, or paste with Ctrl+V</strong>
                 <small id="obfHint">PNG / JPEG / WebP</small>
               </div>
             </div>
             <div class="is-hidden" id="obfSecond">
-              <p class="obf-drop-label">要藏进去的秘密图</p>
+              <p class="obf-drop-label" data-i18n="obfDropLabel2">Secret image to hide</p>
               <div class="drop" id="obfDrop2">
                 <input id="obfFile2" type="file" accept="image/png,image/jpeg,image/webp">
-                <img class="drop-thumb is-hidden" id="obfThumb2" alt="要藏进去的图">
+                <img class="drop-thumb is-hidden" id="obfThumb2" alt="" data-i18n-attr="alt:fileToHideAlt">
                 <span class="drop-ico" id="obfIco2" aria-hidden="true">＋</span>
-                <strong>点击选择、拖进来，或者 Ctrl+V 粘贴</strong>
-                <small id="obfHint2">会按容量自动缩放</small>
+                <strong data-i18n="dropPrompt">Click to choose, drag it in, or paste with Ctrl+V</strong>
+                <small id="obfHint2" data-i18n="obfHint2">Scaled automatically to fit the capacity</small>
               </div>
             </div>
           </div>
 
           <div class="obf-ticket is-hidden" id="obfTicketBox">
             <label class="obf-field">
-              <span>密钥串</span>
+              <span data-i18n="obfTicket">Key string</span>
               <textarea id="obfTicket" rows="3" spellcheck="false"
-                placeholder="把上次混淆时给的那串粘在这里；留空的话就按你手填的参数来"></textarea>
+                data-i18n-attr="placeholder:obfTicketPlaceholder"
+                placeholder="Paste the string you were given when obfuscating; leave it blank to use the parameters you filled in above"></textarea>
             </label>
           </div>
 
           <div class="obf-actions">
-            <button class="gen-btn" id="obfGo" type="button">开始</button>
-            <button class="ghost-btn is-hidden" id="obfAgain" type="button">重来</button>
+            <button class="gen-btn" id="obfGo" type="button" data-i18n="obfGo">Start</button>
+            <button class="ghost-btn is-hidden" id="obfAgain" type="button" data-i18n="obfAgain">Start over</button>
           </div>
 
           <div class="obf-body is-hidden" id="obfBody">
             <div class="obf-preview">
-              <img id="obfOut" alt="结果预览">
+              <img id="obfOut" alt="" data-i18n-attr="alt:resultPreviewAlt">
               <p class="obf-meta" id="obfMeta"></p>
             </div>
             <div class="info-panels" id="obfPanels"></div>
@@ -138,8 +138,10 @@
   <script src="../assets/js/app.js"></script>
   <script src="../assets/js/migrate.js"></script>
   <script src="../assets/js/obfuscate.js"></script>
-  <script>
-    boot({ activeId: "obfuscate", title: "混淆图", base: "../" });
+  <script type="module">
+    import { bootI18n } from "../assets/js/i18n.js";
+    await bootI18n();
+    boot({ activeId: "obfuscate", title: M8I18n.t("feat.obfuscate.name", "Image Obfuscation"), base: "../" });
     M8Obfuscate.init();
   </script>
 </body>

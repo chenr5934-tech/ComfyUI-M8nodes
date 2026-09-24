@@ -6,6 +6,34 @@
  * 不用去每张页面改菜单。
  * ==========================================================================*/
 
+/* 界面文案走 i18n.js。它是 module，而这些功能脚本是普通脚本，拿不到 import ——
+   i18n.js 因此挂了一份到 window。
+
+   用 var 而不是 const：普通脚本共享全局作用域，const 在这里重复声明会直接报
+   "Identifier 'T' has already been declared"，一个页面同时加载几个脚本就白屏。
+   var 重复声明是合法的，每个文件仍然自足，不依赖加载顺序。
+
+   宿主对象用 globalThis 取而不是直接写 window：前端测试在 Node 里跑这些脚本，
+   那边没有 window，直接解引用会当场 "window is not defined"。
+
+   i18n 没加载成功时走这里的兜底：**必须自己填占位符** —— 直接返回 fallback 的话，
+   界面上会原样显示 "{h} h {m} min" 这种花括号，比换不成中文更糟。 */
+var T = function (key, fallback, vars) {
+  var host = typeof globalThis !== "undefined" ? globalThis : {};
+  var i18n = host.M8I18n;
+  if (i18n && typeof i18n.t === "function") return i18n.t(key, fallback, vars);
+
+  var text = fallback === undefined ? key : fallback;
+  if (vars && typeof text === "string") {
+    for (var k in vars) {
+      if (Object.prototype.hasOwnProperty.call(vars, k)) {
+        text = text.split("{" + k + "}").join(String(vars[k]));
+      }
+    }
+  }
+  return text;
+};
+
 /* 功能清单（唯一事实来源）
  *   id      页面文件名 pages/<id>.html
  *   icon    侧栏图标
@@ -20,63 +48,63 @@ const FEATURES = [
   {
     id: "image-editor",
     icon: "🖼",
-    name: "图片工坊",
-    kicker: "图像",
-    desc: "把图横着或竖着切成若干段，虚线随手拖，不要的段一键屏蔽，导出前先看预览。",
+    name: "Image Workshop",
+    kicker: "Image",
+    desc: "Cut an image into rows or columns, drag the guides around, mute the pieces you do not want, preview before exporting.",
     tone: "#62d3c9",
     tone2: "#e3b76f",
   },
   {
     id: "oc",
     icon: "🎭",
-    name: "OC 工坊",
-    kicker: "角色",
-    desc: "每个原创角色一条：例图和特征词存在一起，随时一键复制去出图。",
+    name: "OC Workshop",
+    kicker: "Character",
+    desc: "One entry per original character: sample image and trait tags kept together, ready to copy in one click.",
     tone: "#c9a6f5",
     tone2: "#7ad6d6",
   },
   {
     id: "prompts",
     icon: "🗂",
-    name: "提示词归纳",
-    kicker: "提示词",
-    desc: "一张卡一条概念提示词，归到分类里存着，用的时候一键复制。",
+    name: "Prompt Collection",
+    kicker: "Prompts",
+    desc: "One card per concept prompt, filed under a category and copied in one click when you need it.",
     tone: "#f0a868",
     tone2: "#8ab8e8",
   },
   {
     id: "meta",
     icon: "🔍",
-    name: "图片元数据",
-    kicker: "解析",
-    desc: "拖一张图进来，读出它的生成参数、工作流和 EXIF —— 全程在本机解析。",
+    name: "Image Metadata",
+    kicker: "Inspect",
+    desc: "Drop in an image and read back its generation parameters, workflow and EXIF - parsed entirely on this machine.",
     tone: "#48d4ca",
     tone2: "#e5c776",
   },
   {
     id: "lora",
     icon: "🎛",
-    name: "LoRA 解析",
-    kicker: "模型",
-    desc: "拖一个 safetensors 进来，读出它的训练参数和标签 —— 只读开头那几 KB，读完就清。",
+    name: "LoRA Inspector",
+    kicker: "Models",
+    desc: "Drop in a safetensors file and read back its training parameters and tags - only the first few KB, cleared afterwards.",
     tone: "#7aa2d6",
     tone2: "#d89ac7",
   },
   {
     id: "obfuscate",
     icon: "🌀",
-    name: "混淆图",
-    kicker: "混淆",
-    desc: "置乱或嵌套两种打法把图藏起来，同一个密钥能原样解回去 —— 全程在本机算。",
+    name: "Image Obfuscation",
+    kicker: "Obfuscate",
+    desc: "Scramble or nest an image to hide it; the same key restores it exactly - all computed on this machine.",
     tone: "#9fb4e8",
     tone2: "#6ed3b6",
   },
   {
     id: "pixel",
     icon: "👾",
-    name: "像素风转化",
-    kicker: "像素",
-    desc: "用卷积把图压成像素画：抗锯齿、面积平均、锐化、减色抖动、最近邻放大。",
+    name: "Pixel Art Conversion",
+    kicker: "Pixel",
+    desc: "Compress an image into pixel art with convolution: antialiasing, area averaging, sharpening, colour-reduction dithering, nearest-neighbour upscale.",
     tone: "#7fd98a",
     tone2: "#f2cd6b",
   },
@@ -84,10 +112,10 @@ const FEATURES = [
 
 /* 四套主题。id 必须和 base.css 里的 :root[data-theme=...] 对上 */
 const THEMES = [
-  { id: "day", name: "白天" },
-  { id: "night", name: "黑夜" },
-  { id: "sakura", name: "樱花粉" },
-  { id: "ocean", name: "海蓝" },
+  { id: "day", name: "Day" },
+  { id: "night", name: "Night" },
+  { id: "sakura", name: "Sakura pink" },
+  { id: "ocean", name: "Ocean blue" },
 ];
 
 const THEME_KEY = "m8web.theme";
@@ -134,9 +162,10 @@ function renderThemes() {
   const box = document.createElement("div");
   box.className = "themes";
   box.setAttribute("role", "group");
-  box.setAttribute("aria-label", "主题");
+  box.setAttribute("aria-label", T("theme", "Theme"));
   box.innerHTML = THEMES.map(
-    (t) => '<button type="button" data-t="' + t.id + '" aria-pressed="false">' + t.name + "</button>",
+    (t) => '<button type="button" data-t="' + t.id + '" aria-pressed="false">'
+      + T("theme." + t.id, t.name) + "</button>",
   ).join("");
   box.querySelectorAll("button").forEach((b) => {
     b.addEventListener("click", () => applyTheme(b.dataset.t));
@@ -155,41 +184,41 @@ function renderSidebar(activeId, base) {
     return (
       '<a class="' + cls + '" href="' + base + "pages/" + f.id + '.html">' +
       '<span class="ico">' + f.icon + "</span>" +
-      '<span class="label">' + f.name + "</span>" +
+      '<span class="label">' + T("feat." + f.id + ".name", f.name) + "</span>" +
       "</a>"
     );
   }).join("");
 
   side.innerHTML =
     '<a class="brand" href="' + base + 'index.html">' +
-    '<span class="mark">M8</span><span class="word">M8 工作台</span>' +
+    '<span class="mark">M8</span><span class="word">' + T("brand", "M8 Workbench") + "</span>" +
     "</a>" +
     '<nav class="nav">' +
     '<a class="nav-item" href="' + base + 'index.html">' +
-    '<span class="ico">⌂</span><span class="label">返回首页</span>' +
+    '<span class="ico">⌂</span><span class="label">' + T("navHome", "Back to home") + "</span>" +
     "</a>" +
-    '<div class="nav-group">功能</div>' +
+    '<div class="nav-group">' + T("navGroup", "Features") + "</div>" +
     items +
     "</nav>" +
     '<div class="side-foot">' +
     '<button class="side-toggle" id="sideToggle" type="button">' +
-    '<span class="ico">⇔</span><span class="label">收起侧栏</span>' +
+    '<span class="ico">⇔</span><span class="label">' + T("sideCollapse", "Collapse sidebar") + "</span>" +
     "</button>" +
     "</div>";
 
   const toggle = side.querySelector("#sideToggle");
   const label = toggle ? toggle.querySelector(".label") : null;
   const collapsed = document.documentElement.classList.contains("is-side-collapsed");
-  if (label && collapsed) label.textContent = "展开侧栏";
+  if (label && collapsed) label.textContent = T("sideExpand", "Expand sidebar");
   if (toggle) {
-    toggle.setAttribute("title", collapsed ? "展开侧栏" : "收起侧栏");
+    toggle.setAttribute("title", collapsed ? T("sideExpand", "Expand sidebar") : T("sideCollapse", "Collapse sidebar"));
     toggle.addEventListener("click", () => {
       const root = document.documentElement;
       root.classList.toggle("is-side-collapsed");
       const off = root.classList.contains("is-side-collapsed");
       writeStore(SIDE_KEY, off ? "1" : "0");
-      if (label) label.textContent = off ? "展开侧栏" : "收起侧栏";
-      toggle.setAttribute("title", off ? "展开侧栏" : "收起侧栏");
+      if (label) label.textContent = off ? T("sideExpand", "Expand sidebar") : T("sideCollapse", "Collapse sidebar");
+      toggle.setAttribute("title", off ? T("sideExpand", "Expand sidebar") : T("sideCollapse", "Collapse sidebar"));
     });
   }
 
@@ -208,7 +237,7 @@ function renderTopbar(host, title, base) {
   if (!host) return;
   host.innerHTML =
     "<h1>" + title + "</h1>" +
-    '<span class="crumb"><a href="' + base + 'index.html">M8 工作台</a></span>';
+    '<span class="crumb"><a href="' + base + 'index.html">' + T("brand", "M8 Workbench") + "</a></span>";
 }
 
 /* ---------------------------------------------------------------- 首页卡片 */
@@ -219,9 +248,9 @@ function renderCards(host) {
     const style = "--tone:" + f.tone + ";--tone-2:" + f.tone2 + ";";
     return (
       '<a class="card" href="pages/' + f.id + '.html" style="' + style + '">' +
-      '<span class="card-kicker">' + f.kicker + "</span>" +
-      "<strong>" + f.name + "</strong>" +
-      "<small>" + f.desc + "</small>" +
+      '<span class="card-kicker">' + T("feat." + f.id + ".kicker", f.kicker) + "</span>" +
+      "<strong>" + T("feat." + f.id + ".name", f.name) + "</strong>" +
+      "<small>" + T("feat." + f.id + ".desc", f.desc) + "</small>" +
       "</a>"
     );
   }).join("");
@@ -245,11 +274,11 @@ var M8Api = (function () {
   function call(path, opt) {
     return fetch(base() + path, opt).then(function (res) {
       return res.json().catch(function () {
-        throw new Error("后端没给回正经数据（可能没在跑？）");
+        throw new Error(T("badResponse", "The backend did not return usable data (is it running?)"));
       });
     }).then(function (data) {
       if (!data || !data.ok) {
-        throw new Error((data && (data.hint || data.error)) || "操作失败");
+        throw new Error((data && (data.hint || data.error)) || T("actionFailed", "The action failed"));
       }
       return data;
     });
@@ -313,34 +342,36 @@ function showMigrateBar(items) {
 
   const text = document.createElement("span");
   text.className = "migrate-text";
-  text.textContent = "浏览器里还存着旧数据（" + total + " 条：" 
-    + items.map(function (it) { return it.label + " " + it.rows.length; }).join("、")
-    + "）。现在数据存在服务器上了，要搬过去吗？";
+  text.textContent = T("migrateFound", "There is still old data in this browser ({n} entries: ", { n: total }) 
+    + items.map(function (it) {
+      return T("migrateKinds." + it.kind, it.label) + " " + it.rows.length;
+    }).join(", ")
+    + T("migrateAsk", "). Data lives on the server now. Move it over?");
 
   const yes = document.createElement("button");
   yes.type = "button";
   yes.className = "gen-btn";
-  yes.textContent = "搬过去";
+  yes.textContent = T("migrateYes", "Move it");
 
   const no = document.createElement("button");
   no.type = "button";
   no.className = "ghost-btn";
-  no.textContent = "先不搬";
+  no.textContent = T("migrateNo", "Not now");
   no.addEventListener("click", function () { bar.remove(); });
 
   yes.addEventListener("click", function () {
     yes.disabled = true;
-    text.textContent = "正在搬…";
+    text.textContent = T("migrateBusy", "Moving...");
     M8Migrate.run(items).then(function (n) {
       return M8Migrate.dropOld().then(function () { return n; });
     }).then(function (n) {
-      text.textContent = "搬完了，一共 " + n + " 条。刷新一下页面就能看到。";
-      no.textContent = "知道了";
+      text.textContent = T("migrateDone", "Done, {n} entries in total. Refresh the page to see them.", { n });
+      no.textContent = T("migrateOk", "Got it");
       yes.remove();
     }).catch(function (e) {
       yes.disabled = false;
-      text.textContent = "没搬成：" + (e && e.message ? e.message : String(e))
-        + "。确认服务在跑，再试一次。";
+      text.textContent = T("migrateFailed", "Could not move the data: ") + (e && e.message ? e.message : String(e))
+        + T("migrateFailedHint", ". Make sure the service is running and try again.");
     });
   });
 
@@ -371,22 +402,22 @@ function shortcutURL() {
 function makeShortcut() {
   const note = document.getElementById("mkShortcutNote");
   const btn = document.getElementById("mkShortcut");
-  if (note) note.textContent = "正在创建…";
+  if (note) note.textContent = T("shortcutBusy", "Creating...");
   if (btn) btn.disabled = true;
   /* 首页在 /m8/web/ 下，所以 ../shortcut 就是 /m8/shortcut */
   fetch("../shortcut/desktop", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ url: shortcutURL(), name: "M8工作台" }),
+    body: JSON.stringify({ url: shortcutURL(), name: T("shortcutName", "M8 Workbench") }),
   }).then(function (res) {
     return res.json();
   }).then(function (data) {
     if (!data || !data.ok) {
-      throw new Error((data && (data.hint || data.error)) || "创建失败");
+      throw new Error((data && (data.hint || data.error)) || T("shortcutFailed", "Could not create it"));
     }
-    if (note) note.textContent = "建好了，桌面上的「" + data.fileName + "」";
+    if (note) note.textContent = T("shortcutDone", "Created: {name} on your desktop", { name: data.fileName });
   }).catch(function (e) {
-    if (note) note.textContent = "没建成：" + (e && e.message ? e.message : String(e));
+    if (note) note.textContent = T("shortcutError", "Could not create it: ") + (e && e.message ? e.message : String(e));
   }).then(function () {
     if (btn) btn.disabled = false;
   });
@@ -406,7 +437,7 @@ function boot(opt) {
   }
 
   mountSidebar(o.activeId || "", base);
-  renderTopbar(document.getElementById("topbar"), o.title || "M8 工作台", base);
+  renderTopbar(document.getElementById("topbar"), o.title || T("brand", "M8 Workbench"), base);
 
   /* 只有首页有那个按钮，别的页面拿不到就跳过 */
   const mk = document.getElementById("mkShortcut");

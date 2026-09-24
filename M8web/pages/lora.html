@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en" data-i18n-title="feat.lora.pageTitle">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>LoRA 解析 · M8 工作台</title>
+  <title>LoRA Inspector - M8 Workbench</title>
   <link rel="icon" type="image/svg+xml" href="../assets/img/favicon.svg">
   <link rel="stylesheet" href="../assets/css/base.css">
   <link rel="stylesheet" href="../assets/css/shell.css">
@@ -28,24 +28,23 @@
 
           <header class="lora-head">
             <div>
-              <h1>LoRA 解析</h1>
-              <p>拖一个 .safetensors 进来，读出它的训练参数和训练标签。</p>
+              <h1 data-i18n="feat.lora.name">LoRA Inspector</h1>
+              <p data-i18n="loraLede">Drop in a .safetensors file and read back its training parameters and training tags.</p>
             </div>
-            <button class="ghost-btn is-hidden" id="loraAgain" type="button">换一个</button>
+            <button class="ghost-btn is-hidden" id="loraAgain" type="button" data-i18n="loraAgain">Choose another</button>
           </header>
 
           <!-- 这句要显眼：用户会担心几个 G 的模型被传走 -->
           <p class="lora-privacy">
-            <b>文件不会被上传，也不会落盘。</b>
-            解析只读文件开头那一段（通常几 KB 到几十 KB），读完就把引用清掉 ——
-            几百 MB 的模型也是一瞬间的事，因为张量数据一个字节都没读。
+            <b data-i18n="loraPrivacyLead">The file is never uploaded and never written to disk.</b>
+            <span data-i18n="loraPrivacyBody">Parsing reads only the beginning of the file (usually a few KB to a few tens of KB) and drops the reference afterwards - even a several-hundred-MB model takes an instant, because not a single byte of tensor data is read.</span>
           </p>
 
           <div class="drop" id="loraDrop">
             <input id="loraFile" type="file" accept=".safetensors">
             <span class="drop-ico" aria-hidden="true">＋</span>
-            <strong>点击选择、拖进来，或者 Ctrl+V 粘贴</strong>
-            <small id="loraHint">只认 .safetensors</small>
+            <strong data-i18n="loraDrop">Click to choose, drag it in, or paste with Ctrl+V</strong>
+            <small id="loraHint" data-i18n="loraHint">Only .safetensors files</small>
           </div>
 
           <div class="lora-body is-hidden" id="loraBody">
@@ -57,11 +56,15 @@
       </div>
     </div>
   </div>
+  <!-- app.js / migrate.js / lora.js 是普通脚本，靠全局函数互相调用。
+       下面那段用 module：module 天然延迟执行，正好等得到它们，也能用 import。 -->
   <script src="../assets/js/app.js"></script>
   <script src="../assets/js/migrate.js"></script>
   <script src="../assets/js/lora.js"></script>
-  <script>
-    boot({ activeId: "lora", title: "LoRA 解析", base: "../" });
+  <script type="module">
+    import { bootI18n } from "../assets/js/i18n.js";
+    await bootI18n();
+    boot({ activeId: "lora", title: M8I18n.t("feat.lora.name", "LoRA Inspector"), base: "../" });
     M8Lora.init();
   </script>
 </body>

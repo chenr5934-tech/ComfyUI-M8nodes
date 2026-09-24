@@ -10,10 +10,38 @@
  *      那句带颜文字的话会被切碎；转过来之后沿条的长方向排，一次读完
  * ==========================================================================*/
 
+/* 界面文案走 i18n.js。它是 module，而这些功能脚本是普通脚本，拿不到 import ——
+   i18n.js 因此挂了一份到 window。
+
+   用 var 而不是 const：普通脚本共享全局作用域，const 在这里重复声明会直接报
+   "Identifier 'T' has already been declared"，一个页面同时加载几个脚本就白屏。
+   var 重复声明是合法的，每个文件仍然自足，不依赖加载顺序。
+
+   宿主对象用 globalThis 取而不是直接写 window：前端测试在 Node 里跑这些脚本，
+   那边没有 window，直接解引用会当场 "window is not defined"。
+
+   i18n 没加载成功时走这里的兜底：**必须自己填占位符** —— 直接返回 fallback 的话，
+   界面上会原样显示 "{h} h {m} min" 这种花括号，比换不成中文更糟。 */
+var T = function (key, fallback, vars) {
+  var host = typeof globalThis !== "undefined" ? globalThis : {};
+  var i18n = host.M8I18n;
+  if (i18n && typeof i18n.t === "function") return i18n.t(key, fallback, vars);
+
+  var text = fallback === undefined ? key : fallback;
+  if (vars && typeof text === "string") {
+    for (var k in vars) {
+      if (Object.prototype.hasOwnProperty.call(vars, k)) {
+        text = text.split("{" + k + "}").join(String(vars[k]));
+      }
+    }
+  }
+  return text;
+};
+
 const M8Mask = (() => {
   "use strict";
 
-  const DEFAULT_TEXT = "我知道群友不喜欢看，所以去除掉啦Ciallo～(∠・ω< )⌒☆";
+  const DEFAULT_TEXT = "Rather not see it, so it is gone. Ciallo~ (∠・ω< )⌒☆";
   const MIN_COUNT = 1;     // 最少一条 —— 只想盖一条也应该可以
   const MAX_COUNT = 10;
   const MIN_THICK = 3;
@@ -185,7 +213,7 @@ const M8Mask = (() => {
       strip.dataset.index = String(i);
       strip.setAttribute("role", "slider");
       strip.setAttribute("tabindex", "0");
-      strip.setAttribute("aria-label", "第 " + (i + 1) + " 条遮罩");
+      strip.setAttribute("aria-label", T("maskBandAria", "Band {n}", { n: i + 1 }));
       strip.setAttribute("aria-valuemin", "0");
       strip.setAttribute("aria-valuemax", "100");
       strip.setAttribute("aria-valuenow", String(Math.round(c)));
@@ -249,15 +277,17 @@ const M8Mask = (() => {
 
   function renderInfo() {
     if (!el.countOut) return;
-    el.countOut.textContent = state.count + " 条";
+    el.countOut.textContent = T("maskBandCount", "{n} bands", { n: state.count });
     if (!el.info) return;
     if (!state.img) { el.info.textContent = ""; return; }
     const r = rectOf(0);
-    const one = state.dir === "h" ? Math.round(r.h) + " 像素高" : Math.round(r.w) + " 像素宽";
-    let text = state.count + " 条 · 每条 " + one + " · 合计盖住约 " +
-      Math.round(state.count * state.thick) + "%";
+    const one = state.dir === "h"
+      ? T("maskPixelTall", "{n} px tall", { n: Math.round(r.h) })
+      : T("maskPixelWide", "{n} px wide", { n: Math.round(r.w) });
+    let text = T("maskInfo", "{n} bands - {one} each - about {pct}% covered in total",
+      { n: state.count, one: one, pct: Math.round(state.count * state.thick) });
     /* 字号已经缩到下限还是排不下时说清楚，别让用户以为是自己没看见 */
-    if (state.tight) text += " · 文字偏长，字号已到最小，加厚遮罩会更清楚";
+    if (state.tight) text += T("maskTightNote", " - the text runs long and the font is already at its smallest; thicker bands read better");
     el.info.textContent = text;
   }
 
@@ -349,18 +379,18 @@ const M8Mask = (() => {
   function generate() {
     if (!state.img) return;
     clearPreview();
-    setStatus("正在生成…");
+    setStatus(T("busyGenerating", "Generating..."));
     const cv = document.createElement("canvas");
     drawTo(cv);
     const name = M8Studio.state.name + "-masked.png";
     if (typeof cv.toBlob === "function") {
       cv.toBlob(function (blob) {
-        if (!blob) { setStatus("生成失败。", true); return; }
+        if (!blob) { setStatus(T("generateFailed", "Generation failed."), true); return; }
         state.shot = URL.createObjectURL(blob);
         showPreview(name, cv.width, cv.height);
       }, "image/png");
     } else {
-      setStatus("这个浏览器不支持导出。", true);
+      setStatus(T("browserNoExport", "This browser cannot export."), true);
     }
   }
 
@@ -374,7 +404,7 @@ const M8Mask = (() => {
     shot.className = "pv-shot";
     const im = document.createElement("img");
     im.src = state.shot;
-    im.alt = "遮挡效果预览";
+    im.alt = T("maskPreviewAlt", "Preview of the covered image");
     shot.appendChild(im);
 
     const meta = document.createElement("div");
@@ -388,7 +418,7 @@ const M8Mask = (() => {
     save.className = "pv-save";
     save.href = state.shot;
     save.download = name;
-    save.textContent = "导出这张图";
+    save.textContent = T("exportThisImage", "Export this image");
 
     card.appendChild(shot);
     card.appendChild(meta);
@@ -396,9 +426,10 @@ const M8Mask = (() => {
     box.appendChild(card);
     el.preview.classList.remove("is-hidden");
     if (el.previewNote) {
-      el.previewNote.textContent = state.count + " 条遮罩" + (state.text ? "" : " · 没有写文字");
+      el.previewNote.textContent = T("maskPreviewNote", "{n} bands", { n: state.count })
+        + (state.text ? "" : T("maskPreviewNoteNoText", " - no text written"));
     }
-    setStatus("生成好了，确认没问题就导出。");
+    setStatus(T("previewReadyExport", "Done. Export it once it looks right."));
   }
 
   /* ------------------------------------------------------------ 入口 */
@@ -428,7 +459,7 @@ const M8Mask = (() => {
     state.centers = evenCenters(state.count);
     clearPreview();
     render();
-    setStatus("拖黑条可以挪位置；条之间可以叠在一起。");
+    setStatus(T("maskStatusHint", "Drag a band to move it; bands can overlap each other."));
   }
 
   function init() {
@@ -452,6 +483,9 @@ const M8Mask = (() => {
     };
     if (!el.panel || !el.frame) return;
 
+    /* 默认那句文案得跟着界面语言走。模块顶层拿不到 window.M8I18n（本文件先于
+       i18n.js 执行），所以等到 init 这一步才换成译文。 */
+    state.text = T("maskDefaultText", DEFAULT_TEXT);
     if (el.text) el.text.value = state.text;
 
     el.dirBox.addEventListener("click", function (ev) {

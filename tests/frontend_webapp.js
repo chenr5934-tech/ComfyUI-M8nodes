@@ -125,6 +125,26 @@ function installGlobals() {
   globalThis.CustomEvent = class { constructor(t) { this.type = t; } };
   globalThis.confirm = () => false;
   globalThis.prompt = () => null;
+
+  /* i18n.js 是 module，页面里那段引导会 import 它。这里给一份等价的最小实现：
+     取不到译文就用代码里的英文原文，和真实实现的行为一致。
+     bootI18n 是 async，桩里立刻完成 —— 测试不关心语言包加载的时序。 */
+  const t = (key, fallback, vars) => {
+    let text = typeof fallback === "string" && fallback ? fallback : key;
+    if (vars) {
+      for (const [k, v] of Object.entries(vars)) text = text.split("{" + k + "}").join(String(v));
+    }
+    return text;
+  };
+  globalThis.M8I18n = {
+    t,
+    isChinese: () => false,
+    currentLang: () => "en",
+    loadStrings: () => Promise.resolve({}),
+    applyDom: noop,
+    bootI18n: () => Promise.resolve(),
+    setTitle: noop,
+  };
 }
 
 /* ---------------------------------------------------------------- 跑 */
@@ -386,7 +406,18 @@ step('功能页按 HTML 的真实顺序执行，侧栏顶栏都渲染出来', ()
      app.js 的 boot 是 function 声明（挂得上）所以没事，cut.js 的 M8Cut 是 const，
      分开 eval 就会变成「M8Cut is not defined」。拼起来才是对浏览器行为的正确模拟。 */
   const parts = srcs.map((rel) => fs.readFileSync(path.join(pageDir, rel), 'utf8'));
-  const inline = [...html.matchAll(/<script>\s*([\s\S]*?)<\/script>/g)].map((m) => m[1]);
+  /* 引导那段可能带 type="module"（它要用 import），所以正则不能只认裸 <script>。
+     拼进 eval 之前要去掉两样在 eval 里跑不了的东西：
+       - import 语句：模块语法，换成桩提供的 window.M8I18n
+       - await 前缀：eval 没有顶层 await；桩里 bootI18n() 立刻完成，不等也一样 */
+  const inline = [...html.matchAll(/<script(?:\s+type="module")?>\s*([\s\S]*?)<\/script>/g)]
+    .map((m) => m[1]
+      /* import { bootI18n } from "../assets/js/i18n.js" 换成从桩上取同名函数：
+         调用点保持原样，才能真的测到那几行。 */
+      .replace(/^\s*import\s*\{([^}]*)\}\s*from\s*["'][^"']*["']\s*;?\s*$/gm,
+        (_, names) => 'const {' + names + '} = M8I18n;')
+      .replace(/\bawait\s+(?=bootI18n)/g, ''));
+  if (!inline.length) throw new Error('没解析出引导脚本');
   gEval(parts.join('\n;\n') + '\n;\n' + inline[inline.length - 1]);
   if (!byId.sidebar.replaced) throw new Error('侧栏没被渲染出来');
   if (!byId.topbar.innerHTML) throw new Error('顶栏没被渲染出来');

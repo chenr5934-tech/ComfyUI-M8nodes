@@ -413,7 +413,7 @@ step('生成出来是原图尺寸，不是显示尺寸', () => {
 step('什么都没写没画时生成会提示', () => {
   m = boot();
   m.generate();
-  if (m._el().status.textContent.indexOf('没什么可生成') < 0) {
+  if (m._el().status.textContent.indexOf('Nothing written and nothing drawn') < 0) {
     throw new Error('没提示，实际是：' + m._el().status.textContent);
   }
 });

@@ -16,17 +16,49 @@
  * 这是有意的：备份就要有备份的质量，别偷偷降分辨率。
  * ==========================================================================*/
 
+/* 界面文案走 i18n.js。它是 module，而这些功能脚本是普通脚本，拿不到 import ——
+   i18n.js 因此挂了一份到 window。
+
+   用 var 而不是 const：普通脚本共享全局作用域，const 在这里重复声明会直接报
+   "Identifier 'T' has already been declared"，一个页面同时加载几个脚本就白屏。
+   var 重复声明是合法的，每个文件仍然自足，不依赖加载顺序。
+
+   宿主对象用 globalThis 取而不是直接写 window：前端测试在 Node 里跑这些脚本，
+   那边没有 window，直接解引用会当场 "window is not defined"。
+
+   i18n 没加载成功时走这里的兜底：**必须自己填占位符** —— 直接返回 fallback 的话，
+   界面上会原样显示 "{h} h {m} min" 这种花括号，比换不成中文更糟。 */
+var T = function (key, fallback, vars) {
+  var host = typeof globalThis !== "undefined" ? globalThis : {};
+  var i18n = host.M8I18n;
+  if (i18n && typeof i18n.t === "function") return i18n.t(key, fallback, vars);
+
+  var text = fallback === undefined ? key : fallback;
+  if (vars && typeof text === "string") {
+    for (var k in vars) {
+      if (Object.prototype.hasOwnProperty.call(vars, k)) {
+        text = text.split("{" + k + "}").join(String(vars[k]));
+      }
+    }
+  }
+  return text;
+};
+
 const M8Backup = (() => {
   "use strict";
 
   const APP = "m8web";
   const V = 1;
 
-  /* 三类数据。kind 用来防止把 OC 的备份导进提示词页 */
+  /* 三类数据。kind 用来防止把 OC 的备份导进提示词页。
+
+     title 写成 getter，而不是在这里直接取值：这里是模块顶层，本文件先于 i18n.js
+     执行，当场取 window.M8I18n 只会拿到 undefined。getter 等到真正读它的那几处
+     （拼「这份备份是 XX 的」那句报错）才查表，那时语言包早就绪了。 */
   const KINDS = {
-    oc: { title: "OC 工坊", file: "m8-oc" },
-    prompts: { title: "提示词归纳", file: "m8-prompts" },
-    stickers: { title: "贴纸库", file: "m8-stickers" },
+    oc: { get title() { return T("feat.oc.name", "OC Workshop"); }, file: "m8-oc" },
+    prompts: { get title() { return T("feat.prompts.name", "Prompt Collection"); }, file: "m8-prompts" },
+    stickers: { get title() { return T("stickerLib", "Sticker library"); }, file: "m8-stickers" },
   };
 
   function pad(n) { return (n < 10 ? "0" : "") + n; }
@@ -64,22 +96,22 @@ const M8Backup = (() => {
     try {
       obj = JSON.parse(text);
     } catch (e) {
-      throw new Error("这不是 M8 的备份文件（读不出 JSON）。");
+      throw new Error(T("backupNotJson", "This is not an M8 backup file (the JSON could not be read)."));
     }
     if (!obj || obj.app !== APP) {
-      throw new Error("这不是 M8 工作台导出的文件。");
+      throw new Error(T("backupNotOurs", "This file was not exported by the M8 Workbench."));
     }
     if (typeof obj.v !== "number") {
-      throw new Error("备份文件里没有版本号，不敢认。");
+      throw new Error(T("backupNoVersion", "The backup file carries no version number, so it cannot be trusted."));
     }
     if (obj.v > V) {
-      throw new Error("这份备份是更新版本导出的（v" + obj.v + "），当前版本读不了。");
+      throw new Error(T("backupNewerVersion", "This backup was exported by a newer version (v{v}), which this version cannot read.", { v: obj.v }));
     }
     if (!obj.kind || !KINDS[obj.kind]) {
-      throw new Error("备份里的类型不认：" + (obj.kind || "(空)"));
+      throw new Error(T("backupUnknownKind", "Unrecognised kind in the backup: ") + (obj.kind || T("backupKindEmpty", "(empty)")));
     }
     if (!Array.isArray(obj.data)) {
-      throw new Error("备份里没有数据。");
+      throw new Error(T("backupNoData", "The backup holds no data."));
     }
     return obj;
   }
@@ -130,7 +162,7 @@ const M8Backup = (() => {
   function readText(file) {
     return new Promise(function (resolve, reject) {
       const fr = new FileReader();
-      fr.onerror = function () { reject(new Error("这个文件读不出来。")); };
+      fr.onerror = function () { reject(new Error(T("fileUnreadable", "This file could not be read."))); };
       fr.onload = function () { resolve(String(fr.result || "")); };
       fr.readAsText(file);
     });
@@ -176,7 +208,7 @@ const M8Backup = (() => {
       if (name && byName[name] !== undefined) {
         map[g.id] = byName[name];
       } else {
-        toCreate.push({ name: name || "新分类", oldId: g.id });
+        toCreate.push({ name: name || T("backupNewGroup", "New group"), oldId: g.id });
       }
     });
     return { map: map, toCreate: toCreate };
@@ -260,11 +292,11 @@ const M8Backup = (() => {
       const head = document.createElement("header");
       head.className = "modal-head";
       const h2 = document.createElement("h2");
-      h2.textContent = "导入这份备份？";
+      h2.textContent = T("importTitle", "Import this backup?");
       const x = document.createElement("button");
       x.type = "button";
       x.className = "modal-x";
-      x.setAttribute("aria-label", "关闭");
+      x.setAttribute("aria-label", T("closeLabel", "Close"));
       x.textContent = "×";
       x.addEventListener("click", function () { finish(null); });
       head.appendChild(h2);
@@ -274,12 +306,15 @@ const M8Backup = (() => {
       body.className = "modal-body";
       const main = document.createElement("p");
       main.className = "modal-text";
-      main.textContent = "这是「" + title + "」的备份，里面有 " + incoming + " 条；"
-        + "当前页面上已有 " + existing + " 条。";
+      main.textContent = T("importBody",
+        "This is a backup of {title} with {n} entries; this page currently holds {m}.",
+        { title: title, n: incoming, m: existing });
       const sub = document.createElement("p");
       sub.className = "modal-text sub";
-      sub.textContent = "合并：同名的跳过，其余作为新条目加进来，现有的一个都不动。"
-        + "替换：先把现有的全清掉，再把这 " + incoming + " 条灌进去。";
+      sub.textContent = T("importBodySub",
+        "Merge: entries with the same name are skipped, the rest come in as new ones, and nothing already here is touched."
+        + " Replace: everything here is cleared out first, then these {n} entries are written in.",
+        { n: incoming });
       body.appendChild(main);
       body.appendChild(sub);
 
@@ -288,17 +323,17 @@ const M8Backup = (() => {
       const cancel = document.createElement("button");
       cancel.type = "button";
       cancel.className = "ghost-btn";
-      cancel.textContent = "取消";
+      cancel.textContent = T("cancel", "Cancel");
       cancel.addEventListener("click", function () { finish(null); });
       const merge = document.createElement("button");
       merge.type = "button";
       merge.className = "ghost-btn";
-      merge.textContent = "合并导入";
+      merge.textContent = T("importMerge", "Merge them in");
       merge.addEventListener("click", function () { finish("merge"); });
       const replace = document.createElement("button");
       replace.type = "button";
       replace.className = "gen-btn danger";
-      replace.textContent = "清空后导入";
+      replace.textContent = T("importReplace", "Clear and import");
       replace.addEventListener("click", function () { finish("replace"); });
       foot.appendChild(cancel);
       foot.appendChild(merge);

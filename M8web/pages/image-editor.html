@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en" data-i18n-title="feat.image-editor.pageTitle">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>图片工坊 · M8 工作台</title>
+  <title>Image Workshop - M8 Workbench</title>
   <link rel="icon" type="image/svg+xml" href="../assets/img/favicon.svg">
   <link rel="stylesheet" href="../assets/css/base.css">
   <link rel="stylesheet" href="../assets/css/shell.css">
@@ -29,20 +29,20 @@
 
           <!-- 功能标签：工坊下面挂好几个功能，一排只放得下一个。
                点哪个下面就换哪个面板；灰的是还没做的。 -->
-          <nav class="shop-tabs" id="shopTabs" aria-label="图片工坊的功能">
-            <button type="button" class="on" data-tool="cut" aria-pressed="true">分段裁剪</button>
-            <button type="button" data-tool="mask" aria-pressed="false">分段遮挡</button>
-            <button type="button" data-tool="grid" aria-pressed="false">宫格拼图</button>
-            <button type="button" data-tool="sticker" aria-pressed="false">贴纸遮挡</button>
-            <button type="button" data-tool="paint" aria-pressed="false">文字与画笔</button>
+          <nav class="shop-tabs" id="shopTabs" data-i18n-attr="aria-label:studioTabsLabel" aria-label="Image Workshop tools">
+            <button type="button" class="on" data-tool="cut" aria-pressed="true" data-i18n="toolCut">Split</button>
+            <button type="button" data-tool="mask" aria-pressed="false" data-i18n="toolMask">Bands</button>
+            <button type="button" data-tool="grid" aria-pressed="false" data-i18n="toolGrid">Grid</button>
+            <button type="button" data-tool="sticker" aria-pressed="false" data-i18n="toolSticker">Stickers</button>
+            <button type="button" data-tool="paint" aria-pressed="false" data-i18n="toolPaint">Text and brush</button>
           </nav>
 
           <!-- 选图只有一个入口：整张图在两个功能之间共用，不用来回传 -->
           <div class="drop" id="studioDrop">
             <input id="studioFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif">
             <span class="drop-ico" aria-hidden="true">＋</span>
-            <strong>点击选择图片，或者直接把图拖进来</strong>
-            <small id="studioFileMeta">支持 JPG / PNG / WebP / GIF · 全程在本机处理，不上传</small>
+            <strong data-i18n="studioDrop">Click to choose an image, or drag it straight in</strong>
+            <small id="studioFileMeta" data-i18n="studioFileMeta">JPG / PNG / WebP / GIF - processed entirely on this machine, never uploaded</small>
           </div>
           <p class="status shop-status" id="studioStatus" role="status"></p>
 
@@ -53,7 +53,7 @@
               <div class="studio-grid" id="cutStage">
                 <div class="cut-panel" id="cutPanel" data-dir="h">
                   <div class="cut-frame" id="cutFrame">
-                    <img id="cutSource" alt="待裁剪的图片">
+                    <img id="cutSource" alt="" data-i18n-attr="alt:cutSourceAlt">
                     <div class="cut-tints" id="cutTints" aria-hidden="true"></div>
                     <div class="cut-lines" id="cutLines"></div>
                   </div>
@@ -62,39 +62,39 @@
 
                 <aside class="studio-side">
                   <div class="tool-card">
-                    <h3>裁剪方向</h3>
-                    <div class="seg" id="cutDir" role="group" aria-label="裁剪方向">
-                      <button type="button" data-dir="h" class="on" aria-pressed="true">横切</button>
-                      <button type="button" data-dir="v" aria-pressed="false">竖切</button>
+                    <h3 data-i18n="cutDirection">Split direction</h3>
+                    <div class="seg" id="cutDir" role="group" data-i18n-attr="aria-label:cutDirection" aria-label="Split direction">
+                      <button type="button" data-dir="h" class="on" aria-pressed="true" data-i18n="cutHorizontal">Horizontal</button>
+                      <button type="button" data-dir="v" aria-pressed="false" data-i18n="cutVertical">Vertical</button>
                     </div>
                   </div>
                   <div class="tool-card">
-                    <h3>裁剪段数</h3>
+                    <h3 data-i18n="cutCount">Number of pieces</h3>
                     <div class="range-row">
                       <input id="cutCount" type="range" min="2" max="10" step="1" value="3">
                       <output id="cutCountOut">3</output>
                     </div>
                   </div>
                   <div class="tool-card stretch">
-                    <h3>各段尺寸</h3>
+                    <h3 data-i18n="cutSizes">Piece sizes</h3>
                     <ul class="seg-list" id="cutSegList"></ul>
                   </div>
                   <div class="side-actions">
-                    <button class="gen-btn" id="cutGenerate" type="button">生成预览</button>
-                    <button class="ghost-btn" id="cutChange" type="button">换一张图</button>
+                    <button class="gen-btn" id="cutGenerate" type="button" data-i18n="generatePreview">Generate preview</button>
+                    <button class="ghost-btn" id="cutChange" type="button" data-i18n="changeImage">Change image</button>
                   </div>
                   <p class="status" id="cutStatus" role="status"></p>
                 </aside>
 
                 <!-- 提示行必须排最后，见 studio.css 里 .cut-hint 的注释 -->
-                <p class="cut-hint" id="cutHint">拖虚线中间的圆点可以挪动分割位置；点每段旁边的圆钮屏蔽这一段。</p>
+                <p class="cut-hint" id="cutHint" data-i18n="cutHint">Drag the dots on a dashed line to move the split; click the circle beside a piece to mute it.</p>
               </div>
 
               <div class="studio-preview is-hidden" id="cutPreview">
                 <div class="preview-head">
-                  <h2>预览</h2>
+                  <h2 data-i18n="preview">Preview</h2>
                   <span class="preview-note" id="cutPreviewNote"></span>
-                  <button class="gen-btn" id="cutExport" type="button">全部导出</button>
+                  <button class="gen-btn" id="cutExport" type="button" data-i18n="cutExport">Export all</button>
                 </div>
                 <div class="preview-grid" id="cutPreviewGrid"></div>
               </div>
@@ -105,51 +105,51 @@
               <div class="studio-grid">
                 <div class="cut-panel" id="maskPanel" data-dir="h">
                   <div class="cut-frame" id="maskFrame">
-                    <img id="maskSource" alt="待遮挡的图片">
+                    <img id="maskSource" alt="" data-i18n-attr="alt:maskSourceAlt">
                     <div class="mask-strips" id="maskStrips"></div>
                   </div>
                 </div>
 
                 <aside class="studio-side">
                   <div class="tool-card">
-                    <h3>遮挡方向</h3>
-                    <div class="seg" id="maskDir" role="group" aria-label="遮挡方向">
-                      <button type="button" data-dir="h" class="on" aria-pressed="true">横遮</button>
-                      <button type="button" data-dir="v" aria-pressed="false">竖遮</button>
+                    <h3 data-i18n="maskDirection">Band direction</h3>
+                    <div class="seg" id="maskDir" role="group" data-i18n-attr="aria-label:maskDirection" aria-label="Band direction">
+                      <button type="button" data-dir="h" class="on" aria-pressed="true" data-i18n="maskHorizontal">Horizontal</button>
+                      <button type="button" data-dir="v" aria-pressed="false" data-i18n="maskVertical">Vertical</button>
                     </div>
                   </div>
                   <div class="tool-card">
-                    <h3>遮罩条数</h3>
+                    <h3 data-i18n="maskCount">Number of bands</h3>
                     <div class="range-row">
                       <input id="maskCount" type="range" min="1" max="10" step="1" value="3">
-                      <output id="maskCountOut">3 条</output>
+                      <output id="maskCountOut">3</output>
                     </div>
                   </div>
                   <div class="tool-card">
-                    <h3>遮盖面积（每条厚度）</h3>
+                    <h3 data-i18n="maskThickness">Coverage (thickness per band)</h3>
                     <div class="range-row">
                       <input id="maskThick" type="range" min="3" max="40" step="1" value="12">
                       <output id="maskThickOut">12%</output>
                     </div>
                   </div>
                   <div class="tool-card stretch">
-                    <h3>遮罩上的文字</h3>
+                    <h3 data-i18n="maskText">Text on the bands</h3>
                     <textarea id="maskText" rows="3" spellcheck="false"></textarea>
                     <p class="tool-note" id="maskInfo"></p>
                   </div>
                   <div class="side-actions">
-                    <button class="gen-btn" id="maskGenerate" type="button">生成预览</button>
-                    <button class="ghost-btn" id="maskChange" type="button">换一张图</button>
+                    <button class="gen-btn" id="maskGenerate" type="button" data-i18n="generatePreview">Generate preview</button>
+                    <button class="ghost-btn" id="maskChange" type="button" data-i18n="changeImage">Change image</button>
                   </div>
                   <p class="status" id="maskStatus" role="status"></p>
                 </aside>
 
-                <p class="cut-hint">拖黑条可以挪位置；条之间可以叠在一起，想连成一片就拖到一起。</p>
+                <p class="cut-hint" data-i18n="maskHint">Drag a band to move it; bands may overlap - drag them together to merge into one.</p>
               </div>
 
               <div class="studio-preview is-hidden" id="maskPreview">
                 <div class="preview-head">
-                  <h2>预览</h2>
+                  <h2 data-i18n="preview">Preview</h2>
                   <span class="preview-note" id="maskPreviewNote"></span>
                 </div>
                 <div class="preview-grid" id="maskPreviewGrid"></div>
@@ -161,56 +161,56 @@
               <div class="studio-grid">
                 <div class="cut-panel" id="stickerPanel">
                   <div class="cut-frame" id="stickerFrame">
-                    <img id="stickerBase" alt="底图">
+                    <img id="stickerBase" alt="" data-i18n-attr="alt:baseImageAlt">
                     <div class="sticker-layer" id="stickerLayer"></div>
                   </div>
                 </div>
 
                 <aside class="studio-side">
                   <div class="tool-card">
-                    <h3>贴纸</h3>
-                    <button class="gen-btn" id="stickerImport" type="button">导入贴纸…</button>
-                    <p class="tool-note" id="stickerCount">还没有贴纸。导入一张图片，可以在框里把背景抠掉。</p>
+                    <h3 data-i18n="stickerTitle">Stickers</h3>
+                    <button class="gen-btn" id="stickerImport" type="button" data-i18n="stickerImport">Import sticker...</button>
+                    <p class="tool-note" id="stickerCount"></p>
                   </div>
                   <div class="tool-card stretch">
-                    <h3>贴纸库</h3>
+                    <h3 data-i18n="stickerLib">Sticker library</h3>
                     <div class="backup-bar">
                       <button class="ghost-btn" id="stickerBackupOut" type="button"
-                        title="把贴纸库存成一个 json 文件">导出备份</button>
+                        data-i18n="backupOut" data-i18n-attr="title:stickerBackupOutTip">Export backup</button>
                       <button class="ghost-btn" id="stickerBackupIn" type="button"
-                        title="从备份文件里读回来">导入备份</button>
+                        data-i18n="backupIn" data-i18n-attr="title:backupInTip">Import backup</button>
                     </div>
                     <div class="sticker-lib" id="stickerLib"></div>
-                    <p class="tool-note" id="stickerLibNote">点一张就能贴到图上。</p>
+                    <p class="tool-note" id="stickerLibNote" data-i18n="stickerLibNote">Click one to place it on the image.</p>
                   </div>
                   <div class="tool-card">
-                    <h3>选中的贴纸</h3>
-                    <p class="tool-note" id="stickerEmpty">点图上的贴纸就能选中它。</p>
+                    <h3 data-i18n="stickerSelected">Selected sticker</h3>
+                    <p class="tool-note" id="stickerEmpty" data-i18n="stickerEmpty">Click a sticker on the image to select it.</p>
                     <div class="is-hidden" id="stickerEdit">
                       <div class="range-row">
-                        <label>大小</label>
+                        <label data-i18n="stickerScale">Size</label>
                         <input id="stickerScale" type="range" min="4" max="120" step="1" value="22">
                         <output id="stickerScaleOut">22%</output>
                       </div>
                       <div class="side-actions">
-                        <button class="ghost-btn" id="stickerFront" type="button">移到最前</button>
-                        <button class="ghost-btn" id="stickerRemove" type="button">删掉这个</button>
+                        <button class="ghost-btn" id="stickerFront" type="button" data-i18n="stickerFront">Bring to front</button>
+                        <button class="ghost-btn" id="stickerRemove" type="button" data-i18n="stickerRemove">Delete this</button>
                       </div>
                     </div>
                   </div>
                   <div class="side-actions">
-                    <button class="gen-btn" id="stickerGenerate" type="button">生成预览</button>
-                    <button class="ghost-btn" id="stickerChange" type="button">换一张图</button>
+                    <button class="gen-btn" id="stickerGenerate" type="button" data-i18n="generatePreview">Generate preview</button>
+                    <button class="ghost-btn" id="stickerChange" type="button" data-i18n="changeImage">Change image</button>
                   </div>
                   <p class="status" id="stickerStatus" role="status"></p>
                 </aside>
 
-                <p class="cut-hint">拖贴纸挪位置，滚轮缩放；点一下贴纸就能选中它。</p>
+                <p class="cut-hint" data-i18n="stickerHint">Drag a sticker to move it, scroll to scale it; click one to select it.</p>
               </div>
 
               <div class="studio-preview is-hidden" id="stickerPreview">
                 <div class="preview-head">
-                  <h2>预览</h2>
+                  <h2 data-i18n="preview">Preview</h2>
                   <span class="preview-note" id="stickerPreviewNote"></span>
                 </div>
                 <div class="preview-grid" id="stickerPreviewGrid"></div>
@@ -223,45 +223,45 @@
                 <div class="cut-panel" id="gridPanel">
                   <div class="cut-frame" id="gridFrame">
                     <div class="grid-board" id="gridBoard"></div>
-                    <p class="grid-empty" id="gridEmpty">还没有导入图片</p>
+                    <p class="grid-empty" id="gridEmpty" data-i18n="gridEmpty">No images imported yet</p>
                   </div>
                 </div>
 
                 <aside class="studio-side">
                   <div class="tool-card">
-                    <h3>拼图方式</h3>
-                    <div class="grid-picker" id="gridPicker" role="group" aria-label="拼图方式">
-                      <button type="button" data-n="1" aria-pressed="false">1 × 1</button>
-                      <button type="button" data-n="2" aria-pressed="false">2 × 2</button>
-                      <button type="button" data-n="3" class="on" aria-pressed="true">3 × 3</button>
-                      <button type="button" data-n="4" aria-pressed="false">4 × 4</button>
-                      <button type="button" data-n="5" aria-pressed="false">5 × 5</button>
+                    <h3 data-i18n="gridLayout">Layout</h3>
+                    <div class="grid-picker" id="gridPicker" role="group" data-i18n-attr="aria-label:gridLayout" aria-label="Layout">
+                      <button type="button" data-n="1" aria-pressed="false">1 x 1</button>
+                      <button type="button" data-n="2" aria-pressed="false">2 x 2</button>
+                      <button type="button" data-n="3" class="on" aria-pressed="true">3 x 3</button>
+                      <button type="button" data-n="4" aria-pressed="false">4 x 4</button>
+                      <button type="button" data-n="5" aria-pressed="false">5 x 5</button>
                     </div>
                   </div>
                   <div class="tool-card">
-                    <h3>导入图片</h3>
+                    <h3 data-i18n="gridImport">Import images</h3>
                     <label class="drop mini" id="gridDrop">
                       <input id="gridFiles" type="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple>
-                      <strong>选图片（可多选）</strong>
-                      <small>也可以一次拖进来，或者 Ctrl+V 粘贴</small>
+                      <strong data-i18n="gridChoose">Choose images (multiple allowed)</strong>
+                      <small data-i18n="gridDropHint">You can also drop them all at once, or paste with Ctrl+V</small>
                     </label>
                   </div>
                   <div class="tool-card stretch">
-                    <h3>已导入 <span id="gridCount">0 / 9</span></h3>
+                    <h3><span data-i18n="gridImported">Imported</span> <span id="gridCount">0 / 9</span></h3>
                     <div class="grid-thumbs" id="gridThumbs"></div>
                   </div>
                   <div class="side-actions">
-                    <button class="gen-btn" id="gridGenerate" type="button">生成拼图</button>
-                    <button class="ghost-btn" id="gridClear" type="button">清空重来</button>
+                    <button class="gen-btn" id="gridGenerate" type="button" data-i18n="gridGenerate">Build the grid</button>
+                    <button class="ghost-btn" id="gridClear" type="button" data-i18n="gridClear">Clear and start over</button>
                   </div>
                   <p class="status" id="gridStatus" role="status"></p>
                 </aside>
 
-                <p class="cut-hint">按顺序填格：第 1 张进左上角，从左到右、从上到下。每格按比例裁满，不会被拉变形。</p>
+                <p class="cut-hint" data-i18n="gridHint">Cells fill in order: the first image goes top-left, left to right and top to bottom. Each cell is cropped to fill, never stretched.</p>
               </div>
               <div class="studio-preview is-hidden" id="gridPreview">
                 <div class="preview-head">
-                  <h2>预览</h2>
+                  <h2 data-i18n="preview">Preview</h2>
                   <span class="preview-note" id="gridPreviewNote"></span>
                 </div>
                 <div class="preview-grid" id="gridPreviewGrid"></div>
@@ -274,7 +274,7 @@
               <div class="studio-grid">
                 <div class="cut-panel" id="paintPanel">
                   <div class="cut-frame" id="paintFrame">
-                    <img id="paintBase" alt="底图">
+                    <img id="paintBase" alt="" data-i18n-attr="alt:baseImageAlt">
                     <canvas class="paint-layer" id="paintCanvas"></canvas>
                     <div class="text-layer" id="textLayer"></div>
                   </div>
@@ -282,60 +282,62 @@
 
                 <aside class="studio-side">
                   <div class="tool-card">
-                    <h3>工具</h3>
-                    <div class="seg" id="paintMode" role="group" aria-label="工具">
-                      <button type="button" data-mode="text" class="on" aria-pressed="true">文字</button>
-                      <button type="button" data-mode="brush" aria-pressed="false">画笔</button>
+                    <h3 data-i18n="paintTool">Tool</h3>
+                    <div class="seg" id="paintMode" role="group" data-i18n-attr="aria-label:paintTool" aria-label="Tool">
+                      <button type="button" data-mode="text" class="on" aria-pressed="true" data-i18n="paintText">Text</button>
+                      <button type="button" data-mode="brush" aria-pressed="false" data-i18n="paintBrush">Brush</button>
                     </div>
                   </div>
 
                   <div class="tool-card" id="textTools">
-                    <h3>文字</h3>
-                    <button class="gen-btn" id="textAdd" type="button">加一条文字</button>
-                    <textarea id="textBody" rows="2" placeholder="加一条之后在这里改内容" spellcheck="false"></textarea>
+                    <h3 data-i18n="paintText">Text</h3>
+                    <button class="gen-btn" id="textAdd" type="button" data-i18n="textAdd">Add a text box</button>
+                    <textarea id="textBody" rows="2" spellcheck="false"
+                      data-i18n-attr="placeholder:textBodyPlaceholder"
+                      placeholder="Add one, then edit the content here"></textarea>
                     <div class="range-row">
-                      <label>字号</label>
+                      <label data-i18n="textSize">Font size</label>
                       <input id="textSize" type="range" min="2" max="20" step="1" value="7">
                       <output id="textSizeOut">7%</output>
                     </div>
                     <label class="check-row">
                       <input id="textOutline" type="checkbox" checked>
-                      <span>加黑边（浅色底图上也看得清）</span>
+                      <span data-i18n="textOutline">Outline it (so it stays readable on a light background)</span>
                     </label>
-                    <button class="ghost-btn" id="textRemove" type="button">删掉这条</button>
+                    <button class="ghost-btn" id="textRemove" type="button" data-i18n="textRemove">Delete this one</button>
                   </div>
 
                   <div class="tool-card is-hidden" id="brushTools">
-                    <h3>画笔</h3>
+                    <h3 data-i18n="paintBrush">Brush</h3>
                     <div class="range-row">
-                      <label>粗细</label>
+                      <label data-i18n="brushWidth">Thickness</label>
                       <input id="brushWidth" type="range" min="1" max="30" step="1" value="6">
                       <output id="brushWidthOut">6</output>
                     </div>
                     <div class="side-actions">
-                      <button class="ghost-btn" id="brushUndo" type="button">撤销上一笔</button>
-                      <button class="ghost-btn" id="brushClear" type="button">全部清掉</button>
+                      <button class="ghost-btn" id="brushUndo" type="button" data-i18n="brushUndo">Undo last stroke</button>
+                      <button class="ghost-btn" id="brushClear" type="button" data-i18n="brushClear">Clear everything</button>
                     </div>
                   </div>
 
                   <div class="tool-card">
-                    <h3>颜色</h3>
+                    <h3 data-i18n="paintColour">Colour</h3>
                     <div class="swatches" id="paintColors"></div>
                   </div>
 
                   <div class="side-actions">
-                    <button class="gen-btn" id="paintGenerate" type="button">生成预览</button>
-                    <button class="ghost-btn" id="paintChange" type="button">换一张图</button>
+                    <button class="gen-btn" id="paintGenerate" type="button" data-i18n="generatePreview">Generate preview</button>
+                    <button class="ghost-btn" id="paintChange" type="button" data-i18n="changeImage">Change image</button>
                   </div>
                   <p class="status" id="paintStatus" role="status"></p>
                 </aside>
 
-                <p class="cut-hint">文字模式：点空白处加一条、拖文字挪位置。画笔模式：按住直接画。</p>
+                <p class="cut-hint" data-i18n="paintHint">Text mode: click empty space to add a box, drag it to move. Brush mode: hold and draw.</p>
               </div>
 
               <div class="studio-preview is-hidden" id="paintPreview">
                 <div class="preview-head">
-                  <h2>预览</h2>
+                  <h2 data-i18n="preview">Preview</h2>
                   <span class="preview-note" id="paintPreviewNote"></span>
                 </div>
                 <div class="preview-grid" id="paintPreviewGrid"></div>
@@ -354,35 +356,35 @@
   <div class="modal is-hidden" id="stickerModal" role="dialog" aria-modal="true" aria-labelledby="stickerModalTitle">
     <div class="modal-box">
       <header class="modal-head">
-        <h2 id="stickerModalTitle">导入贴纸</h2>
-        <button class="modal-x" id="stickerModalX" type="button" aria-label="关闭">×</button>
+        <h2 id="stickerModalTitle" data-i18n="stickerModalTitle">Import sticker</h2>
+        <button class="modal-x" id="stickerModalX" type="button" data-i18n-attr="aria-label:closeLabel" aria-label="Close">x</button>
       </header>
       <div class="modal-body">
         <label class="drop" id="stickerDrop">
           <input id="stickerFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif">
           <span class="drop-ico" aria-hidden="true">＋</span>
-          <strong>选一张贴纸图片</strong>
-          <small>也可以拖进来，或者直接 Ctrl+V 粘贴</small>
+          <strong data-i18n="stickerPick">Choose a sticker image</strong>
+          <small data-i18n="stickerPickHint">You can drag one in, or paste with Ctrl+V</small>
         </label>
         <div class="is-hidden" id="keyStage">
           <canvas id="stickerCanvas"></canvas>
-          <p class="key-tip" id="keyTip">点图上要去掉的背景色 —— 想换颜色就再点一下</p>
+          <p class="key-tip" id="keyTip" data-i18n="keyTip">Click the background colour you want removed - click again to pick a different one</p>
         </div>
         <div class="is-hidden" id="keyTools">
           <div class="range-row">
-            <label>容差</label>
+            <label data-i18n="keyTolerance">Tolerance</label>
             <input id="keyTol" type="range" min="0" max="100" step="1" value="32">
             <output id="keyTolOut">32</output>
           </div>
           <div class="key-actions">
-            <button class="ghost-btn" id="keyReset" type="button">还原原始图</button>
+            <button class="ghost-btn" id="keyReset" type="button" data-i18n="keyReset">Restore the original</button>
             <span class="tool-note" id="keyInfo"></span>
           </div>
         </div>
       </div>
       <footer class="modal-foot">
-        <button class="ghost-btn" id="stickerCancel" type="button">取消</button>
-        <button class="gen-btn" id="stickerApply" type="button" disabled>用这张</button>
+        <button class="ghost-btn" id="stickerCancel" type="button" data-i18n="cancel">Cancel</button>
+        <button class="gen-btn" id="stickerApply" type="button" disabled data-i18n="stickerApply">Use this one</button>
       </footer>
     </div>
   </div>
@@ -397,8 +399,10 @@
   <script src="../assets/js/sticker.js"></script>
   <script src="../assets/js/grid.js"></script>
   <script src="../assets/js/paint.js"></script>
-  <script>
-    boot({ activeId: "image-editor", title: "图片工坊", base: "../" });
+  <script type="module">
+    import { bootI18n } from "../assets/js/i18n.js";
+    await bootI18n();
+    boot({ activeId: "image-editor", title: M8I18n.t("feat.image-editor.name", "Image Workshop"), base: "../" });
     M8Studio.init();
     M8Cut.init();
     M8Mask.init();

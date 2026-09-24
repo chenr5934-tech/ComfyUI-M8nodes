@@ -17,6 +17,34 @@
  * 所以 0 这个值不会和任何真分类撞上。
  * ==========================================================================*/
 
+/* 界面文案走 i18n.js。它是 module，而这些功能脚本是普通脚本，拿不到 import ——
+   i18n.js 因此挂了一份到 window。
+
+   用 var 而不是 const：普通脚本共享全局作用域，const 在这里重复声明会直接报
+   "Identifier 'T' has already been declared"，一个页面同时加载几个脚本就白屏。
+   var 重复声明是合法的，每个文件仍然自足，不依赖加载顺序。
+
+   宿主对象用 globalThis 取而不是直接写 window：前端测试在 Node 里跑这些脚本，
+   那边没有 window，直接解引用会当场 "window is not defined"。
+
+   i18n 没加载成功时走这里的兜底：**必须自己填占位符** —— 直接返回 fallback 的话，
+   界面上会原样显示 "{h} h {m} min" 这种花括号，比换不成中文更糟。 */
+var T = function (key, fallback, vars) {
+  var host = typeof globalThis !== "undefined" ? globalThis : {};
+  var i18n = host.M8I18n;
+  if (i18n && typeof i18n.t === "function") return i18n.t(key, fallback, vars);
+
+  var text = fallback === undefined ? key : fallback;
+  if (vars && typeof text === "string") {
+    for (var k in vars) {
+      if (Object.prototype.hasOwnProperty.call(vars, k)) {
+        text = text.split("{" + k + "}").join(String(vars[k]));
+      }
+    }
+  }
+  return text;
+};
+
 const M8Prompts = (() => {
   "use strict";
 
@@ -117,7 +145,7 @@ const M8Prompts = (() => {
 
   /* 分类重名会让下拉框分不清，所以自动加个后缀 */
   function uniqueName(groups, base) {
-    const want = String(base || "新分类").trim() || "新分类";
+    const want = String(base || T("newCategory", "New category")).trim() || T("newCategory", "New category");
     let name = want;
     let n = 2;
     while (groups.some(function (g) { return (g.name || "") === name; })) {
@@ -218,7 +246,7 @@ const M8Prompts = (() => {
     renderCards();
     if (el.count) {
       const n = state.cards.length;
-      el.count.textContent = n ? "一共 " + n + " 张" : "";
+      el.count.textContent = n ? T("pgCountLabel", "{n} cards", { n: n }) : "";
     }
   }
 
@@ -246,7 +274,7 @@ const M8Prompts = (() => {
       const x = document.createElement("button");
       x.type = "button";
       x.className = "pg-chip-x";
-      x.title = "删掉这个分类（里面的卡片会变成未分类）";
+      x.title = T("pgDeleteGroupTip", "Delete this category (the cards inside become uncategorised)");
       x.textContent = "×";
       x.addEventListener("click", function (ev) {
         ev.stopPropagation();
@@ -261,13 +289,13 @@ const M8Prompts = (() => {
     if (!el.groups) return;
     el.groups.innerHTML = "";
 
-    el.groups.appendChild(chip("全部", FILTER_ALL, state.cards.length, false));
+    el.groups.appendChild(chip(T("pgFilterAll", "All"), FILTER_ALL, state.cards.length, false));
     state.groups.forEach(function (g) {
-      const c = chip(g.name || "未命名", g.id, countIn(state.cards, g.id), true);
+      const c = chip(g.name || T("pgUntitled", "Untitled"), g.id, countIn(state.cards, g.id), true);
       /* 双击分类名就地改名 */
       const btn = c.querySelector(".pg-chip-btn");
       if (btn) {
-        btn.title = "点一下筛选，双击改名字";
+        btn.title = T("pgChipTip", "Click to filter, double-click to rename");
         btn.addEventListener("dblclick", function (ev) {
           ev.stopPropagation();
           askRenameGroup(g.id);
@@ -275,13 +303,13 @@ const M8Prompts = (() => {
       }
       el.groups.appendChild(c);
     });
-    el.groups.appendChild(chip("未分类", FILTER_NONE, countIn(state.cards, FILTER_NONE), false));
+    el.groups.appendChild(chip(T("pgFilterNone", "Uncategorised"), FILTER_NONE, countIn(state.cards, FILTER_NONE), false));
 
     const add = document.createElement("button");
     add.type = "button";
     add.className = "pg-add";
     add.id = "pgAddGroup";
-    add.textContent = "＋ 新建分类";
+    add.textContent = T("pgAddGroup", "+ New category");
     add.addEventListener("click", newGroup);
     el.groups.appendChild(add);
   }
@@ -303,7 +331,7 @@ const M8Prompts = (() => {
   function buildPhoto(rec) {
     const photo = document.createElement("div");
     photo.className = "pg-photo";
-    photo.title = "点一下传例图";
+    photo.title = T("pgPhotoTip", "Click to upload a sample image");
 
     const input = document.createElement("input");
     input.type = "file";
@@ -319,7 +347,7 @@ const M8Prompts = (() => {
     if (rec.image) {
       const im = document.createElement("img");
       im.src = rec.image;
-      im.alt = (rec.name || "这张卡") + " 的例图";
+      im.alt = T("pgPhotoAlt", "{name} sample image", { name: rec.name || T("pgThisCard", "This card") });
       photo.appendChild(im);
 
       const tools = document.createElement("div");
@@ -327,7 +355,7 @@ const M8Prompts = (() => {
 
       const swap = document.createElement("button");
       swap.type = "button";
-      swap.textContent = "换图";
+      swap.textContent = T("changeImage", "Change image");
       swap.addEventListener("click", function (ev) {
         ev.stopPropagation();
         input.click();
@@ -335,14 +363,14 @@ const M8Prompts = (() => {
 
       const wipe = document.createElement("button");
       wipe.type = "button";
-      wipe.textContent = "去掉";
+      wipe.textContent = T("pgWipePhoto", "Remove");
       wipe.addEventListener("click", function (ev) {
         ev.stopPropagation();
         rec.image = "";
         rec.updatedAt = now();
         saveCard(rec).then(function () {
           refreshRowMedia(rec.id);
-          setStatus("例图去掉了。");
+          setStatus(T("pgPhotoRemoved", "Sample image removed."));
         });
       });
 
@@ -354,9 +382,9 @@ const M8Prompts = (() => {
       hint.className = "pg-photo-hint";
       const plus = document.createElement("span");
       plus.className = "plus";
-      plus.textContent = "＋";
+      plus.textContent = "+";
       const label = document.createElement("span");
-      label.textContent = "传一张效果图";
+      label.textContent = T("pgUploadPhoto", "Upload a sample image");
       hint.appendChild(plus);
       hint.appendChild(label);
       photo.appendChild(hint);
@@ -385,7 +413,7 @@ const M8Prompts = (() => {
     name.className = "pg-name";
     name.type = "text";
     name.value = rec.name || "";
-    name.placeholder = "给这张卡起个名字，比如「仰拍构图」";
+    name.placeholder = T("pgCardNamePlaceholder", 'Name this card, for example "low-angle framing"');
     name.addEventListener("input", function () { touch(rec.id, { name: name.value }); });
     head.appendChild(name);
 
@@ -393,16 +421,16 @@ const M8Prompts = (() => {
     sel.className = "pg-group";
     const blank = document.createElement("option");
     blank.value = "0";
-    blank.textContent = "未分类";
+    blank.textContent = T("pgFilterNone", "Uncategorised");
     sel.appendChild(blank);
     state.groups.forEach(function (g) {
       const o = document.createElement("option");
       o.value = String(g.id);
-      o.textContent = g.name || "未命名";
+      o.textContent = g.name || T("pgUntitled", "Untitled");
       sel.appendChild(o);
     });
     sel.value = String(groupOf(rec));
-    sel.title = "把这张卡存进哪个分类";
+    sel.title = T("pgGroupSelectTip", "Which category this card goes in");
     sel.addEventListener("change", function () {
       touch(rec.id, { groupId: Number(sel.value) || 0 });
     });
@@ -413,7 +441,7 @@ const M8Prompts = (() => {
     const ta = document.createElement("textarea");
     ta.className = "pg-text";
     ta.value = rec.text || "";
-    ta.placeholder = "概念提示词写在这里，比如：from below, low angle, looking up, dramatic perspective";
+    ta.placeholder = T("pgTextPlaceholder", "Write the concept prompt here, for example: from below, low angle, looking up, dramatic perspective");
     ta.spellcheck = false;
     ta.addEventListener("input", function () { touch(rec.id, { text: ta.value }); });
     wrapper.appendChild(ta);
@@ -423,7 +451,7 @@ const M8Prompts = (() => {
     note.className = "pg-note";
     note.rows = 2;
     note.value = rec.note || "";
-    note.placeholder = "备注（可选）：什么时候用、权重给多少、和哪些词冲突";
+    note.placeholder = T("pgNotePlaceholder", "Note (optional): when to use it, what weight to give it, which words clash with it");
     note.addEventListener("input", function () { touch(rec.id, { note: note.value }); });
     wrapper.appendChild(note);
 
@@ -434,29 +462,29 @@ const M8Prompts = (() => {
     const copy = document.createElement("button");
     copy.type = "button";
     copy.className = "primary";
-    copy.textContent = "复制提示词";
+    copy.textContent = T("pgCopy", "Copy prompt");
     copy.addEventListener("click", function () { copyOne(rec.id); });
 
     const cp = document.createElement("button");
     cp.type = "button";
-    cp.textContent = "连名字一起复制";
+    cp.textContent = T("pgCopyWithName", "Copy with the name");
     cp.addEventListener("click", function () { copyOne(rec.id, true); });
 
     const save = document.createElement("button");
     save.type = "button";
-    save.textContent = "保存";
+    save.textContent = T("pgSave", "Save");
     save.addEventListener("click", function () { saveOne(rec.id); });
 
     const del = document.createElement("button");
     del.type = "button";
     del.className = "danger";
-    del.textContent = "删掉";
+    del.textContent = T("deleteConfirm", "Delete");
     /* 不直接删：先弹确认。一条里可能攒了几百个字的提示词，误点一下就没了 */
     del.addEventListener("click", function () { askDeleteCard(rec.id); });
 
     const st = document.createElement("span");
     st.className = "pg-state";
-    st.textContent = state.dirty[rec.id] ? "有改动没保存" : "已保存";
+    st.textContent = state.dirty[rec.id] ? T("pgDirty", "Unsaved changes") : T("pgSaved", "Saved");
 
     tools.appendChild(copy);
     tools.appendChild(cp);
@@ -483,10 +511,10 @@ const M8Prompts = (() => {
   function setPhoto(id, file) {
     const rec = findCard(id);
     if (!rec) return;
-    setStatus("正在读图…");
+    setStatus(T("pgReadingImage", "Reading the image..."));
     readImage(file).then(function (dataUrl) {
       if (!dataUrl) {
-        setStatus("这张图读不出来。", true);
+        setStatus(T("pgImageUnreadable", "This image cannot be read."), true);
         return;
       }
       rec.image = dataUrl;
@@ -496,7 +524,7 @@ const M8Prompts = (() => {
       return saveCard(rec).then(function () {
         markDirty(id, false);
         refreshRowMedia(id);
-        setStatus("例图换好了。");
+        setStatus(T("pgPhotoSwapped", "Sample image updated."));
       });
     });
   }
@@ -510,7 +538,7 @@ const M8Prompts = (() => {
     if (!row) return;
     row.classList.toggle("dirty", !!on);
     const st = row.querySelector ? row.querySelector(".pg-state") : null;
-    if (st) st.textContent = on ? "有改动没保存" : "已保存";
+    if (st) st.textContent = on ? T("pgDirty", "Unsaved changes") : T("pgSaved", "Saved");
   }
 
   /* ------------------------------------------------------------ 交互 */
@@ -528,7 +556,7 @@ const M8Prompts = (() => {
     if (!rec) return;
     saveCard(rec).then(function () {
       markDirty(id, false);
-      setStatus("存好了。");
+      setStatus(T("pgSaved", "Saved"));
       /* 分类归属或者名字可能变了，计数和筛选条要跟着更新 */
       renderGroups();
     });
@@ -539,13 +567,13 @@ const M8Prompts = (() => {
     if (!rec) return;
     const text = String(rec.text || "");
     if (!text.trim()) {
-      setStatus("这张卡还没写提示词。", true);
+      setStatus(T("pgNoPrompt", "This card has no prompt yet."), true);
       return;
     }
     const payload = withName && rec.name ? rec.name + "\n" + text : text;
     copyText(payload)
-      .then(function () { setStatus(withName ? "连名字一起复制好了。" : "复制好了。"); })
-      .catch(function () { setStatus("复制没成功，手动选一下吧。", true); });
+      .then(function () { setStatus(withName ? T("pgCopiedWithName", "Copied with the name.") : T("copied", "Copied.")); })
+      .catch(function () { setStatus(T("copyFailed", "Could not copy - select it by hand."), true); });
   }
 
   function newCard() {
@@ -562,21 +590,21 @@ const M8Prompts = (() => {
     saveCard(rec).then(function (key) {
       if (key === null || key === undefined) {
         /* 措辞和 init 里那条保持一致 —— 同一个原因，别让用户看到两种说法 */
-        setStatus("这个浏览器不给存东西（隐身模式？），这张卡关掉就没了。", true);
+        setStatus(T("pgNoStorageCard", "This browser will not store anything (private mode?), so this card is gone once you close the page."), true);
         return;
       }
       rec.id = key;
       state.cards.push(rec);
       render();
-      setStatus("新建了一张，写完记得点保存。");
+      setStatus(T("pgNewCard", "A new card is in - remember to hit Save when you are done."));
     });
   }
 
   function newGroup() {
-    const rec = { name: uniqueName(state.groups, "新分类"), at: now() };
+    const rec = { name: uniqueName(state.groups, T("newCategory", "New category")), at: now() };
     saveGroup(rec).then(function (key) {
       if (key === null || key === undefined) {
-        setStatus("这个浏览器不给存东西（隐身模式？），分类加不进去。", true);
+        setStatus(T("pgNoStorageGroup", "This browser will not store anything (private mode?), so the category cannot be added."), true);
         return;
       }
       rec.id = key;
@@ -584,21 +612,21 @@ const M8Prompts = (() => {
       /* 不切筛选。切过去的话当前这一列会突然变空（新分类里当然还没东西），
          看着像卡片丢了 —— 实测踩到过。分类条上一直看得到它，用户自己会切。 */
       render();
-      setStatus("分类建好了。");
-      askRenameGroup(key, "这个分类叫什么？");
+      setStatus(T("pgGroupAdded", "Category created."));
+      askRenameGroup(key, T("pgNameTitle", "What is this category called?"));
     });
   }
 
   function askRenameGroup(gid, title) {
     const g = findGroup(gid);
     if (!g) return;
-    openNameModal(title || "给这个分类改个名字", g.name || "", function (name) {
+    openNameModal(title || T("pgRenameTitle", "Rename this category"), g.name || "", function (name) {
       const clean = String(name).trim();
       if (!clean || clean === g.name) return;
       g.name = clean;
       saveGroup(g).then(function () {
         render();
-        setStatus("分类改好了。");
+        setStatus(T("pgGroupRenamed", "Category renamed."));
       });
     });
   }
@@ -654,9 +682,9 @@ const M8Prompts = (() => {
     if (!rec) return;
     pendingCard = id;
     pendingGroup = -1;
-    const name = rec.name || "这张没名字";
+    const name = rec.name || T("pgUntitled", "Untitled");
     const n = String(rec.text || "").length;
-    openModal("删掉这张卡？", "「" + name + "」里写着 " + n + " 个字的提示词，删了找不回来。");
+    openModal(T("pgDelTitle", "Delete this card?"), T("pgDelCardBody", '"{name}" holds {n} characters of prompt, and once it is deleted it is gone.', { name: name, n: n }));
   }
 
   function askDeleteGroup(gid, label) {
@@ -664,8 +692,8 @@ const M8Prompts = (() => {
     pendingCard = -1;
     pendingGroup = gid;
     openModal(
-      "删掉这个分类？",
-      "「" + label + "」里现在有 " + n + " 张卡。分类删掉之后，那些卡会变成未分类，不会被一起删掉。"
+      T("pgDelGroupTitle", "Delete this category?"),
+      T("pgDelGroupBody", '"{name}" holds {n} cards right now. Deleting the category turns those cards into uncategorised ones - they are not deleted with it.', { name: label, n: n })
     );
   }
 
@@ -678,7 +706,7 @@ const M8Prompts = (() => {
         delete state.dirty[id];
         closeModal();
         render();
-        setStatus("删掉了。");
+        setStatus(T("pgDeleted", "Deleted."));
       });
       return;
     }
@@ -695,7 +723,7 @@ const M8Prompts = (() => {
         if (state.filter === gid) state.filter = FILTER_ALL;
         closeModal();
         render();
-        setStatus("分类删掉了，里面那 " + affected.length + " 张卡变成未分类了。");
+        setStatus(T("pgGroupDeleted", "Category deleted; the {n} cards inside are now uncategorised.", { n: affected.length }));
       });
       return;
     }
@@ -712,13 +740,13 @@ const M8Prompts = (() => {
 
   function backupOut() {
     if (!state.cards.length && !state.groups.length) {
-      setStatus("这里还没有东西可以导出。", true);
+      setStatus(T("pgNothingToExport", "There is nothing here to export yet."), true);
       return;
     }
     const text = M8Backup.envelope("prompts", state.cards, { groups: state.groups });
     M8Backup.download(M8Backup.fileNameFor("prompts"), text);
-    setStatus("导出好了：" + state.cards.length + " 张卡、"
-      + state.groups.length + " 个分类，" + M8Backup.fmtSize(text.length) + "。");
+    setStatus(T("pgExported", "Exported: {cards} cards, {groups} categories, {size}.",
+      { cards: state.cards.length, groups: state.groups.length, size: M8Backup.fmtSize(text.length) }));
   }
 
   /* 连点两次会叠出两个确认框：第二个盖住第一个，关掉之后第一个还杵在那儿。
@@ -736,9 +764,9 @@ const M8Prompts = (() => {
         const obj = M8Backup.parse(text);
         if (obj.kind !== "prompts") {
           const other = M8Backup.KINDS[obj.kind];
-          throw new Error("这份备份是「" + (other ? other.title : obj.kind) + "」的，不是提示词归纳的。");
+          throw new Error(T("pgWrongBackup", 'This backup is for "{other}", not for the prompt collection.', { other: other ? other.title : obj.kind }));
         }
-        return M8Backup.confirmImport("提示词归纳", obj.data.length, state.cards.length)
+        return M8Backup.confirmImport(T("feat.prompts.name", "Prompt Collection"), obj.data.length, state.cards.length)
           .then(function (mode) {
             if (!mode) return null;
             const gs = (obj.extra && obj.extra.groups) || [];
@@ -746,7 +774,7 @@ const M8Prompts = (() => {
           });
       });
     }).catch(function (e) {
-      setStatus(e && e.message ? e.message : "导入失败。", true);
+      setStatus(e && e.message ? e.message : T("pgImportFailed", "Import failed."), true);
     });
   }
 
@@ -762,7 +790,7 @@ const M8Prompts = (() => {
           /* 分类全部重建，顺手记下 旧 id -> 新 id */
           const map = {};
           return Promise.all(backupGroups.map(function (g) {
-            const c = { name: g.name || "新分类", at: now() };
+            const c = { name: g.name || T("newCategory", "New category"), at: now() };
             return saveGroup(c).then(function (key) {
               c.id = key;
               map[g.id] = key;
@@ -780,8 +808,8 @@ const M8Prompts = (() => {
             state.filter = FILTER_ALL;
             state.dirty = {};
             render();
-            setStatus("替换完成：现在有 " + list.length + " 张卡、"
-              + made.groups.length + " 个分类。");
+            setStatus(T("pgReplaced", "Replace done: {cards} cards and {groups} categories now.",
+              { cards: list.length, groups: made.groups.length }));
           });
         });
     }
@@ -806,8 +834,8 @@ const M8Prompts = (() => {
         });
       })).then(function () {
         render();
-        setStatus("导入完成：新增 " + merged.fresh.length + " 张卡、"
-          + plan.toCreate.length + " 个分类，跳过同名 " + merged.skipped.length + " 张。");
+        setStatus(T("pgImported", "Import done: {cards} new cards, {groups} categories, {skipped} skipped as duplicates of what is already here.",
+          { cards: merged.fresh.length, groups: plan.toCreate.length, skipped: merged.skipped.length }));
       });
     });
   }
@@ -877,7 +905,7 @@ const M8Prompts = (() => {
       state.ready = true;
       render();
       if (!storeAvailable()) {
-        setStatus("这个浏览器不给存东西（隐身模式？），这次加的内容关掉就没了。", true);
+        setStatus(T("pgNoStorage", "This browser will not store anything (private mode?), so what you add now is gone once you close the page."), true);
         return;
       }
       /* 申请持久化存储：授予之后磁盘紧张时浏览器不会自动清掉这个源的数据。
@@ -885,7 +913,7 @@ const M8Prompts = (() => {
       if (typeof M8Backup !== "undefined" && M8Backup.requestPersist) {
         M8Backup.requestPersist().then(function (r) {
           if (r && r.granted === false) {
-            setStatus("浏览器没给持久化权限：磁盘紧张时这里的数据可能被清掉，记得偶尔导出备份。", true);
+            setStatus(T("pgNoPersist", "The browser did not grant persistent storage: the data here can be cleared when the disk runs low, so export a backup now and then."), true);
           }
         });
       }

@@ -207,9 +207,9 @@ step('uniqueName：重名自动加后缀', () => {
   if (m.uniqueName([{ name: '构图' }, { name: '构图 2' }], '构图') !== '构图 3') {
     throw new Error('连着重名该继续往下数');
   }
-  if (m.uniqueName([], '   ') !== '新分类') throw new Error('空白名字该给默认的');
-  if (m.uniqueName([], '') !== '新分类') throw new Error('空名字该给默认的');
-  if (m.uniqueName([], null) !== '新分类') throw new Error('null 该给默认的');
+  if (m.uniqueName([], '   ') !== 'New category') throw new Error('空白名字该给默认的');
+  if (m.uniqueName([], '') !== 'New category') throw new Error('空名字该给默认的');
+  if (m.uniqueName([], null) !== 'New category') throw new Error('null 该给默认的');
 });
 
 /* ---------------------------------------------------------------- 例图 */
@@ -250,7 +250,7 @@ step('存不下的时候：明确说存不下，不假装存上了', () => {
   byId.pgAddCard.dispatchEvent({ type: 'click' });
   return settle().then(() => {
     const st = byId.pgStatus.textContent || '';
-    if (st.indexOf('不给存') < 0) throw new Error('没提示存不下，用户会以为存上了：' + st);
+    if (st.indexOf('will not store anything') < 0) throw new Error('没提示存不下，用户会以为存上了：' + st);
     if (byId.pgList.children.length) throw new Error('存不下却把卡片显示出来了');
   });
 });
@@ -264,7 +264,7 @@ step('存不下的时候：新建分类也如实说', () => {
   addBtn.dispatchEvent({ type: 'click' });
   return settle().then(() => {
     const st = byId.pgStatus.textContent || '';
-    if (st.indexOf('不给存') < 0) throw new Error('新建分类没说存不下：' + st);
+    if (st.indexOf('will not store anything') < 0) throw new Error('新建分类没说存不下：' + st);
   });
 });
 

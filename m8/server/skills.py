@@ -291,14 +291,42 @@ def list_resources(name: str) -> list[dict[str, Any]]:
     return items
 
 
-def _referenced_resources(main_text: str, directory: Path) -> list[str]:
-    """主文件里引用到的包内文件，按出现顺序去重。
+def _resolve_resource(directory: Path, rel: str) -> Path | None:
+    """把一个包内引用解析成真实路径；跑到包外的一律返回 None。
+
+    资源路径是 SKILL.md 的正文说了算，而 SKILL.md 可以通过上传接口塞进来，
+    所以每个引用都是不受控输入。_RESOURCE_REF 只要求首字符是字母数字或下划线，
+    `a/../../../etc/passwd.md` 这种是能匹配上的 —— pathlib 的 `/` 遇到 `..`
+    会一路往上走，于是读到的就是包外的文件，再被内联进提示词发出去。
+
+    三道：挡绝对路径、挡 `..` 段，最后按 resolve() 之后的结果确认还在包里
+    （符号链接也在这道展开）。和 _resolve 对 skill 名字的处理是同一种做法。
+    """
+    raw = str(rel or "").strip().replace("\\", "/")
+    if not raw or raw.startswith("/") or raw.startswith("~"):
+        return None
+    if re.match(r"^[A-Za-z]:", raw):        # Windows 盘符，Path 会认成绝对路径
+        return None
+    if any(part == ".." for part in raw.split("/")):
+        return None
+
+    candidate = directory / raw
+    if not paths.is_inside(candidate, directory):
+        return None
+    return candidate
+
+
+def _referenced_resources(main_text: str, directory: Path) -> list[tuple[str, Path | None]]:
+    """主文件里引用到的文件，按出现顺序去重。
 
     两种写法都认：
         references/style.md      具体文件
         见 references/ 里的说明   只提目录 -> 把该目录下的文本文件都算上
+
+    返回 (显示用相对路径, 已验证的路径或 None)。None 表示这个引用指向包外，
+    调用方要跳过它 —— 这里不静默丢掉是因为得让人看见"有个引用被挡了"。
     """
-    found: list[str] = []
+    found: list[tuple[str, Path | None]] = []
     seen: set[str] = set()
 
     def offer(rel: str) -> None:
@@ -306,7 +334,7 @@ def _referenced_resources(main_text: str, directory: Path) -> list[str]:
         if not rel or rel in seen:
             return
         seen.add(rel)
-        found.append(rel)
+        found.append((rel, _resolve_resource(directory, rel)))
 
     for raw in _RESOURCE_REF.findall(main_text or ""):
         candidate = raw.strip().strip(",.;:)\"'")
@@ -354,8 +382,12 @@ def read_bundle(name: str, *, inline: bool = True) -> dict[str, Any]:
     skipped: list[str] = []
     chunks: list[str] = []
 
-    for rel in _referenced_resources(main_text, target):
-        path = target / rel
+    for rel, path in _referenced_resources(main_text, target):
+        # None = 这个引用指向包外（被 _resolve_resource 挡下了）。跳过，
+        # 并且说出来 —— 静默忽略会让「我引用的文件怎么没进来」变成悬案。
+        if path is None:
+            skipped.append(f"{rel}（引用指向包外，已忽略）")
+            continue
         if not path.is_file():
             continue
         size = path.stat().st_size

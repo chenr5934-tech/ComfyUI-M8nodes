@@ -307,7 +307,7 @@ step('EXIF：读出相机型号（ASCII 字段）', () => {
   ]);
   const exif = m.parseTiff(tiff);
   if (!exif) throw new Error('没解出来');
-  if (exif.tags['相机型号'] !== 'TestCam') throw new Error('读成：' + exif.tags['相机型号']);
+  if (exif.tags['Camera model'] !== 'TestCam') throw new Error('读成：' + exif.tags['Camera model']);
 });
 
 step('EXIF：读出 ISO（短整型）', () => {
@@ -325,9 +325,9 @@ step('EXIF：读出光圈（有理数）', () => {
   w32le(rat, 4, 10);
   const tiff = makeTiff([{ tag: 0x829D, type: 5, count: 1, data: rat }]);
   const exif = m.parseTiff(tiff);
-  const f = exif.tags['光圈'];
-  if (!f || typeof f !== 'object') throw new Error('光圈没解成有理数：' + JSON.stringify(f));
-  if (Math.abs(f.n / f.d - 1.4) > 0.001) throw new Error('光圈值不对：' + f.n + '/' + f.d);
+  const f = exif.tags['Aperture'];
+  if (!f || typeof f !== 'object') throw new Error('aperture did not parse into a rational: ' + JSON.stringify(f));
+  if (Math.abs(f.n / f.d - 1.4) > 0.001) throw new Error('aperture value was wrong: ' + f.n + '/' + f.d);
 });
 
 step('EXIF：坏字节返回 null，不抛异常', () => {
@@ -370,7 +370,7 @@ step('JPEG：读到 EXIF 段就解出来', () => {
   seg[7 + exifSeg.length] = 0xda;
   const exif = m.parseJpeg(seg);
   if (!exif) throw new Error('没解出来');
-  if (exif.tags['相机型号'] !== 'CamX') throw new Error('读成：' + exif.tags['相机型号']);
+  if (exif.tags['Camera model'] !== 'CamX') throw new Error('读成：' + exif.tags['Camera model']);
 });
 
 step('JPEG：坏的长度字段不会死循环', () => {

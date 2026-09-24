@@ -1363,6 +1363,74 @@ class TestSkillPackage(unittest.TestCase):
             with self.assertRaises(self.errors.M8Error, msg=bad):
                 self.skills.sanitize_rel_path(bad)
 
+    def test_resolve_resource_refuses_to_leave_the_package(self):
+        """_resolve_resource 是正文引用的那道闸。
+
+        和上传时的 sanitize_rel_path 是两回事：那个管的是文件名，
+        这个管的是 SKILL.md **正文里写出来的**路径。
+        """
+        inside = self._tmp / '癸'
+        inside.mkdir()
+        # 正常引用要能解析出来
+        self.assertEqual(
+            self.skills._resolve_resource(inside, 'references/a.md'),
+            inside / 'references/a.md',
+        )
+        # 跑出去的一律 None
+        for bad in (
+            '../outside.md',
+            'a/../../outside.md',
+            'references/../../outside.md',
+            'references/../../../outside.md',
+            '/etc/passwd',
+            'C:/Windows/win.ini',
+            '~/secrets.md',
+            '',
+        ):
+            self.assertIsNone(self.skills._resolve_resource(inside, bad), bad)
+
+    def test_resource_references_cannot_escape_the_package(self):
+        """主文件里的资源引用不能把包外的文件内联进来。
+
+        SKILL.md 的正文能通过上传接口塞进来，所以里面的路径是不受控输入。
+        _RESOURCE_REF 只要求首字符是字母数字或下划线，`a/../../outside.md`
+        是能匹配上的；pathlib 的 `/` 遇到 `..` 会一路往上走，于是包外的文件
+        被读出来、拼进正文、发给模型。这里钉住它。
+        """
+        # 放在 skill 目录之外，但仍在这次测试自己的临时目录里
+        outside = self._tmp / 'outside.md'
+        outside.write_text('包外的东西', encoding='utf-8')
+        try:
+            self.skills.save_skill('壬', {
+                # 借一个真实存在的目录往上游 —— Windows 上 stat 会逐段解析，
+            # 中间目录不存在的话连 open 都到不了，测不出真问题
+            'SKILL.md': '# 壬\n参考 references/../../outside.md'.encode('utf-8'),
+                'references/a.md': '包内的东西'.encode('utf-8'),
+            })
+            bundle = self.skills.read_bundle('壬')
+            self.assertNotIn('包外的东西', bundle['text'], '包外的文件被内联了')
+            self.assertNotIn('references/../../outside.md', bundle['inlined'])
+            # 同一个包里合规的引用要照常展开 —— 闸门只挡越界的
+            self.assertIn('references/a.md', bundle['inlined'])
+            self.assertIn('包内的东西', bundle['text'])
+            # 被挡的引用要出现在 skipped 里，别静默吞掉
+            self.assertTrue(
+                any('outside.md' in s for s in bundle['skipped']),
+                bundle['skipped'],
+            )
+        finally:
+            outside.unlink(missing_ok=True)
+
+    def test_legitimate_reference_still_inlines_after_the_containment_check(self):
+        """加了闸之后正常引用必须照常工作 —— 别把功能一起挡住。"""
+        self.skills.save_skill('子', {
+            'SKILL.md': '# 子\n参考 references/a.md'.encode('utf-8'),
+            'references/a.md': '包内的东西'.encode('utf-8'),
+        })
+        bundle = self.skills.read_bundle('子')
+        self.assertIn('包内的东西', bundle['text'])
+        self.assertEqual(bundle['inlined'], ['references/a.md'])
+
     def test_safe_rel_path_normalizes(self):
         self.assertEqual(self.skills.sanitize_rel_path('references/style.md'), 'references/style.md')
         self.assertEqual(self.skills.sanitize_rel_path('./a//b.md'), 'a/b.md')

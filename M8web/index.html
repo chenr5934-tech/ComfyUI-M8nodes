@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en" data-i18n-title="homeTitle">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>M8 工作台</title>
+  <title>M8 Workbench</title>
   <link rel="icon" type="image/svg+xml" href="assets/img/favicon.svg">
   <link rel="stylesheet" href="assets/css/base.css">
   <link rel="stylesheet" href="assets/css/shell.css">
@@ -26,11 +26,12 @@
     <div class="main">
       <div class="content">
         <header class="hero">
-          <h1>M8 工作台</h1>
-          <p>给 ComfyUI 加的一层自己的东西：出图之外的那些麻烦事，在这里一次做完。左侧是同一份功能清单，随时能来回切。</p>
+          <h1 data-i18n="heroTitle">M8 Workbench</h1>
+          <p data-i18n="heroLede">A layer of its own on top of ComfyUI: the chores that come after generating an image, all done in one place. The same feature list is in the sidebar on the left, so you can switch back and forth.</p>
           <div class="hero-tools">
             <button class="ghost-btn" id="mkShortcut" type="button"
-              title="在桌面放一个快捷方式，双击它就把工作台拉起来 —— ComfyUI 开着关着都能用">＋ 创建桌面快捷方式</button>
+              data-i18n="mkShortcut"
+              data-i18n-attr="title:mkShortcutTip">+ Create desktop shortcut</button>
             <span class="hero-note" id="mkShortcutNote"></span>
           </div>
         </header>
@@ -38,9 +39,14 @@
       </div>
     </div>
   </div>
+  <!-- app.js / migrate.js 是普通脚本，boot 和 renderCards 靠函数声明挂在全局。
+       下面那段用 module：module 天然延迟到普通脚本之后执行，正好等得到它们；
+       而且 import 语法只能在 module 里用。 -->
   <script src="assets/js/app.js"></script>
   <script src="assets/js/migrate.js"></script>
-  <script>
+  <script type="module">
+    import { bootI18n } from "./assets/js/i18n.js";
+    await bootI18n();
     boot({ activeId: "", base: "" });
     renderCards(document.getElementById("cards"));
   </script>

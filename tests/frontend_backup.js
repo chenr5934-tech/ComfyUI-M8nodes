@@ -66,11 +66,11 @@ step('读回来：坏文件都明确报错，不说「出错了」这种废话',
   const cases = [
     ['这不是 json', 'JSON'],
     [JSON.stringify({ hello: 1 }), 'M8'],
-    [JSON.stringify({ app: 'm8web', kind: 'oc', data: [] }), '版本号'],
-    [JSON.stringify({ app: 'm8web', kind: 'oc', v: 99, data: [] }), '更新版本'],
-    [JSON.stringify({ app: 'm8web', kind: '没有这个类型', v: 1, data: [] }), '类型'],
-    [JSON.stringify({ app: 'm8web', kind: 'oc', v: 1, data: '不是数组' }), '没有数据'],
-    [JSON.stringify({ app: 'm8web', kind: 'oc', v: 1 }), '没有数据'],
+    [JSON.stringify({ app: 'm8web', kind: 'oc', data: [] }), 'version number'],
+    [JSON.stringify({ app: 'm8web', kind: 'oc', v: 99, data: [] }), 'newer version'],
+    [JSON.stringify({ app: 'm8web', kind: '没有这个类型', v: 1, data: [] }), 'kind'],
+    [JSON.stringify({ app: 'm8web', kind: 'oc', v: 1, data: '不是数组' }), 'no data'],
+    [JSON.stringify({ app: 'm8web', kind: 'oc', v: 1 }), 'no data'],
     ['', 'JSON'],
     /* 注意 JSON.parse(null) 不是抛错 —— 它等于 JSON.parse("null")，返回 null，
        所以走的是「不是 M8 文件」那条分支。第一版这里期望写成了 JSON，红了一条。 */

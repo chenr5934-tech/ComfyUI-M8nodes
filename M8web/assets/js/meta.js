@@ -13,69 +13,100 @@
  * 不许抛异常 —— 解析器最忌讳因为一个字节不对就整个崩掉。
  * ==========================================================================*/
 
+/* 界面文案走 i18n.js。它是 module，而这些功能脚本是普通脚本，拿不到 import ——
+   i18n.js 因此挂了一份到 window。
+
+   用 var 而不是 const：普通脚本共享全局作用域，const 在这里重复声明会直接报
+   "Identifier 'T' has already been declared"，一个页面同时加载几个脚本就白屏。
+   var 重复声明是合法的，每个文件仍然自足，不依赖加载顺序。
+
+   宿主对象用 globalThis 取而不是直接写 window：前端测试在 Node 里跑这些脚本，
+   那边没有 window，直接解引用会当场 "window is not defined"。
+
+   i18n 没加载成功时走这里的兜底：**必须自己填占位符** —— 直接返回 fallback 的话，
+   界面上会原样显示 "{h} h {m} min" 这种花括号，比换不成中文更糟。 */
+var T = function (key, fallback, vars) {
+  var host = typeof globalThis !== "undefined" ? globalThis : {};
+  var i18n = host.M8I18n;
+  if (i18n && typeof i18n.t === "function") return i18n.t(key, fallback, vars);
+
+  var text = fallback === undefined ? key : fallback;
+  if (vars && typeof text === "string") {
+    for (var k in vars) {
+      if (Object.prototype.hasOwnProperty.call(vars, k)) {
+        text = text.split("{" + k + "}").join(String(vars[k]));
+      }
+    }
+  }
+  return text;
+};
+
 const M8Meta = (() => {
   "use strict";
 
   const PNG_SIG = [137, 80, 78, 71, 13, 10, 26, 10];
 
   const COLOR_TYPES = {
-    0: "灰度",
-    2: "RGB",
-    3: "索引色",
-    4: "灰度 + Alpha",
-    6: "RGBA",
+    0: ["metaColorGray", "Grayscale"],
+    2: ["metaColorRgb", "RGB"],
+    3: ["metaColorIndexed", "Indexed colour"],
+    4: ["metaColorGrayAlpha", "Grayscale + Alpha"],
+    6: ["metaColorRgba", "RGBA"],
   };
 
-  /* EXIF 标签表。只列真要给人看的那些，光名字没意义的 tag 不占版面。 */
+  /* EXIF 标签表。只列真要给人看的那些，光名字没意义的 tag 不占版面。
+     值统一是 [i18n 键, 英文原文]：本表在模块顶层就构造好了，那时 i18n.js（module，
+     后于本文件执行）还没起来 —— 键名存着，真取文案在 parseTiff 里做。
+     下面 GPS_TAGS / ORIENT / COLOR_TYPES 三张表同构，不再重复说明。 */
   const EXIF_TAGS = {
-    0x010F: "相机厂商",
-    0x0110: "相机型号",
-    0x0112: "方向",
-    0x011A: "水平分辨率",
-    0x011B: "垂直分辨率",
-    0x0128: "分辨率单位",
-    0x0131: "软件",
-    0x0132: "修改时间",
-    0x829A: "曝光时间",
-    0x829D: "光圈",
-    0x8822: "曝光程序",
-    0x8827: "ISO",
-    0x9003: "拍摄时间",
-    0x9004: "数字化时间",
-    0x9201: "快门速度",
-    0x9202: "光圈值",
-    0x9204: "曝光补偿",
-    0x9207: "测光模式",
-    0x9209: "闪光灯",
-    0x920A: "焦距",
-    0x9286: "用户注释",
-    0xA001: "色彩空间",
-    0xA002: "像素宽",
-    0xA003: "像素高",
-    0xA405: "等效焦距",
-    0xA434: "镜头型号",
+    0x010F: ["metaExifMake", "Camera make"],
+    0x0110: ["metaExifModel", "Camera model"],
+    0x0112: ["metaExifOrientation", "Orientation"],
+    0x011A: ["metaExifXResolution", "Horizontal resolution"],
+    0x011B: ["metaExifYResolution", "Vertical resolution"],
+    0x0128: ["metaExifResolutionUnit", "Resolution unit"],
+    0x0131: ["metaExifSoftware", "Software"],
+    0x0132: ["metaExifModifyDate", "Modified"],
+    0x829A: ["metaExifExposureTime", "Exposure time"],
+    0x829D: ["metaExifFNumber", "Aperture"],
+    0x8822: ["metaExifExposureProgram", "Exposure program"],
+    0x8827: ["metaExifIso", "ISO"],
+    0x9003: ["metaExifDateTimeOriginal", "Date taken"],
+    0x9004: ["metaExifDateTimeDigitized", "Date digitised"],
+    0x9201: ["metaExifShutterSpeed", "Shutter speed"],
+    0x9202: ["metaExifApertureValue", "Aperture value"],
+    0x9204: ["metaExifExposureBias", "Exposure compensation"],
+    0x9207: ["metaExifMeteringMode", "Metering mode"],
+    0x9209: ["metaExifFlash", "Flash"],
+    0x920A: ["metaExifFocalLength", "Focal length"],
+    0x9286: ["metaExifUserComment", "User comment"],
+    0xA001: ["metaExifColorSpace", "Colour space"],
+    0xA002: ["metaExifPixelXDimension", "Pixel width"],
+    0xA003: ["metaExifPixelYDimension", "Pixel height"],
+    0xA405: ["metaExifFocalLength35mm", "35 mm equivalent focal length"],
+    0xA434: ["metaExifLensModel", "Lens model"],
   };
 
   const GPS_TAGS = {
-    0x0000: "GPS 版本",
-    0x0001: "纬度参考",
-    0x0002: "纬度",
-    0x0003: "经度参考",
-    0x0004: "经度",
-    0x0005: "海拔参考",
-    0x0006: "海拔",
-    0x0007: "时间",
+    0x0000: ["metaGpsVersion", "GPS version"],
+    0x0001: ["metaGpsLatitudeRef", "Latitude ref"],
+    0x0002: ["metaGpsLatitude", "Latitude"],
+    0x0003: ["metaGpsLongitudeRef", "Longitude ref"],
+    0x0004: ["metaGpsLongitude", "Longitude"],
+    0x0005: ["metaGpsAltitudeRef", "Altitude ref"],
+    0x0006: ["metaGpsAltitude", "Altitude"],
+    0x0007: ["metaGpsTime", "Time"],
   };
 
   const ORIENT = {
-    1: "正常",
-    2: "水平镜像",
-    3: "旋转 180°",
-    4: "垂直镜像",
-    5: "顺时针 90° + 镜像",
-    6: "顺时针 90°",
-    7: "逆时针 90° + 镜像",
-    8: "逆时针 90°",
+    1: ["metaOrientNormal", "Normal"],
+    2: ["metaOrientMirrorHorizontal", "Mirrored horizontally"],
+    3: ["metaOrientRotate180", "Rotated 180°"],
+    4: ["metaOrientMirrorVertical", "Mirrored vertically"],
+    5: ["metaOrientRotate90Mirror", "90° clockwise + mirrored"],
+    6: ["metaOrientRotate90", "90° clockwise"],
+    7: ["metaOrientRotate270Mirror", "90° anticlockwise + mirrored"],
+    8: ["metaOrientRotate270", "90° anticlockwise"],
   };
 
   /* ------------------------------------------------------------ 字节小工具 */
@@ -147,13 +178,13 @@ const M8Meta = (() => {
             p++;
           }
           const body = data.subarray(p);
-          out.texts[s.slice(0, k)] = flag ? "(压缩内容)" : utf8(body);
+          out.texts[s.slice(0, k)] = flag ? T("metaCompressedContent", "(compressed content)") : utf8(body);
         }
       } else if (type === "zTXt") {
         /* keyword\0 method(1) 压缩数据 —— 不引 zlib 解不开，只记个名 */
         const s = latin1(data);
         const k = s.indexOf("\u0000");
-        if (k > 0) out.texts[s.slice(0, k)] = "(压缩内容，没解)";
+        if (k > 0) out.texts[s.slice(0, k)] = T("metaCompressedRaw", "(compressed content, not unpacked)");
       } else if (type === "IEND") {
         break;
       }
@@ -233,10 +264,10 @@ const M8Meta = (() => {
           value = null;
         }
         if (gps) {
-          if (GPS_TAGS[tag]) out.gps[GPS_TAGS[tag]] = value;
+          if (GPS_TAGS[tag]) out.gps[T(GPS_TAGS[tag][0], GPS_TAGS[tag][1])] = value;
         } else {
           if (tag === 0x8825) gpsPtr = u32(valueAt);
-          else if (EXIF_TAGS[tag] && value !== null && value !== "") out.tags[EXIF_TAGS[tag]] = value;
+          else if (EXIF_TAGS[tag] && value !== null && value !== "") out.tags[T(EXIF_TAGS[tag][0], EXIF_TAGS[tag][1])] = value;
         }
       }
       return u32(offset + 2 + count * 12);   // 下一个 IFD
@@ -258,13 +289,13 @@ const M8Meta = (() => {
         return s.trim();
       }
       if (type === 1 || type === 7) {
-        return num === 1 ? t[off] : "(二进制 " + num + " 字节)";
+        return num === 1 ? t[off] : T("metaBinaryBytes", "(binary, {n} bytes)", { n: num });
       }
       if (type === 3) {
-        return num === 1 ? u16(off) : "(数组)";
+        return num === 1 ? u16(off) : T("metaArray", "(array)");
       }
       if (type === 4) {
-        return num === 1 ? u32f(off) : "(数组)";
+        return num === 1 ? u32f(off) : T("metaArray", "(array)");
       }
       if (type === 5 || type === 10) {
         const n = u32f(off);
@@ -390,12 +421,12 @@ const M8Meta = (() => {
   function copyButton(text) {
     const b = document.createElement("button");
     b.type = "button";
-    b.textContent = "复制";
+    b.textContent = T("copy", "Copy");
     b.addEventListener("click", function () {
       M8Meta.copyText(text).then(function () {
-        setStatus("复制好了。");
+        setStatus(T("copyDone", "Copied."));
       }).catch(function () {
-        setStatus("复制没成功，手动选一下吧。", true);
+        setStatus(T("copyFailed", "Could not copy - select it by hand."), true);
       });
     });
     return b;
@@ -430,7 +461,7 @@ const M8Meta = (() => {
     pre.className = "code-block";
     /* 太长的 JSON 截一下，不然一个几十万字的工作流会把页面卡住 */
     const LIMIT = 200000;
-    pre.textContent = text.length > LIMIT ? text.slice(0, LIMIT) + "\n…（太长，截断了）" : text;
+    pre.textContent = text.length > LIMIT ? text.slice(0, LIMIT) + T("metaTruncated", "\n... (too long, cut off)") : text;
     return pre;
   }
 
@@ -439,38 +470,38 @@ const M8Meta = (() => {
     panels.innerHTML = "";
 
     /* --- 文件信息 --- */
-    const fileCard = card("文件");
+    const fileCard = card(T("fileCard", "File"));
     fileCard.appendChild(kv([
-      ["文件名", result.file.name],
-      ["格式", result.file.format],
-      ["大小", fmtSize(result.file.size)],
-      ["尺寸", result.file.width && result.file.height
-        ? result.file.width + " × " + result.file.height + " 像素" : ""],
-      ["位深", result.file.depth ? result.file.depth + " bit" : ""],
-      ["色彩", result.file.colorType || ""],
+      [T("fileName", "File name"), result.file.name],
+      [T("fileFormat", "Format"), result.file.format],
+      [T("fileSize", "Size"), fmtSize(result.file.size)],
+      [T("fileDimensions", "Dimensions"), result.file.width && result.file.height
+        ? T("metaSizePx", "{w} × {h} px", { w: result.file.width, h: result.file.height }) : ""],
+      [T("fileDepth", "Bit depth"), result.file.depth ? result.file.depth + " bit" : ""],
+      [T("fileColour", "Colour"), result.file.colorType || ""],
     ]));
     panels.appendChild(fileCard);
 
     /* --- ComfyUI 生成参数 --- */
     if (result.comfy) {
       const c = result.comfy;
-      const cCard = card("生成参数", "ComfyUI");
+      const cCard = card(T("metaParamsCard", "Generation parameters"), "ComfyUI");
       cCard.appendChild(paramsGrid([
-        ["模型", c.models.length ? c.models.join("\n") : "", true],
+        [T("metaModel", "Model"), c.models.length ? c.models.join("\n") : "", true],
         ["LoRA", c.loras.length ? c.loras.join("\n") : "", true],
-        ["采样器", c.samplers.length ? c.samplers.join(" · ") : ""],
-        ["步数", c.steps],
+        [T("metaSampler", "Sampler"), c.samplers.length ? c.samplers.join(" · ") : ""],
+        [T("metaSteps", "Steps"), c.steps],
         ["CFG", c.cfg],
-        ["种子", c.seed],
-        ["降噪", c.denoise],
-        ["画布", c.sizes.length ? c.sizes.join(" · ") : ""],
-        ["节点数", c.count],
+        [T("metaSeed", "Seed"), c.seed],
+        [T("metaDenoise", "Denoise"), c.denoise],
+        [T("metaCanvas", "Canvas"), c.sizes.length ? c.sizes.join(" · ") : ""],
+        [T("metaNodeCount", "Nodes"), c.count],
       ]));
       panels.appendChild(cCard);
 
       /* --- 提示词 --- */
       if (c.prompts.length) {
-        const pCard = card("提示词");
+        const pCard = card(T("metaPrompts", "Prompts"));
         const actions = document.createElement("div");
         actions.className = "card-actions";
         actions.appendChild(copyButton(c.prompts.join("\n\n---\n\n")));
@@ -479,7 +510,7 @@ const M8Meta = (() => {
           const pre = document.createElement("pre");
           pre.className = "code-block";
           pre.style.maxHeight = "160px";
-          pre.textContent = (c.prompts.length > 1 ? "【" + (i + 1) + "】\n" : "") + t;
+          pre.textContent = (c.prompts.length > 1 ? T("metaPromptIndex", "[{n}]\n", { n: i + 1 }) : "") + t;
           pCard.appendChild(pre);
         });
         panels.appendChild(pCard);
@@ -487,12 +518,12 @@ const M8Meta = (() => {
 
       /* --- 原始工作流 --- */
       if (result.workflowText) {
-        const wCard = card("工作流 JSON");
+        const wCard = card(T("metaWorkflowCard", "Workflow JSON"));
         const acts = document.createElement("div");
         acts.className = "card-actions";
         const fold = document.createElement("button");
         fold.type = "button";
-        fold.textContent = "展开 / 收起";
+        fold.textContent = T("metaFold", "Expand / collapse");
         fold.addEventListener("click", function () { wCard.classList.toggle("folded"); });
         acts.appendChild(fold);
         acts.appendChild(copyButton(result.workflowText));
@@ -508,7 +539,7 @@ const M8Meta = (() => {
       const rows = [];
       Object.keys(result.exif.tags).forEach(function (k) {
         let v = result.exif.tags[k];
-        if (k === "方向" && ORIENT[v]) v = ORIENT[v];
+        if (k === T("metaExifOrientation", "Orientation") && ORIENT[v]) v = T(ORIENT[v][0], ORIENT[v][1]);
         if (v && typeof v === "object" && v.n !== undefined) {
           v = v.d > 1 ? (v.n / v.d).toFixed(2).replace(/\.?0+$/, "") : v.n;
         }
@@ -518,7 +549,7 @@ const M8Meta = (() => {
         return ["GPS · " + k, result.exif.gps[k]];
       });
       if (rows.length || gpsRows.length) {
-        const eCard = card("EXIF", "相机信息");
+        const eCard = card("EXIF", T("metaCameraTag", "Camera info"));
         eCard.appendChild(kv(rows.concat(gpsRows)));
         panels.appendChild(eCard);
       }
@@ -529,7 +560,7 @@ const M8Meta = (() => {
       return k !== "prompt" && k !== "workflow";
     });
     if (others.length) {
-      const oCard = card("内嵌文本");
+      const oCard = card(T("metaOtherText", "Embedded text"));
       others.forEach(function (k) {
         const h = document.createElement("p");
         h.className = "info-note";
@@ -547,10 +578,10 @@ const M8Meta = (() => {
 
     /* --- 什么都没有 --- */
     if (!panels.children.length) {
-      const nCard = card("没读到什么");
+      const nCard = card(T("metaNothingTitle", "Nothing to show"));
       const p = document.createElement("p");
       p.className = "info-note";
-      p.textContent = "这张图里没有生成参数，也没有 EXIF。可能是被截图工具或社交平台处理过 —— 它们通常会把这些信息抹掉。";
+      p.textContent = T("metaNothingBody", "This image carries no generation parameters and no EXIF. It may have been through a screenshot tool or a social platform - they usually strip that info out.");
       nCard.appendChild(p);
       panels.appendChild(nCard);
     }
@@ -561,7 +592,7 @@ const M8Meta = (() => {
   function readFile(file) {
     if (!file) return;
     if (!/^image\//.test(file.type || "")) {
-      setStatus("这不是图片文件。", true);
+      setStatus(T("metaNotImage", "This is not an image file."), true);
       return;
     }
     if (lastUrl) {
@@ -570,15 +601,15 @@ const M8Meta = (() => {
     }
     lastUrl = URL.createObjectURL(file);
     el.thumb.src = lastUrl;
-    el.name.textContent = file.name || "(没有名字)";
-    setStatus("正在解析…");
+    el.name.textContent = file.name || T("unnamedFile", "(no name)");
+    setStatus(T("metaParsing", "Parsing..."));
 
     const name = (file.name || "").toLowerCase();
     const format = /\.png$/.test(name) || file.type === "image/png" ? "PNG"
       : /\.jpe?g$/.test(name) || file.type === "image/jpeg" ? "JPEG"
       : /\.webp$/.test(name) ? "WebP"
       : /\.gif$/.test(name) ? "GIF"
-      : (file.type || "未知").replace("image/", "").toUpperCase();
+      : (file.type || T("metaUnknownFormat", "unknown")).replace("image/", "").toUpperCase();
 
     Promise.resolve()
       .then(function () {
@@ -597,7 +628,9 @@ const M8Meta = (() => {
             result.file.width = png.info.width;
             result.file.height = png.info.height;
             result.file.depth = png.info.depth;
-            result.file.colorType = COLOR_TYPES[png.info.colorType] || ("类型 " + png.info.colorType);
+            const ct = COLOR_TYPES[png.info.colorType];
+            result.file.colorType = ct ? T(ct[0], ct[1])
+              : T("metaColorTypeUnknown", "Type {n}", { n: png.info.colorType });
             result.texts = png.texts;
             /* ComfyUI 把工作流塞在 workflow 里，API 格式的参数塞在 prompt 里 */
             result.workflowText = png.texts.workflow || "";
@@ -622,13 +655,16 @@ const M8Meta = (() => {
         el.body.classList.remove("is-hidden");
         render(result);
         const bits = [];
-        if (result.comfy) bits.push("生成参数");
-        if (result.workflowText) bits.push("工作流");
+        if (result.comfy) bits.push(T("metaParamsCard", "Generation parameters"));
+        if (result.workflowText) bits.push(T("metaWorkflow", "Workflow"));
         if (result.exif) bits.push("EXIF");
-        setStatus(bits.length ? "读到了：" + bits.join(" · ") : "这张图里没读到元数据。");
+        setStatus(bits.length
+          ? T("metaReadOk", "Read: {parts}", { parts: bits.join(" · ") })
+          : T("metaReadNothing", "No metadata found in this image."));
       })
       .catch(function (e) {
-        setStatus("解析出错了：" + (e && e.message ? e.message : "未知原因"), true);
+        setStatus(T("metaParseError", "Parsing failed: ")
+          + (e && e.message ? e.message : T("metaUnknownReason", "unknown reason")), true);
       });
   }
 

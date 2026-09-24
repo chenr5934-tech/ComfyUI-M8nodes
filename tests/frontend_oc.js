@@ -151,7 +151,7 @@ step('载入并初始化', () => {
 step('浏览器不给存时，明确说清楚而不是假装存上了', () => {
   m = boot();
   const note = m._el().status.textContent;
-  if (note.indexOf('关掉') < 0 && note.indexOf('不给存') < 0) {
+  if (note.indexOf('will not store anything') < 0 && note.indexOf('will not store anything') < 0) {
     throw new Error('没告诉用户存不了，实际是：' + note);
   }
 });
@@ -260,7 +260,7 @@ step('复制特征词', async () => {
   if (globalThis.copied !== '银色短发、蓝瞳、黑色大衣') {
     throw new Error('复制到的内容不对：' + globalThis.copied);
   }
-  if (m._el().status.textContent.indexOf('复制好') < 0) {
+  if (m._el().status.textContent.indexOf('Trait tags copied') < 0) {
     throw new Error('没给成功提示，实际是：' + m._el().status.textContent);
   }
 });
@@ -272,7 +272,7 @@ step('空特征词点复制会提示，而不是静默失败', async () => {
   m.copyOne(m.state.list[0].id);
   await new Promise((r) => setImmediate(r));
   if (globalThis.copied !== null) throw new Error('空的也复制了？');
-  if (m._el().status.textContent.indexOf('还没写') < 0) {
+  if (m._el().status.textContent.indexOf('No trait tags written') < 0) {
     throw new Error('没提示，实际是：' + m._el().status.textContent);
   }
 });
@@ -309,7 +309,7 @@ step('界面上的文字会跟着记录走', async () => {
 
 step('计数会跟着变', async () => {
   m = boot();
-  if (m._el().count.textContent.indexOf('还没有') < 0) throw new Error('空的时候计数不对');
+  if (m._el().count.textContent.indexOf('No OCs yet') < 0) throw new Error('空的时候计数不对');
   await m.add();
   await m.add();
   if (m._el().count.textContent.indexOf('2') < 0) throw new Error('计数没更新：' + m._el().count.textContent);
@@ -352,7 +352,7 @@ step('确认框里写着要删的是哪个（别删错）', async () => {
   m.askDelete(rec.id);
   const html = m._el().delText.innerHTML;
   if (html.indexOf('小春') < 0) throw new Error('没把名字念出来：' + html);
-  if (html.indexOf('找不回来') < 0) throw new Error('没提示后果');
+  if (html.indexOf('Gone for good') < 0) throw new Error('没提示后果');
 });
 
 step('名字里的尖括号会被转义（不能撕坏结构）', async () => {

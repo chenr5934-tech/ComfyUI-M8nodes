@@ -20,6 +20,34 @@
  * 这一层是纯函数，不碰 DOM，测试直接拿字节喂它。
  * ==========================================================================*/
 
+/* 界面文案走 i18n.js。它是 module，而这些功能脚本是普通脚本，拿不到 import ——
+   i18n.js 因此挂了一份到 window。
+
+   用 var 而不是 const：普通脚本共享全局作用域，const 在这里重复声明会直接报
+   "Identifier 'T' has already been declared"，一个页面同时加载几个脚本就白屏。
+   var 重复声明是合法的，每个文件仍然自足，不依赖加载顺序。
+
+   宿主对象用 globalThis 取而不是直接写 window：前端测试在 Node 里跑这些脚本，
+   那边没有 window，直接解引用会当场 "window is not defined"。
+
+   i18n 没加载成功时走这里的兜底：**必须自己填占位符** —— 直接返回 fallback 的话，
+   界面上会原样显示 "{h} h {m} min" 这种花括号，比换不成中文更糟。 */
+var T = function (key, fallback, vars) {
+  var host = typeof globalThis !== "undefined" ? globalThis : {};
+  var i18n = host.M8I18n;
+  if (i18n && typeof i18n.t === "function") return i18n.t(key, fallback, vars);
+
+  var text = fallback === undefined ? key : fallback;
+  if (vars && typeof text === "string") {
+    for (var k in vars) {
+      if (Object.prototype.hasOwnProperty.call(vars, k)) {
+        text = text.split("{" + k + "}").join(String(vars[k]));
+      }
+    }
+  }
+  return text;
+};
+
 const M8Obfuscate = (() => {
   "use strict";
 
@@ -198,7 +226,7 @@ const M8Obfuscate = (() => {
      那会儿起作用的只剩块内打散 —— 两种参数都能出乱码，只是长相不同。 */
   function scramblePass(pixels, W, H, opts, direction) {
     if (!W || !H || !pixels || pixels.length < W * H * 4) {
-      throw new Error("图片数据不完整");
+      throw new Error(T("obfBadPixels", "The image data is incomplete"));
     }
     const bs = normalizeBlock(opts && opts.blockSize);
     const usePixels = !(opts && opts.shufflePixels === false);
@@ -294,7 +322,7 @@ const M8Obfuscate = (() => {
     const W = image.width, H = image.height;
     const n = W * H;
     if (!n || !image.data || image.data.length < n * 4) {
-      throw new Error("图片数据不完整");
+      throw new Error(T("obfBadPixels", "The image data is incomplete"));
     }
     const curve = gilbertCurve(W, H);
     const off = Math.round(GOLDEN * n) % n;
@@ -400,7 +428,7 @@ const M8Obfuscate = (() => {
   function embed(cover, secret, key) {
     const W = cover.width, H = cover.height;
     const cap = capacity(W, H);
-    if (cap <= 0) throw new Error("掩护图太小，连一个秘密像素都放不下");
+    if (cap <= 0) throw new Error(T("obfCoverTooSmall", "The cover image is too small to hold even one secret pixel"));
 
     let sw = secret.width, sh = secret.height;
     const area = sw * sh;
@@ -415,7 +443,7 @@ const M8Obfuscate = (() => {
       : resample(secret.data, secret.width, secret.height, sw, sh);
 
     const need = HEAD_BYTES + sw * sh * 3;
-    if (need * 8 > W * H * 3) throw new Error("装不下：容量算错了");
+    if (need * 8 > W * H * 3) throw new Error(T("obfNoRoom", "It does not fit: the capacity calculation is off"));
 
     const payload = new Uint8Array(need);
     payload[0] = MAGIC[0]; payload[1] = MAGIC[1]; payload[2] = MAGIC[2]; payload[3] = MAGIC[3];
@@ -449,18 +477,18 @@ const M8Obfuscate = (() => {
   /* 从藏了东西的图里把秘密图取回来 */
   function extract(hidden, key) {
     const W = hidden.width, H = hidden.height;
-    if (capacity(W, H) <= 0) throw new Error("这张图太小，里面装不下东西");
+    if (capacity(W, H) <= 0) throw new Error(T("obfImageTooSmall", "This image is too small to hold anything"));
 
     const head = readLowBits(hidden.data, 0, HEAD_BYTES);
     xorKeystream(head, key);
     if (head[0] !== MAGIC[0] || head[1] !== MAGIC[1] || head[2] !== MAGIC[2] || head[3] !== MAGIC[3]) {
-      throw new Error("签名对不上：密钥不对，或者这张图里本来就没有藏东西");
+      throw new Error(T("obfBadSignature", "Signature mismatch: the key is wrong, or there was nothing hidden in this image"));
     }
     const sw = head[4] | (head[5] << 8);
     const sh = head[6] | (head[7] << 8);
-    if (sw < 1 || sh < 1) throw new Error("头部里的尺寸不合法");
+    if (sw < 1 || sh < 1) throw new Error(T("obfBadHeaderSize", "The size recorded in the header is not valid"));
     const need = HEAD_BYTES + sw * sh * 3;
-    if (need * 8 > W * H * 3) throw new Error("头部声明的尺寸超出了这张图的容量");
+    if (need * 8 > W * H * 3) throw new Error(T("obfHeaderOverflow", "The size declared in the header exceeds this image's capacity"));
 
     const payload = readLowBits(hidden.data, 0, need);
     xorKeystream(payload, key);
@@ -571,10 +599,10 @@ const M8Obfuscate = (() => {
     const b = document.createElement("button");
     b.type = "button";
     b.className = "ghost-btn";
-    b.textContent = label || "复制";
+    b.textContent = label || T("copy", "Copy");
     b.addEventListener("click", function () {
-      copyText(text).then(function () { setStatus("复制好了。"); })
-        .catch(function () { setStatus("复制没成功，手动选一下吧。", true); });
+      copyText(text).then(function () { setStatus(T("copied", "Copied.")); })
+        .catch(function () { setStatus(T("copyFailed", "Could not copy - select it by hand."), true); });
     });
     return b;
   }
@@ -600,7 +628,7 @@ const M8Obfuscate = (() => {
 
   function loadImage(file) {
     return new Promise(function (resolve, reject) {
-      if (!file) { reject(new Error("没有选中文件")); return; }
+      if (!file) { reject(new Error(T("noFilePicked", "No file selected"))); return; }
       const url = URL.createObjectURL(file);
       const img = new Image();
       img.onload = function () {
@@ -609,7 +637,7 @@ const M8Obfuscate = (() => {
       };
       img.onerror = function () {
         URL.revokeObjectURL(url);
-        reject(new Error("这个文件读不出图片内容"));
+        reject(new Error(T("notAnImage", "This file does not contain readable image data")));
       };
       img.src = url;
     });
@@ -665,11 +693,14 @@ const M8Obfuscate = (() => {
     el.ticketBox.classList.toggle("is-hidden", !(mode === "scramble" && !lock));
 
     el.dropLabel.textContent = nest
-      ? (lock ? "掩护图（当封面的那张）" : "藏了图的图")
-      : (lock ? "要混淆的图" : "混淆图");
+      ? (lock ? T("obfDropLabelCover", "Cover image (the one on the front)")
+        : T("obfDropLabelHidden", "Image with something hidden in it"))
+      : (lock ? T("obfDropLabel", "Image to obfuscate") : T("obfDropLabelObf", "Obfuscated image"));
 
     el.keyWarn.classList.toggle("is-hidden", tomato || !!el.key.value);
-    el.go.textContent = lock ? (nest ? "藏进去" : "打乱") : "解回来";
+    el.go.textContent = lock
+      ? (nest ? T("obfGoNest", "Hide it") : T("obfGoScramble", "Scramble"))
+      : T("obfUnlock", "Reverse");
 
     paintNames();
   }
@@ -684,10 +715,10 @@ const M8Obfuscate = (() => {
     if (previewA) el.thumb1.src = previewA.url;
     el.drop.querySelector("strong").textContent = fileA
       ? fileA.name
-      : "点击选择、拖进来，或者 Ctrl+V 粘贴";
+      : T("dropPrompt", "Click to choose, drag it in, or paste with Ctrl+V");
     el.hint.textContent = previewA
       ? previewA.w + " × " + previewA.h
-      : (lock ? "PNG / JPEG / WebP" : "把要解的图放进来");
+      : (lock ? "PNG / JPEG / WebP" : T("obfDropHintReverse", "Drop the image you want to reverse"));
 
     if (el.drop2) {
       el.thumb2.classList.toggle("is-hidden", !previewB);
@@ -695,10 +726,10 @@ const M8Obfuscate = (() => {
       if (previewB) el.thumb2.src = previewB.url;
       el.drop2.querySelector("strong").textContent = fileB
         ? fileB.name
-        : "点击选择、拖进来，或者 Ctrl+V 粘贴";
+        : T("dropPrompt", "Click to choose, drag it in, or paste with Ctrl+V");
       el.hint2.textContent = previewB
-        ? previewB.w + " × " + previewB.h + "，会按容量自动缩放"
-        : "会按容量自动缩放";
+        ? T("obfHint2Sized", "{w} × {h} - scaled automatically to fit the capacity", { w: previewB.w, h: previewB.h })
+        : T("obfHint2", "Scaled automatically to fit the capacity");
     }
   }
 
@@ -720,7 +751,7 @@ const M8Obfuscate = (() => {
   function pick(file, which) {
     if (which === 2) { fileB = file; previewB = null; }
     else { fileA = file; fileB = null; previewA = null; previewB = null; }
-    setStatus(file ? "图已就位，可以开始了。" : "");
+    setStatus(file ? T("obfReady", "The image is in place - ready when you are.") : "");
     paintNames();
     if (!file) return;
     /* 尺寸要等解码完才知道，所以异步补回来。比对一下 file 有没有被换掉，
@@ -800,24 +831,25 @@ const M8Obfuscate = (() => {
     const out = tomato(src);
     const image = { data: out, width: src.width, height: src.height };
 
-    const card = resultCard("小番茄混淆", "已打乱",
-      "存成 PNG。解回来不用密钥也不用参数 —— 把这张图传回来点「解回来」就行。",
+    const card = resultCard(T("obfTomatoCard", "Tomato obfuscation"), T("obfTagScrambled", "Scrambled"),
+      T("obfTomatoSave", "Save it as PNG. Reversing it needs neither a key nor any parameters - bring the image back and hit Reverse."),
       [
-        ["尺寸", src.width + " × " + src.height],
-        ["算法", "沿 Gilbert 曲线循环移位"],
-        ["移位量", "黄金分割 × 像素数（固定值）"],
-        ["密钥", "无 —— 这一种本来就没有"],
+        [T("size", "Size"), src.width + " × " + src.height],
+        [T("algorithm", "Algorithm"), T("obfAlgoGilbertShift", "Cyclic shift along the Gilbert curve")],
+        [T("obfShiftAmount", "Shift amount"), T("obfShiftValue", "Golden ratio × pixel count (fixed)")],
+        [T("obfKey", "Key"), T("obfKeyNone", "None - this mode never had one")],
       ],
-      "下载混淆图");
-    const card2 = infoCard("和原版工具互通");
+      T("obfDownloadObf", "Download obfuscated image"));
+    const card2 = infoCard(T("obfCompatTitle", "Interoperable with the original tool"));
     const p = document.createElement("p");
     p.className = "info-note";
-    p.textContent = "这一种就是照梦羽小番茄那版算法搬过来的，参数一个字没改。"
-      + "所以它混淆出来的图，这里能解；这里混淆出来的，它那边也能解。";
+    p.textContent = T("obfCompatBody",
+      "This mode is carried over from the original Tomato algorithm with not a single parameter changed."
+      + " So an image obfuscated there can be reversed here, and one obfuscated here can be reversed there.");
     card2.appendChild(p);
     const p2 = document.createElement("p");
     p2.className = "info-note";
-    p2.textContent = "尺寸必须原样保留：解混淆是按像素数算移位量的，裁剪或缩放之后就对不上了。";
+    p2.textContent = T("obfTomatoKeepSize", "The dimensions have to stay exactly as they are: reversing derives the shift from the pixel count, so cropping or resizing breaks it.");
     card2.appendChild(p2);
 
     showResult(image, card);
@@ -830,13 +862,13 @@ const M8Obfuscate = (() => {
     const src = toImage(await loadImage(fileA));
     const out = untomato(src);
     const image = { data: out, width: src.width, height: src.height };
-    const card = resultCard("解回来了", "还原完成",
-      "不用密钥。尺寸得和混淆时一致才行 —— 传原图，别裁剪也别缩放。",
+    const card = resultCard(T("obfCardReversed", "Reversed"), T("obfTagRestored", "Restored"),
+      T("obfTomatoUnlockNote", "No key needed. The dimensions have to match the ones used when obfuscating - pass the original image, do not crop or resize it."),
       [
-        ["尺寸", src.width + " × " + src.height],
-        ["算法", "沿 Gilbert 曲线反向移位"],
+        [T("size", "Size"), src.width + " × " + src.height],
+        [T("algorithm", "Algorithm"), T("obfAlgoGilbertUnshift", "Reverse shift along the Gilbert curve")],
       ],
-      "下载还原图");
+      T("obfDownloadRestored", "Download restored image"));
     showResult(image, card);
     bindDownload(card, baseName(fileA) + "-untomato.png");
   }
@@ -857,20 +889,23 @@ const M8Obfuscate = (() => {
       sum: fingerprint(out),
     });
 
-    const card = resultCard("置乱结果", "打乱完成",
-      "存成 PNG。要解回来，得用同一个密钥、同一个块大小，再把这串密钥串粘回去。",
+    const card = resultCard(T("obfScrambleCard", "Scramble result"), T("obfTagScrambled", "Scrambled"),
+      T("obfScrambleSave", "Save it as PNG. To reverse it you need the same key and the same block size, then paste this key string back in."),
       [
-        ["尺寸", src.width + " × " + src.height],
-        ["块大小", opts.blockSize + " px"],
-        ["块内打散", opts.shufflePixels ? "开" : "关"],
-        ["密钥", key ? "已填（" + key.length + " 个字）" : "没填 —— 谁拿到都能解"],
+        [T("size", "Size"), src.width + " × " + src.height],
+        [T("obfBlock", "Block size"), opts.blockSize + " px"],
+        [T("obfKvPixels", "Shuffle pixels"), opts.shufflePixels ? T("switchOn", "On") : T("switchOff", "Off")],
+        [T("obfKey", "Key"), key
+          ? T("obfKeySet", "Set ({n} characters)", { n: key.length })
+          : T("obfKeyEmptyReversible", "Not set - anyone who has it can reverse it")],
       ],
-      "下载混淆图");
-    const card2 = infoCard("密钥串", "解混淆时要用");
+      T("obfDownloadObf", "Download obfuscated image"));
+    const card2 = infoCard(T("obfTicket", "Key string"), T("obfTicketTag", "Needed for reversing"));
     const p = document.createElement("p");
     p.className = "info-note";
-    p.textContent = "这串里打包了尺寸、块大小和指纹。解混淆时粘进去，就不用去记当时选了什么。"
-      + "它不含密钥本身，所以可以和解混淆的密钥分开保存。";
+    p.textContent = T("obfTicketBody",
+      "This string packs the dimensions, block size and fingerprint. Paste it in when reversing and you do not"
+      + " have to remember what you picked. It does not contain the key itself, so you can keep it apart from the key you reverse with.");
     card2.appendChild(p);
     const box = document.createElement("textarea");
     box.className = "obf-ticket-out";
@@ -880,7 +915,7 @@ const M8Obfuscate = (() => {
     card2.appendChild(box);
     const acts = document.createElement("div");
     acts.className = "card-actions";
-    acts.appendChild(copyButton(ticket, "复制密钥串"));
+    acts.appendChild(copyButton(ticket, T("obfCopyTicket", "Copy key string")));
     card2.querySelector("h2").appendChild(acts);
 
     showResult(image, card);
@@ -905,7 +940,7 @@ const M8Obfuscate = (() => {
 
     if (t) {
       if (t.mode && t.mode !== "scramble") {
-        throw new Error("这串密钥串是嵌套模式给的，现在选的是置乱。");
+        throw new Error(T("obfTicketWrongMode", "This key string was produced by Nest mode, but Scramble is selected."));
       }
       opts = { key: key, blockSize: t.bs || 32, shufflePixels: t.px !== false };
       /* 界面跟着串走 —— 用户多半想不起来当时选的块大小 */
@@ -913,10 +948,11 @@ const M8Obfuscate = (() => {
       el.pixels.checked = opts.shufflePixels;
 
       if (t.w && (t.w !== src.width || t.h !== src.height)) {
-        note = "密钥串里记的尺寸是 " + t.w + " × " + t.h + "，这张图是 "
-          + src.width + " × " + src.height + " —— 是不是传错图了？";
+        note = T("obfTicketSizeMismatch",
+          "The key string records {w} × {h}, but this image is {iw} × {ih} - did you pass the wrong image?",
+          { w: t.w, h: t.h, iw: src.width, ih: src.height });
       } else if (t.sum !== undefined && t.sum !== fingerprint(src.data)) {
-        note = "指纹对不上：这串密钥串不是配这张图的，解出来多半还是乱码。";
+        note = T("obfFingerprintMismatch", "Fingerprint mismatch: this key string does not belong to this image, so the result will most likely still be garbage.");
       }
     } else {
       opts = {
@@ -924,47 +960,52 @@ const M8Obfuscate = (() => {
         blockSize: Number(el.block.value),
         shufflePixels: el.pixels.checked,
       };
-      note = raw ? "" : "没粘密钥串，那就按上面手填的块大小来 —— 得和混淆时用的一致。";
+      note = raw ? "" : T("obfNoTicketNote", "No key string pasted, so the block size filled in above is used - it has to match the one used when obfuscating.");
     }
 
     const out = unscramble(src, opts);
     const image = { data: out, width: src.width, height: src.height };
-    const card = resultCard("解混淆结果", "还原完成", note, [
-      ["尺寸", src.width + " × " + src.height],
-      ["块大小", opts.blockSize + " px"],
-      ["块内打散", opts.shufflePixels ? "开" : "关"],
-      ["密钥", key ? "已填（" + key.length + " 个字）" : "没填"],
-    ], "下载还原图");
+    const card = resultCard(T("obfUnscrambleCard", "Reverse result"), T("obfTagRestored", "Restored"), note, [
+      [T("size", "Size"), src.width + " × " + src.height],
+      [T("obfBlock", "Block size"), opts.blockSize + " px"],
+      [T("obfKvPixels", "Shuffle pixels"), opts.shufflePixels ? T("switchOn", "On") : T("switchOff", "Off")],
+      [T("obfKey", "Key"), key ? T("obfKeySet", "Set ({n} characters)", { n: key.length }) : T("obfKeyEmpty", "Not set")],
+    ], T("obfDownloadRestored", "Download restored image"));
     showResult(image, card);
     bindDownload(card, baseName(fileA) + "-unscrambled.png");
     if (note) setStatus(note, true);
   }
 
   async function doNestLock(key) {
-    if (!fileB) throw new Error("嵌套混淆要两张图：掩护图，加一张要藏进去的秘密图。");
+    if (!fileB) throw new Error(T("obfNestNeedsTwo", "Nesting needs two images: a cover, plus a secret image to hide inside it."));
     const cover = toImage(await loadImage(fileA));
     const secret = toImage(await loadImage(fileB));
     const r = embed(cover, secret, key);
 
     const pairs = [
-      ["掩护图", cover.width + " × " + cover.height],
-      ["秘密图", r.report.secretW + " × " + r.report.secretH],
-      ["这张图能藏", r.report.capacity.toLocaleString() + " 个像素"],
-      ["实际用了", r.report.used.toLocaleString() + " 个像素"],
-      ["密钥", key ? "已填（" + key.length + " 个字）" : "没填 —— 谁拿到都能取出来"],
+      [T("obfKvCover", "Cover image"), cover.width + " × " + cover.height],
+      [T("obfKvSecret", "Secret image"), r.report.secretW + " × " + r.report.secretH],
+      [T("obfKvCapacity", "Fits up to"), T("obfPixelsUnit", "{n} pixels", { n: r.report.capacity.toLocaleString() })],
+      [T("obfKvUsed", "Actually used"), T("obfPixelsUnit", "{n} pixels", { n: r.report.used.toLocaleString() })],
+      [T("obfKey", "Key"), key
+        ? T("obfKeySet", "Set ({n} characters)", { n: key.length })
+        : T("obfKeyEmptyExtractable", "Not set - anyone who has it can extract the secret")],
     ];
     const note = r.report.scaled
-      ? "秘密图原来是 " + r.report.srcW + " × " + r.report.srcH
-        + "，按容量等比缩到了 " + r.report.secretW + " × " + r.report.secretH
-        + " —— 取回来的是缩过之后那个尺寸。想要原尺寸，换一张更大的掩护图。"
-      : "秘密图原样藏了进去，取回来逐像素一致。";
+      ? T("obfNestScaled",
+        "The secret image was {sw} × {sh} and was scaled down to {dw} × {dh} to fit the capacity"
+        + " - that is the size you get back. For the original size, use a larger cover image.",
+        { sw: r.report.srcW, sh: r.report.srcH, dw: r.report.secretW, dh: r.report.secretH })
+      : T("obfNestExact", "The secret image went in as it was; what you get back matches it pixel for pixel.");
 
-    const card = resultCard("嵌套结果", "藏好了", note, pairs, "下载这张图");
-    const card2 = infoCard("怎么取回来");
+    const card = resultCard(T("obfNestCard", "Nest result"), T("obfTagHidden", "Hidden"), note, pairs,
+      T("obfDownloadThis", "Download this image"));
+    const card2 = infoCard(T("obfHowToExtract", "How to get it back"));
     const p = document.createElement("p");
     p.className = "info-note";
-    p.textContent = "换到「嵌套 · 解混淆」，把上面这张图传进去，填同一个密钥，就能取回秘密图。"
-      + "这张图看着和掩护图一模一样 —— 只有每个像素的最低位被动过，肉眼分不出来。";
+    p.textContent = T("obfNestHowTo",
+      "Switch to Nest / Reverse, drop the image above in and fill in the same key to get the secret image back."
+      + " This image looks exactly like the cover - only the lowest bit of every pixel was touched, which the eye cannot pick out.");
     card2.appendChild(p);
 
     showResult(r, card);
@@ -975,24 +1016,24 @@ const M8Obfuscate = (() => {
   async function doNestUnlock(key) {
     const src = toImage(await loadImage(fileA));
     const r = extract(src, key);
-    const card = resultCard("取回的秘密图", "提取完成",
-      "尺寸是当初藏进去时的大小；如果当时秘密图比容量大，这里就是缩过之后的尺寸。",
+    const card = resultCard(T("obfSecretCard", "Recovered secret image"), T("obfTagExtracted", "Extracted"),
+      T("obfSecretSizeNote", "The size is the one it had when it was hidden; if the secret image was larger than the capacity, this is the scaled-down size."),
       [
-        ["这张图", src.width + " × " + src.height],
-        ["取回的", r.report.secretW + " × " + r.report.secretH],
-        ["密钥", key ? "已填（" + key.length + " 个字）" : "没填"],
+        [T("obfKvThisImage", "This image"), src.width + " × " + src.height],
+        [T("obfKvRecovered", "Recovered"), r.report.secretW + " × " + r.report.secretH],
+        [T("obfKey", "Key"), key ? T("obfKeySet", "Set ({n} characters)", { n: key.length }) : T("obfKeyEmpty", "Not set")],
       ],
-      "下载秘密图");
+      T("obfDownloadSecret", "Download secret image"));
     showResult(r, card);
     bindDownload(card, baseName(fileA) + "-secret.png");
   }
 
   async function run() {
     if (busy) return;
-    if (!fileA) { setStatus("先选一张图。", true); return; }
+    if (!fileA) { setStatus(T("obfPickFirst", "Pick an image first."), true); return; }
     const key = el.key.value;
     busy = true;
-    setStatus("正在算…");
+    setStatus(T("obfWorking", "Working..."));
     try {
       if (mode === "tomato") {
         if (dir === "lock") await doTomatoLock();
@@ -1004,11 +1045,11 @@ const M8Obfuscate = (() => {
         if (dir === "lock") await doNestLock(key);
         else await doNestUnlock(key);
       }
-      if (!el.status.textContent || el.status.textContent === "正在算…") {
-        setStatus(dir === "lock" ? "做完了。" : "解回来了。");
+      if (!el.status.textContent || el.status.textContent === T("obfWorking", "Working...")) {
+        setStatus(dir === "lock" ? T("obfDone", "Done.") : T("obfDoneReverse", "Reversed."));
       }
     } catch (e) {
-      setStatus(e && e.message ? e.message : "出错了。", true);
+      setStatus(e && e.message ? e.message : T("somethingWentWrong", "Something went wrong."), true);
       busy = false;
       return;
     }

@@ -17,10 +17,10 @@ const M8Migrate = (() => {
 
   /* 旧库 → 新位置。一个旧库里可能有两个 store（提示词那张表就有卡片和分类） */
   const OLD = [
-    { db: "m8web-oc", store: "ocs", kind: "oc", label: "OC 工坊" },
-    { db: "m8web-prompts", store: "cards", kind: "prompts", label: "提示词卡片" },
-    { db: "m8web-prompts", store: "groups", kind: "groups", label: "提示词分类" },
-    { db: "m8web-stickers", store: "stickers", kind: "stickers", label: "贴纸库" },
+    { db: "m8web-oc", store: "ocs", kind: "oc", label: "OC Workshop" },
+    { db: "m8web-prompts", store: "cards", kind: "prompts", label: "Prompt cards" },
+    { db: "m8web-prompts", store: "groups", kind: "groups", label: "Prompt categories" },
+    { db: "m8web-stickers", store: "stickers", kind: "stickers", label: "Stickers" },
   ];
 
   function canUse() {
