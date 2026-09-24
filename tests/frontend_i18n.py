@@ -182,6 +182,47 @@ def strip_html_comments(src: str) -> list:
     return re.sub(r"<!--.*?-->", blank, src, flags=re.S).splitlines()
 
 
+class TestWebRequestPaths(unittest.TestCase):
+    """工作台可能被挂在子路径下（/comfy/m8/web/），所以请求地址不能写死。
+
+    这条是踩过坑才加的：i18n.js 一开始写死 fetch("/m8/i18n/zh")，根路径下好好的，
+    挂到子路径就打到 /m8/... 去了 —— 中文用户看到全英文，而本地默认路径试不出来。
+    app.js 里 M8Api.base() 和 health() 早就做了推导，i18n.js 漏了。
+    """
+
+    # 允许出现的绝对路径：它们本身就是「拼前缀」的实现，不是写死的请求地址
+    ALLOWED = (
+        'p.indexOf("/m8/web/")',
+        '"/m8/data/"',
+        '"/m8/"',
+        '"/m8/i18n/"',
+    )
+
+    def test_no_hardcoded_absolute_api_paths(self):
+        bad = []
+        for path in sorted((WEB / "assets" / "js").glob("*.js")):
+            for n, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+                st = line.strip()
+                if st.startswith(("//", "*", "/*")):
+                    continue
+                if "fetch(" not in line:
+                    continue
+                for m in re.finditer(r'''fetch\(\s*["'\`](/m8/[^"'\`]*)''', line):
+                    if any(a in line for a in self.ALLOWED):
+                        continue
+                    bad.append(f"{path.name}:{n}: fetch('{m.group(1)}')")
+        self.assertEqual(bad, [], "请求地址写死了，挂到子路径下就会打错地方")
+
+    def test_both_path_derivations_agree(self):
+        """i18n.js 和 app.js 各有一份路径推导（一个是 module、一个是普通脚本，
+        拿不到对方的 export）。两份口径必须一样，不然修了一处漏另一处。"""
+        app = (WEB / "assets" / "js" / "app.js").read_text(encoding="utf-8")
+        i18n = (WEB / "assets" / "js" / "i18n.js").read_text(encoding="utf-8")
+        probe = 'p.indexOf("/m8/web/")'
+        self.assertIn(probe, app, "app.js 的路径推导变了")
+        self.assertIn(probe, i18n, "i18n.js 的路径推导和 app.js 不一致")
+
+
 class TestWebSourceIsEnglish(unittest.TestCase):
     """用户可见的字符串必须是英文 —— 注释和内部日志不受此限。
 

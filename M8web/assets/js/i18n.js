@@ -36,13 +36,27 @@ export function isChinese() {
   return currentLang() === "zh";
 }
 
+/** 语言包挂在哪儿。
+
+    不能写死 "/m8/i18n/zh"：ComfyUI 可以挂在子路径下（/comfy/m8/web/），
+    那时接口在 /comfy/m8/i18n/zh 上，打到根路径是拿不到的 —— 界面会整个变英文。
+    这种事只在子路径部署下出现，本地默认路径试不出来。
+
+    app.js 里的 M8Api.base() 和 health() 是同一套推导。那边是普通脚本，拿不到
+    这个 export，所以各自实现了一份 —— 两处口径必须保持一致，改一处记得看另一处。 */
+function apiRoot() {
+  const p = window.location.pathname;
+  const i = p.indexOf("/m8/web/");
+  return (i >= 0 ? p.slice(0, i) : "") + "/m8/i18n/";
+}
+
 /** 拉一次语言包。非中文环境直接返回空表，一个请求都不发。 */
 export function loadStrings() {
   if (ready) return ready;
   ready = (async () => {
     if (!isChinese()) return strings;
     try {
-      const res = await fetch("/m8/i18n/zh");
+      const res = await fetch(apiRoot() + currentLang());
       if (!res.ok) return strings;
       const data = await res.json();
       strings = (data && data.strings && data.strings.web) || {};
