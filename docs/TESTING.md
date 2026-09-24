@@ -749,13 +749,15 @@ python tests/check_comfy_selectors.py .comfyui-body-top
 - [ ] 笔画的位置和粗细也一致
 - [ ] 点「导出这张图」→ 下载 `<原名>-paint.png`，打开确认
 - [ ] 什么都没写没画就点生成 → 提示「没什么可生成」
-### 图片编辑（已搁置）
+### 图片编辑（已搁置版已删除）
 
 照抄参考站 crop.php 的那一版（workbench.js / workbench.css / image-editor.html）
-暂时挪出主线，整份放在 `M8web/_parked/`，没有接进菜单。
+原先挪在 `M8web/_parked/`，0.5.3 删掉了 —— 从未接进菜单，也没有任何运行时引用。
+要接回来的话，去 git 历史里取那份代码，放回 `M8web/pages/`，再在 `app.js` 的
+`FEATURES` 里补一条记录 —— 菜单和首页卡片都是从那份清单生成的，不用改别处。
 
-接回来时做两件事：把它放回 `M8web/pages/`，并在 `app.js` 的 `FEATURES` 里补一条
-对应记录 —— 菜单和首页卡片都是从那份清单生成的，不用改别处。
+现在 `pages/image-editor.html` 用的是自己那套（`studio.js` + `cut/mask/grid/sticker/paint`），
+和这份搁置版没有关系。
 ### OC 工坊
 
 **新建与列表**

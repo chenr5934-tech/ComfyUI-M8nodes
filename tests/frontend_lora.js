@@ -212,7 +212,7 @@ step('提取：kohya 的 ss_ 参数挑得出来', () => {
     ss_optimizer: 'AdamW8bit',
   });
   const names = info.fields.map((f) => f[0]);
-  for (const want of ['维度 dim', 'alpha', '学习率', '底模版本', '训练步数', '优化器']) {
+  for (const want of ['Dimension (dim)', 'Alpha', 'Learning rate', 'Base model version', 'Training steps', 'Optimizer']) {
     if (names.indexOf(want) < 0) throw new Error('少了 ' + want + '（实际：' + names.join(',') + '）');
   }
 });
@@ -221,7 +221,7 @@ step('提取：modelspec 命名空间单独归一类', () => {
   m = boot();
   const info = m.extract({ 'modelspec.architecture': 'stable-diffusion-xl-v1-base/lora' });
   if (!info.spec.length) throw new Error('modelspec 没归到 spec，跑到 others 去了');
-  if (info.spec[0][0] !== '架构') throw new Error('标签不对：' + info.spec[0][0]);
+  if (info.spec[0][0] !== 'Architecture') throw new Error('wrong label: ' + info.spec[0][0]);
 });
 
 step('提取：没见过的新参数也留着，不丢', () => {
@@ -274,7 +274,7 @@ step('分组：键落到对应的卡里，空组不出现', () => {
     ss_max_grad_norm: '1.0',
   });
   const titles = info.groups.map((g) => g.title);
-  for (const want of ['训练参数', '数据集与标注', '噪声与采样', '训练过程']) {
+  for (const want of ['Training parameters', 'Dataset and captions', 'Noise and sampling', 'Training run']) {
     if (titles.indexOf(want) < 0) throw new Error('少了「' + want + '」这张卡：' + titles.join(','));
   }
   /* 每张出现的卡都必须真的有内容 */
@@ -285,18 +285,18 @@ step('分组：键落到对应的卡里，空组不出现', () => {
   if (info.fields !== info.groups[0].pairs) throw new Error('fields 和第一组对不上');
 });
 
-step('同义键：两把都写只显示一次，只有旧名也能显示且不重复', () => {
+step('synonym keys: writing both shows it once, and the old name alone still shows', () => {
   m = boot();
   /* 真文件里 ss_steps 和 ss_max_train_steps 同时存在、值还一样 */
   const both = m.extract({ ss_steps: '3000', ss_max_train_steps: '3000' });
-  const shown = both.groups[0].pairs.filter((p) => p[0] === '训练步数');
-  if (shown.length !== 1) throw new Error('训练步数显示了 ' + shown.length + ' 次');
-  if (shown[0][1] !== '3000') throw new Error('值不对：' + shown[0][1]);
+  const shown = both.groups[0].pairs.filter((p) => p[0] === 'Training steps');
+  if (shown.length !== 1) throw new Error('training steps shown ' + shown.length + ' times');
+  if (shown[0][1] !== '3000') throw new Error('wrong value: ' + shown[0][1]);
 
   /* 只有旧名时，值要能回落到主键的位置上显示 */
   const legacy = m.extract({ ss_num_epochs: '10' });
-  const ep = legacy.groups[0].pairs.filter((p) => p[0] === '训练轮数');
-  if (!ep.length) throw new Error('只有旧名 ss_num_epochs 就没显示轮数');
+  const ep = legacy.groups[0].pairs.filter((p) => p[0] === 'Epochs');
+  if (!ep.length) throw new Error('the legacy ss_num_epochs alone showed no epoch count');
   /* 而且旧名不该再在「其他参数」里冒一遍 */
   if (legacy.others.some((p) => p[0] === 'ss_num_epochs')) {
     throw new Error('旧名在主键位置上显示过了，却又列进了其他参数');
@@ -319,11 +319,11 @@ step('kohya 的字符串 None 当没值，布尔值的 True/False 要保留', ()
   });
   const flat = {};
   info.groups.forEach((g) => g.pairs.forEach((p) => { flat[p[0]] = p[1]; }));
-  if ('UNet 学习率' in flat) throw new Error('None 被当成真值显示了');
-  if ('噪声偏移' in flat) throw new Error('None 被当成真值显示了');
-  if ('Min-SNR gamma' in flat) throw new Error('None 被当成真值显示了');
-  if (flat['翻转增强'] !== 'False') throw new Error('False 是真信息，不该被吃掉');
-  if (flat['分桶'] !== 'True') throw new Error('True 是真信息，不该被吃掉');
+  if ('UNet learning rate' in flat) throw new Error('None was shown as a real value');
+  if ('Noise offset' in flat) throw new Error('None was shown as a real value');
+  if ('Min-SNR gamma' in flat) throw new Error('None was shown as a real value');
+  if (flat['Flip augmentation'] !== 'False') throw new Error('False is real information and must not be swallowed');
+  if (flat['Bucketing'] !== 'True') throw new Error('True is real information and must not be swallowed');
 });
 
 step('内嵌缩略图不列出来，只报个数', () => {
@@ -354,18 +354,18 @@ step('训练耗时：两个时间都有才算，只有一个不算', () => {
     ss_training_started_at: '1768106358.29',
     ss_training_finished_at: '1768110562.95',
   });
-  const g = info.groups.filter((x) => x.title === '训练过程')[0];
-  if (!g) throw new Error('没有「训练过程」这张卡');
-  const dur = g.pairs.filter((p) => p[0] === '训练耗时')[0];
-  if (!dur) throw new Error('没算出耗时');
-  if (dur[1] !== '1 小时 10 分') throw new Error('算错了：' + dur[1]);
+  const g = info.groups.filter((x) => x.title === 'Training run')[0];
+  if (!g) throw new Error('no Training run card');
+  const dur = g.pairs.filter((p) => p[0] === 'Training time')[0];
+  if (!dur) throw new Error('the duration was not computed');
+  if (dur[1] !== '1 h 10 min') throw new Error('computed wrongly: ' + dur[1]);
 
   const half = m.extract({ ss_training_started_at: '1768106358.29' });
-  const gh = half.groups.filter((x) => x.title === '训练过程')[0];
-  if (gh && gh.pairs.some((p) => p[0] === '训练耗时')) throw new Error('只有开始时间却算出了耗时');
+  const gh = half.groups.filter((x) => x.title === 'Training run')[0];
+  if (gh && gh.pairs.some((p) => p[0] === 'Training time')) throw new Error('a duration was computed from a start time alone');
   /* 时间戳本身也不该孤零零地掉进其他参数 */
   if (half.others.some((p) => p[0] === 'ss_training_started_at')) {
-    throw new Error('时间戳漏进其他参数了');
+    throw new Error('the timestamp leaked into Other parameters');
   }
 });
 
@@ -374,14 +374,14 @@ step('网络参数那串 JSON 拆成一条条', () => {
   const info = m.extract({
     ss_network_args: JSON.stringify({ algo: 'lora', factor: 8, preset: 'anima_full', dropout: 0.05 }),
   });
-  const g = info.groups.filter((x) => x.title === '噪声与采样')[0];
-  if (!g) throw new Error('网络参数所在的卡没出现');
+  const g = info.groups.filter((x) => x.title === 'Noise and sampling')[0];
+  if (!g) throw new Error('the card holding the network parameters never appeared');
   const names = g.pairs.map((p) => p[0]);
-  for (const w of ['网络参数 · algo', '网络参数 · factor', '网络参数 · preset', '网络参数 · dropout']) {
-    if (names.indexOf(w) < 0) throw new Error('没拆出 ' + w);
+  for (const w of ['Network arg · algo', 'Network arg · factor', 'Network arg · preset', 'Network arg · dropout']) {
+    if (names.indexOf(w) < 0) throw new Error('did not split out ' + w);
   }
-  const algo = g.pairs.filter((p) => p[0] === '网络参数 · algo')[0];
-  if (algo[1] !== 'lora') throw new Error('拆出来的值不对：' + algo[1]);
+  const algo = g.pairs.filter((p) => p[0].indexOf('Network arg ') === 0)[0];
+  if (algo[1] !== 'lora') throw new Error('the split-out value was wrong: ' + algo[1]);
 });
 
 /* ---------------------------------------------------------------- 端到端 */

@@ -88,14 +88,20 @@ Two ways to supply a key:
 Every failure path carries an error code. Errors look like this:
 
 ```
-[M8-LLM-004] 接口返回 401
-  修复：API Key 不对或没权限。检查密钥，或确认它属于这个 base_url 对应的服务商
-  详情：{"error":{"message":"Authentication Fails"}}
+[M8-LLM-004] the endpoint returned 401
+  Fix: wrong API key, or one without permission. Check it, or make sure it belongs to the service behind this base_url.
+  Detail: {"error":{"message":"Authentication Fails"}}
 ```
 
 Take that code to [docs/ERROR-PLAYBOOK.md](docs/ERROR-PLAYBOOK.md) and it points straight at the file, function, cause and fix. That doc also has a four-step self-check to run after installing.
 
-Note: node display names and error messages are in Chinese. The pack is aimed at Chinese-speaking users first.
+Note on language: user-facing UI text is English in the source. Chinese translations ship in
+[`locales/zh/main.json`](locales/zh/main.json) and are served to clients through `GET /m8/i18n/{lang}`,
+so Chinese users see Chinese and everyone else sees English. The same file also carries the
+translations for the M8web workbench.
+
+Error messages are a separate thing: they are written for whoever is debugging, carry an error
+code, and are not translated.
 
 ---
 

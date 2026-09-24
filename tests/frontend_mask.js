@@ -339,7 +339,10 @@ step('文字必须整句显示出来，一个字都不能少', () => {
         throw new Error('文字被截断了：' + fit.lines.join('|'));
       }
       for (const line of fit.lines) {
-        const lw = line.length * fit.size * 0.62;
+        /* 估宽必须用 Math.round(fit.size)：fitText 内部是拿四舍五入后的字号去
+           measureText 断行的（它只 Math.round 了字号，没改 fit.size 本身），
+           这里再用未取整的 fit.size 算，比值一偏就会误报"超宽"。 */
+        const lw = line.length * Math.round(fit.size) * 0.62;
         if (lw > w + 0.5) {
           throw new Error('有一行超宽：在 ' + w + 'px 的框里占 ' + lw.toFixed(0) + 'px');
         }

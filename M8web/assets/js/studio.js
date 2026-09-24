@@ -11,6 +11,34 @@
  *   M8Studio.switchTo("mask");
  * ==========================================================================*/
 
+/* 界面文案走 i18n.js。它是 module，而这些功能脚本是普通脚本，拿不到 import ——
+   i18n.js 因此挂了一份到 window。
+
+   用 var 而不是 const：普通脚本共享全局作用域，const 在这里重复声明会直接报
+   "Identifier 'T' has already been declared"，一个页面同时加载几个脚本就白屏。
+   var 重复声明是合法的，每个文件仍然自足，不依赖加载顺序。
+
+   宿主对象用 globalThis 取而不是直接写 window：前端测试在 Node 里跑这些脚本，
+   那边没有 window，直接解引用会当场 "window is not defined"。
+
+   i18n 没加载成功时走这里的兜底：**必须自己填占位符** —— 直接返回 fallback 的话，
+   界面上会原样显示 "{h} h {m} min" 这种花括号，比换不成中文更糟。 */
+var T = function (key, fallback, vars) {
+  var host = typeof globalThis !== "undefined" ? globalThis : {};
+  var i18n = host.M8I18n;
+  if (i18n && typeof i18n.t === "function") return i18n.t(key, fallback, vars);
+
+  var text = fallback === undefined ? key : fallback;
+  if (vars && typeof text === "string") {
+    for (var k in vars) {
+      if (Object.prototype.hasOwnProperty.call(vars, k)) {
+        text = text.split("{" + k + "}").join(String(vars[k]));
+      }
+    }
+  }
+  return text;
+};
+
 const M8Studio = (() => {
   "use strict";
 
@@ -38,7 +66,7 @@ const M8Studio = (() => {
   function loadFile(file) {
     if (!file) return;
     if (!/^image\//.test(file.type)) {
-      setStatus("这个文件不是图片。", true);
+      setStatus(T("studioNotImage", "That file is not an image."), true);
       return;
     }
     if (state.url) {
@@ -57,7 +85,7 @@ const M8Studio = (() => {
       notify();
     };
     img.onerror = function () {
-      setStatus("这张图读不出来，换一张试试。", true);
+      setStatus(T("studioImageBroken", "That image could not be read. Try another one."), true);
       try { URL.revokeObjectURL(url); } catch (e) { /* 无所谓 */ }
     };
     img.src = url;
@@ -70,7 +98,8 @@ const M8Studio = (() => {
     state.img = null;
     state.url = "";
     el.fileInput.value = "";
-    el.fileMeta.textContent = "支持 JPG / PNG / WebP / GIF · 全程在本机处理，不上传";
+    el.fileMeta.textContent = T("studioFileMeta",
+      "JPG / PNG / WebP / GIF - processed entirely on this machine, never uploaded");
     el.body.classList.add("is-hidden");
     el.drop.classList.remove("is-hidden");
     setStatus("");

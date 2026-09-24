@@ -421,7 +421,7 @@ step('嵌套：密钥不对就报签名错，不吐一堆垃圾', () => {
   try { m.extract({ data: out.data, width: 128, height: 128 }, 'wrong'); }
   catch (e) { msg = e.message; }
   if (!msg) throw new Error('错密钥居然没报错');
-  if (msg.indexOf('签名') < 0) throw new Error('报错信息没说清是签名问题：' + msg);
+  if (msg.indexOf('Signature mismatch') < 0) throw new Error('报错信息没说清是签名问题：' + msg);
 });
 
 step('嵌套：从没藏东西的普通图里提取会明确失败', () => {
@@ -435,7 +435,7 @@ step('嵌套：掩护图太小会明确报错', () => {
   let msg = '';
   try { m.embed(makeImage(4, 4, 1), makeImage(8, 8, 2), 'k'); } catch (e) { msg = e.message; }
   if (!msg) throw new Error('这么小的掩护图居然没报错');
-  if (msg.indexOf('太小') < 0) throw new Error('报错没说是容量问题：' + msg);
+  if (msg.indexOf('too small') < 0) throw new Error('报错没说是容量问题：' + msg);
 });
 
 step('容量换算对得上', () => {

@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import json
 import mimetypes
+import re
 import sys
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -64,6 +65,34 @@ def load_data_dir() -> Path:
     except OSError:
         pass
     return paths.USER_DATA_DIR
+
+
+def read_web_strings(lang: str) -> dict:
+    """读插件的 locales/<lang>/main.json，取出其中的 web 段。
+
+    和 ComfyUI 那边的 /m8/i18n/<lang> 读的是**同一个文件** —— 工作台在哪种
+    情况下打开，看到的文案都该是同一份。
+
+    语言码会被拼进路径，所以先按字符集净化，再确认最终路径确实落在 locales/
+    目录里。两道都过才读；取不到就给空表，前端会退回代码里的英文。
+    """
+    clean = re.sub(r"[^A-Za-z0-9_-]", "", str(lang or ""))[:8].lower()
+    if not clean:
+        return {}
+
+    root = (PLUGIN_DIR / "locales").resolve()
+    path = (root / clean / "main.json").resolve()
+    if root != path and root not in path.parents:
+        return {}
+    if not path.is_file():
+        return {}
+
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    section = data.get("web") if isinstance(data, dict) else None
+    return section if isinstance(section, dict) else {}
 
 
 def resolve_static(rel: str) -> Path:
@@ -121,6 +150,11 @@ class Handler(BaseHTTPRequestHandler):
 
         if path == "/m8/health":
             self._ok(app="m8-serve", data=webdata.info(), port=self.server.server_address[1])
+            return
+
+        if path.startswith("/m8/i18n/"):
+            lang = path[len("/m8/i18n/"):]
+            self._ok(strings=read_web_strings(lang), lang=lang)
             return
 
         if path.startswith(DATA_PREFIX + "/"):

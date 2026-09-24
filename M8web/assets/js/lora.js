@@ -19,6 +19,34 @@
  * kohya-ss 系的训练器会把参数写进 __metadata__，键名统一是 ss_ 开头。
  * ==========================================================================*/
 
+/* 界面文案走 i18n.js。它是 module，而这些功能脚本是普通脚本，拿不到 import ——
+   i18n.js 因此挂了一份到 window。
+
+   用 var 而不是 const：普通脚本共享全局作用域，const 在这里重复声明会直接报
+   "Identifier 'T' has already been declared"，一个页面同时加载几个脚本就白屏。
+   var 重复声明是合法的，每个文件仍然自足，不依赖加载顺序。
+
+   宿主对象用 globalThis 取而不是直接写 window：前端测试在 Node 里跑这些脚本，
+   那边没有 window，直接解引用会当场 "window is not defined"。
+
+   i18n 没加载成功时走这里的兜底：**必须自己填占位符** —— 直接返回 fallback 的话，
+   界面上会原样显示 "{h} h {m} min" 这种花括号，比换不成中文更糟。 */
+var T = function (key, fallback, vars) {
+  var host = typeof globalThis !== "undefined" ? globalThis : {};
+  var i18n = host.M8I18n;
+  if (i18n && typeof i18n.t === "function") return i18n.t(key, fallback, vars);
+
+  var text = fallback === undefined ? key : fallback;
+  if (vars && typeof text === "string") {
+    for (var k in vars) {
+      if (Object.prototype.hasOwnProperty.call(vars, k)) {
+        text = text.split("{" + k + "}").join(String(vars[k]));
+      }
+    }
+  }
+  return text;
+};
+
 const M8Lora = (() => {
   "use strict";
 
@@ -27,112 +55,114 @@ const M8Lora = (() => {
   const MAX_HEADER = 64 * 1024 * 1024;
   const TOP_TAGS = 40;
 
-  /* ss_ 键名 → 中文标签，按用途分几组，每组渲染成一张卡。
+  /* ss_ 键名 → [i18n 键, 英文原文]，按用途分几组，每组渲染成一张卡。
+     文案不能在这里查：本表在模块顶层就构造好了，而 i18n.js 是 module、后于本文件
+     执行，那时候 T 只拿得到 undefined —— 所以键名先生出来，取文案留给 extract 那一层。
      这张表是照本机 774 个真 LoRA 的键名出现次数校准出来的 ——
      进来的键都在真实文件里见过，没见过的（比如早先猜的 ss_save_precision）已删。
      表里没有的键不会丢，会落到「其他参数」里原样显示。 */
   const FIELD_GROUPS = [
     {
-      title: "训练参数", tag: "kohya",
+      id: "train", title: "Training parameters", tag: "kohya",
       keys: [
-        ["ss_output_name", "输出名"],
-        ["ss_base_model_version", "底模版本"],
-        ["ss_sd_model_name", "底模文件"],
-        ["ss_network_module", "网络类型"],
-        ["ss_network_spec", "网络规格"],
-        ["ss_network_dim", "维度 dim"],
-        ["ss_network_alpha", "alpha"],
-        ["ss_learning_rate", "学习率"],
-        ["ss_text_encoder_lr", "TE 学习率"],
-        ["ss_unet_lr", "UNet 学习率"],
-        ["ss_optimizer", "优化器"],
-        ["ss_lr_scheduler", "调度器"],
-        ["ss_lr_warmup_steps", "预热步数"],
-        ["ss_lr_scheduler_num_cycles", "调度器周期数"],
-        ["ss_lr_scheduler_power", "调度器 power"],
-        ["ss_steps", "训练步数"],
-        ["ss_epoch", "训练轮数"],
-        ["ss_num_train_images", "训练图片数"],
-        ["ss_num_reg_images", "正则图片数"],
-        ["ss_batch_size_per_device", "批大小"],
-        ["ss_total_batch_size", "总批大小"],
-        ["ss_num_batches_per_epoch", "每轮批数"],
-        ["ss_gradient_accumulation_steps", "梯度累积"],
-        ["ss_resolution", "训练分辨率"],
-        ["ss_mixed_precision", "混合精度"],
-        ["ss_clip_skip", "CLIP skip"],
-        ["ss_seed", "随机种子"],
+        ["ss_output_name", "loraFieldOutputName", "Output name"],
+        ["ss_base_model_version", "loraFieldBaseModelVersion", "Base model version"],
+        ["ss_sd_model_name", "loraFieldSdModelName", "Base model file"],
+        ["ss_network_module", "loraFieldNetworkModule", "Network type"],
+        ["ss_network_spec", "loraFieldNetworkSpec", "Network spec"],
+        ["ss_network_dim", "loraFieldNetworkDim", "Dimension (dim)"],
+        ["ss_network_alpha", "loraFieldNetworkAlpha", "Alpha"],
+        ["ss_learning_rate", "loraFieldLearningRate", "Learning rate"],
+        ["ss_text_encoder_lr", "loraFieldTextEncoderLr", "TE learning rate"],
+        ["ss_unet_lr", "loraFieldUnetLr", "UNet learning rate"],
+        ["ss_optimizer", "loraFieldOptimizer", "Optimizer"],
+        ["ss_lr_scheduler", "loraFieldLrScheduler", "Scheduler"],
+        ["ss_lr_warmup_steps", "loraFieldLrWarmupSteps", "Warmup steps"],
+        ["ss_lr_scheduler_num_cycles", "loraFieldLrSchedulerNumCycles", "Scheduler cycles"],
+        ["ss_lr_scheduler_power", "loraFieldLrSchedulerPower", "Scheduler power"],
+        ["ss_steps", "loraFieldSteps", "Training steps"],
+        ["ss_epoch", "loraFieldEpoch", "Epochs"],
+        ["ss_num_train_images", "loraFieldNumTrainImages", "Training images"],
+        ["ss_num_reg_images", "loraFieldNumRegImages", "Regularisation images"],
+        ["ss_batch_size_per_device", "loraFieldBatchSizePerDevice", "Batch size"],
+        ["ss_total_batch_size", "loraFieldTotalBatchSize", "Total batch size"],
+        ["ss_num_batches_per_epoch", "loraFieldNumBatchesPerEpoch", "Batches per epoch"],
+        ["ss_gradient_accumulation_steps", "loraFieldGradientAccumulationSteps", "Gradient accumulation"],
+        ["ss_resolution", "loraFieldResolution", "Training resolution"],
+        ["ss_mixed_precision", "loraFieldMixedPrecision", "Mixed precision"],
+        ["ss_clip_skip", "loraFieldClipSkip", "CLIP skip"],
+        ["ss_seed", "loraFieldSeed", "Seed"],
       ],
     },
     {
-      title: "训练过程", tag: "来源",
+      id: "process", title: "Training run", tag: "Source",
       keys: [
         /* 训练时长与开始时间由 extract 现算，插在这一组的最前面 */
-        ["ss_max_grad_norm", "梯度裁剪"],
-        ["ss_session_id", "会话 ID"],
-        ["ss_sd_scripts_commit_hash", "训练器版本"],
-        ["ss_sd_model_hash", "底模 hash"],
-        ["ss_new_sd_model_hash", "底模 SHA256"],
-        ["ss_vae_name", "VAE"],
-        ["ss_vae_hash", "VAE hash"],
-        ["ss_attn_mode", "注意力实现"],
-        ["ss_attention_backend", "注意力后端"],
-        ["ss_training_comment", "训练备注"],
+        ["ss_max_grad_norm", "loraFieldMaxGradNorm", "Gradient clipping"],
+        ["ss_session_id", "loraFieldSessionId", "Session ID"],
+        ["ss_sd_scripts_commit_hash", "loraFieldSdScriptsCommitHash", "Trainer version"],
+        ["ss_sd_model_hash", "loraFieldSdModelHash", "Base model hash"],
+        ["ss_new_sd_model_hash", "loraFieldNewSdModelHash", "Base model SHA256"],
+        ["ss_vae_name", "loraFieldVaeName", "VAE"],
+        ["ss_vae_hash", "loraFieldVaeHash", "VAE hash"],
+        ["ss_attn_mode", "loraFieldAttnMode", "Attention implementation"],
+        ["ss_attention_backend", "loraFieldAttentionBackend", "Attention backend"],
+        ["ss_training_comment", "loraFieldTrainingComment", "Training comment"],
       ],
     },
     {
-      title: "数据集与标注", tag: "captions",
+      id: "dataset", title: "Dataset and captions", tag: "captions",
       keys: [
-        ["ss_dataset_dirs", "数据集目录"],
-        ["ss_reg_dataset_dirs", "正则数据集"],
-        ["ss_enable_bucket", "分桶"],
-        ["ss_min_bucket_reso", "最小桶"],
-        ["ss_max_bucket_reso", "最大桶"],
-        ["ss_bucket_no_upscale", "桶不放大"],
-        ["ss_shuffle_caption", "打乱标注"],
-        ["ss_keep_tokens", "保留 token 数"],
-        ["ss_caption_dropout_rate", "标注丢弃率"],
-        ["ss_caption_dropout_every_n_epochs", "标注丢弃间隔"],
-        ["ss_caption_tag_dropout_rate", "tag 丢弃率"],
-        ["ss_max_token_length", "最大 token"],
-        ["ss_resize_interpolation", "缩放插值"],
-        ["ss_skip_image_resolution", "跳过分辨率"],
-        ["ss_color_aug", "颜色增强"],
-        ["ss_flip_aug", "翻转增强"],
-        ["ss_random_crop", "随机裁剪"],
-        ["ss_face_crop_aug_range", "人脸裁剪增强"],
+        ["ss_dataset_dirs", "loraFieldDatasetDirs", "Dataset directories"],
+        ["ss_reg_dataset_dirs", "loraFieldRegDatasetDirs", "Regularisation dataset"],
+        ["ss_enable_bucket", "loraFieldEnableBucket", "Bucketing"],
+        ["ss_min_bucket_reso", "loraFieldMinBucketReso", "Min bucket"],
+        ["ss_max_bucket_reso", "loraFieldMaxBucketReso", "Max bucket"],
+        ["ss_bucket_no_upscale", "loraFieldBucketNoUpscale", "No bucket upscale"],
+        ["ss_shuffle_caption", "loraFieldShuffleCaption", "Shuffle captions"],
+        ["ss_keep_tokens", "loraFieldKeepTokens", "Tokens kept"],
+        ["ss_caption_dropout_rate", "loraFieldCaptionDropoutRate", "Caption dropout rate"],
+        ["ss_caption_dropout_every_n_epochs", "loraFieldCaptionDropoutEveryNEpochs", "Caption dropout interval"],
+        ["ss_caption_tag_dropout_rate", "loraFieldCaptionTagDropoutRate", "Tag dropout rate"],
+        ["ss_max_token_length", "loraFieldMaxTokenLength", "Max token length"],
+        ["ss_resize_interpolation", "loraFieldResizeInterpolation", "Resize interpolation"],
+        ["ss_skip_image_resolution", "loraFieldSkipImageResolution", "Skipped resolutions"],
+        ["ss_color_aug", "loraFieldColorAug", "Colour augmentation"],
+        ["ss_flip_aug", "loraFieldFlipAug", "Flip augmentation"],
+        ["ss_random_crop", "loraFieldRandomCrop", "Random crop"],
+        ["ss_face_crop_aug_range", "loraFieldFaceCropAugRange", "Face crop augmentation"],
       ],
     },
     {
-      title: "噪声与采样", tag: "进阶",
+      id: "noise", title: "Noise and sampling", tag: "Advanced",
       keys: [
-        ["ss_loss_type", "损失函数"],
-        ["ss_weighting_scheme", "加权方式"],
-        ["ss_timestep_sampling", "时间步采样"],
-        ["ss_sigmoid_scale", "sigmoid 系数"],
-        ["ss_logit_mean", "logit 均值"],
-        ["ss_logit_std", "logit 标准差"],
-        ["ss_mode_scale", "mode 系数"],
-        ["ss_discrete_flow_shift", "flow shift"],
-        ["ss_guidance_scale", "guidance"],
-        ["ss_noise_offset", "噪声偏移"],
-        ["ss_noise_offset_random_strength", "噪声偏移随机"],
-        ["ss_adaptive_noise_scale", "自适应噪声"],
-        ["ss_multires_noise_iterations", "多分辨率噪声迭代"],
-        ["ss_multires_noise_discount", "多分辨率噪声折扣"],
-        ["ss_min_snr_gamma", "Min-SNR gamma"],
-        ["ss_prior_loss_weight", "先验损失权重"],
-        ["ss_zero_terminal_snr", "zero terminal SNR"],
-        ["ss_huber_c", "huber c"],
-        ["ss_huber_schedule", "huber 调度"],
-        ["ss_network_dropout", "LoRA dropout"],
-        ["ss_network_args", "网络参数"],
-        ["ss_gradient_checkpointing", "梯度检查点"],
-        ["ss_full_fp16", "全 fp16"],
-        ["ss_full_bf16", "全 bf16"],
-        ["ss_fp8_base", "fp8 底模"],
-        ["ss_lowram", "低显存模式"],
-        ["ss_v2", "SD2 架构"],
+        ["ss_loss_type", "loraFieldLossType", "Loss function"],
+        ["ss_weighting_scheme", "loraFieldWeightingScheme", "Weighting scheme"],
+        ["ss_timestep_sampling", "loraFieldTimestepSampling", "Timestep sampling"],
+        ["ss_sigmoid_scale", "loraFieldSigmoidScale", "Sigmoid scale"],
+        ["ss_logit_mean", "loraFieldLogitMean", "Logit mean"],
+        ["ss_logit_std", "loraFieldLogitStd", "Logit std"],
+        ["ss_mode_scale", "loraFieldModeScale", "Mode scale"],
+        ["ss_discrete_flow_shift", "loraFieldDiscreteFlowShift", "Flow shift"],
+        ["ss_guidance_scale", "loraFieldGuidanceScale", "Guidance"],
+        ["ss_noise_offset", "loraFieldNoiseOffset", "Noise offset"],
+        ["ss_noise_offset_random_strength", "loraFieldNoiseOffsetRandomStrength", "Random noise offset"],
+        ["ss_adaptive_noise_scale", "loraFieldAdaptiveNoiseScale", "Adaptive noise"],
+        ["ss_multires_noise_iterations", "loraFieldMultiresNoiseIterations", "Multires noise iterations"],
+        ["ss_multires_noise_discount", "loraFieldMultiresNoiseDiscount", "Multires noise discount"],
+        ["ss_min_snr_gamma", "loraFieldMinSnrGamma", "Min-SNR gamma"],
+        ["ss_prior_loss_weight", "loraFieldPriorLossWeight", "Prior loss weight"],
+        ["ss_zero_terminal_snr", "loraFieldZeroTerminalSnr", "Zero terminal SNR"],
+        ["ss_huber_c", "loraFieldHuberC", "Huber c"],
+        ["ss_huber_schedule", "loraFieldHuberSchedule", "Huber schedule"],
+        ["ss_network_dropout", "loraFieldNetworkDropout", "LoRA dropout"],
+        ["ss_network_args", "loraFieldNetworkArgs", "Network args"],
+        ["ss_gradient_checkpointing", "loraFieldGradientCheckpointing", "Gradient checkpointing"],
+        ["ss_full_fp16", "loraFieldFullFp16", "Full fp16"],
+        ["ss_full_bf16", "loraFieldFullBf16", "Full bf16"],
+        ["ss_fp8_base", "loraFieldFp8Base", "fp8 base model"],
+        ["ss_lowram", "loraFieldLowram", "Low VRAM mode"],
+        ["ss_v2", "loraFieldV2", "SD2 architecture"],
       ],
     },
   ];
@@ -165,21 +195,21 @@ const M8Lora = (() => {
   })();
 
   const MODELS_SPEC = [
-    ["modelspec.architecture", "架构"],
-    ["modelspec.title", "标题"],
-    ["modelspec.description", "说明"],
-    ["modelspec.author", "作者"],
-    ["modelspec.date", "日期"],
-    ["modelspec.license", "许可"],
-    ["modelspec.resolution", "分辨率"],
-    ["modelspec.prediction_type", "预测类型"],
-    ["modelspec.timestep_range", "时间步范围"],
-    ["modelspec.encoder_layer", "编码层"],
-    ["modelspec.merged_from", "合并来源"],
-    ["modelspec.tags", "标签"],
-    ["modelspec.trigger_phrase", "触发词"],
-    ["modelspec.implementation", "实现"],
-    ["modelspec.implementation_version", "实现版本"],
+    ["modelspec.architecture", "loraSpecArchitecture", "Architecture"],
+    ["modelspec.title", "loraSpecTitle", "Title"],
+    ["modelspec.description", "loraSpecDescription", "Description"],
+    ["modelspec.author", "loraSpecAuthor", "Author"],
+    ["modelspec.date", "loraSpecDate", "Date"],
+    ["modelspec.license", "loraSpecLicense", "Licence"],
+    ["modelspec.resolution", "loraSpecResolution", "Resolution"],
+    ["modelspec.prediction_type", "loraSpecPredictionType", "Prediction type"],
+    ["modelspec.timestep_range", "loraSpecTimestepRange", "Timestep range"],
+    ["modelspec.encoder_layer", "loraSpecEncoderLayer", "Encoder layer"],
+    ["modelspec.merged_from", "loraSpecMergedFrom", "Merged from"],
+    ["modelspec.tags", "loraSpecTags", "Tags"],
+    ["modelspec.trigger_phrase", "loraSpecTriggerPhrase", "Trigger phrase"],
+    ["modelspec.implementation", "loraSpecImplementation", "Implementation"],
+    ["modelspec.implementation_version", "loraSpecImplementationVersion", "Implementation version"],
     /* 不要列 modelspec.thumbnail —— 那是 base64 缩略图，几百 KB 的一坨 */
   ];
 
@@ -282,12 +312,12 @@ const M8Lora = (() => {
   }
 
   function fmtDur(sec) {
-    if (sec < 60) return sec + " 秒";
+    if (sec < 60) return T("loraSeconds", "{n} sec", { n: sec });
     const h = Math.floor(sec / 3600);
     const m = Math.floor((sec % 3600) / 60);
-    if (h) return h + " 小时 " + m + " 分";
+    if (h) return T("loraHoursMinutes", "{h} h {m} min", { h: h, m: m });
     const s = sec % 60;
-    return m + " 分 " + s + " 秒";
+    return T("loraMinutesSeconds", "{m} min {s} sec", { m: m, s: s });
   }
 
   /* 起止时间都是 unix 秒（带小数）。两个都在才算得出来。 */
@@ -314,7 +344,7 @@ const M8Lora = (() => {
     if (!d || typeof d !== "object" || Array.isArray(d)) return [];
     return Object.keys(d).map(function (k) {
       const v = d[k];
-      return ["网络参数 · " + k, typeof v === "object" ? JSON.stringify(v) : v];
+      return [T("loraNetworkArg", "Network arg · {key}", { key: k }), typeof v === "object" ? JSON.stringify(v) : v];
     });
   }
 
@@ -328,11 +358,11 @@ const M8Lora = (() => {
     FIELD_GROUPS.forEach(function (g) {
       const pairs = [];
       /* 训练过程那张卡的第一行留给训练耗时 */
-      if (g.title === "训练过程") {
+      if (g.id === "process") {
         const span = trainingSpan(metadata);
         if (span) {
-          pairs.push(["训练耗时", span.dur]);
-          if (span.started) pairs.push(["训练开始", span.started]);
+          pairs.push([T("loraFieldTrainingTime", "Training time"), span.dur]);
+          if (span.started) pairs.push([T("loraFieldTrainingStarted", "Training started"), span.started]);
         }
       }
       g.keys.forEach(function (f) {
@@ -344,13 +374,13 @@ const M8Lora = (() => {
           const parts = networkArgs(v);
           if (parts.length) { parts.forEach(function (p) { pairs.push(p); }); return; }
         }
-        pairs.push([f[1], v]);
+        pairs.push([T(f[1], f[2]), v]);
       });
-      if (pairs.length) out.groups.push({ title: g.title, tag: g.tag, pairs: pairs });
+      if (pairs.length) out.groups.push({ id: g.id, title: T("loraGroup." + g.id, g.title), tag: T("loraTag." + g.id, g.tag), pairs: pairs });
     });
 
     /* 训练参数那组也单独给一份，方便外部（和测试）直接拿 */
-    if (out.groups.length && out.groups[0].title === "训练参数") {
+    if (out.groups.length && out.groups[0].id === "train") {
       out.fields = out.groups[0].pairs;
     }
 
@@ -358,7 +388,7 @@ const M8Lora = (() => {
       known[f[0]] = true;
       const v = pick(metadata, f[0]);
       if (v === null) return;
-      out.spec.push([f[1], v]);
+      out.spec.push([T(f[1], f[2]), v]);
     });
 
     /* 剩下没归类的键，原样列出来 */
@@ -371,7 +401,7 @@ const M8Lora = (() => {
       if (!meaningful(v)) return;
       /* 超长的值（比如整个数据集路径表、base64 缩略图）截一下 */
       const s = String(v);
-      out.others.push([k, s.length > 400 ? s.slice(0, 400) + "…" : v]);
+      out.others.push([k, s.length > 400 ? s.slice(0, 400) + T("loraEllipsis", "…") : v]);
     });
     out.others.sort(function (a, b) { return a[0] < b[0] ? -1 : 1; });
 
@@ -423,10 +453,10 @@ const M8Lora = (() => {
   function copyButton(text) {
     const b = document.createElement("button");
     b.type = "button";
-    b.textContent = "复制";
+    b.textContent = T("copy", "Copy");
     b.addEventListener("click", function () {
-      copyText(text).then(function () { setStatus("复制好了。"); })
-        .catch(function () { setStatus("复制没成功，手动选一下吧。", true); });
+      copyText(text).then(function () { setStatus(T("copyDone", "Copied.")); })
+        .catch(function () { setStatus(T("copyFailed", "Could not copy - select it by hand."), true); });
     });
     return b;
   }
@@ -476,7 +506,8 @@ const M8Lora = (() => {
       if (g.tags.length > TOP_TAGS) {
         const more = document.createElement("p");
         more.className = "tag-more";
-        more.textContent = "还有 " + (g.tags.length - TOP_TAGS) + " 个标签没列（一共 " + g.tags.length + " 个）";
+        more.textContent = T("loraTagsMore", "{n} more tags are not listed ({total} in total)",
+          { n: g.tags.length - TOP_TAGS, total: g.tags.length });
         box.appendChild(more);
       }
       wrap.appendChild(box);
@@ -489,27 +520,26 @@ const M8Lora = (() => {
     panels.innerHTML = "";
 
     /* --- 文件 --- */
-    const fCard = infoCard("文件");
+    const fCard = infoCard(T("fileCard", "File"));
     const headPairs = [
-      ["文件名", info.file.name],
-      ["大小", fmtSize(info.file.size)],
-      ["张量数", info.tensorCount],
-      ["header", fmtSize(info.headerBytes) + "（只读了这一段）"],
+      [T("fileName", "File name"), info.file.name],
+      [T("fileSize", "Size"), fmtSize(info.file.size)],
+      [T("loraTensorCount", "Tensors"), info.tensorCount],
+      ["header", T("loraHeaderValue", "{size} (only this part was read)", { size: fmtSize(info.headerBytes) })],
     ];
     /* dtype 汇总：LoRA 通常就 F16 / BF16 / F32 一两种 */
     const dtypes = {};
     (info.tensors || []).forEach(function (t) { if (t.dtype) dtypes[t.dtype] = (dtypes[t.dtype] || 0) + 1; });
     const dt = Object.keys(dtypes).map(function (k) { return k + " × " + dtypes[k]; }).join(" · ");
-    if (dt) headPairs.push(["数据类型", dt]);
+    if (dt) headPairs.push([T("loraDataType", "Data type"), dt]);
     fCard.appendChild(kv(headPairs));
     panels.appendChild(fCard);
 
     if (!info.metadata) {
-      const nCard = infoCard("没有训练参数");
+      const nCard = infoCard(T("loraNoMetadataTitle", "No training parameters"));
       const p = document.createElement("p");
       p.className = "info-note";
-      p.textContent = "这个 safetensors 里没有 __metadata__ 段 —— 可能是普通模型权重，"
-        + "或者合并/转换过的 LoRA（很多工具在转格式时会把训练信息丢掉）。";
+      p.textContent = T("loraNoMetadataBody", "This safetensors has no __metadata__ section - it may be plain model weights, or a LoRA that was merged or converted (many tools drop the training info when converting formats).");
       nCard.appendChild(p);
       panels.appendChild(nCard);
       return;
@@ -517,7 +547,7 @@ const M8Lora = (() => {
 
     /* --- 模型信息 --- */
     if (info.spec.length) {
-      const sCard = infoCard("模型信息", "modelspec");
+      const sCard = infoCard(T("loraModelInfo", "Model info"), "modelspec");
       sCard.appendChild(kv(info.spec));
       panels.appendChild(sCard);
     }
@@ -533,14 +563,14 @@ const M8Lora = (() => {
 
     /* --- 标签频率 --- */
     if (info.tagGroups) {
-      const gCard = infoCard("训练标签", "按出现次数");
+      const gCard = infoCard(T("loraTrainingTags", "Training tags"), T("loraByCount", "By count"));
       gCard.appendChild(tagChart(info.tagGroups));
       panels.appendChild(gCard);
     }
 
     /* --- 其他参数 --- */
     if (info.others.length) {
-      const oCard = infoCard("其他参数");
+      const oCard = infoCard(T("loraOtherParams", "Other parameters"));
       const acts = document.createElement("div");
       acts.className = "card-actions";
       const all = JSON.stringify(info.metadata, null, 2);
@@ -551,14 +581,15 @@ const M8Lora = (() => {
         const p = document.createElement("p");
         p.className = "info-note";
         p.style.marginTop = "8px";
-        p.textContent = "还有 " + (info.others.length - 60) + " 项没列（点上面的「复制」能拿到全部）";
+        p.textContent = T("loraOthersMore", "{n} more entries are not listed (hit Copy above to get all of them)",
+          { n: info.others.length - 60 });
         oCard.appendChild(p);
       }
       if (info.skipped) {
         const p = document.createElement("p");
         p.className = "info-note";
-        p.textContent = "另外省略了 " + info.skipped + " 项体积很大又没参考价值的内容"
-          + "（比如内嵌缩略图），「复制」里仍然有。";
+        p.textContent = T("loraSkippedNote", "{n} bulky entries with no reference value were skipped too (embedded thumbnails, say) - Copy still has them.",
+          { n: info.skipped });
         oCard.appendChild(p);
       }
       panels.appendChild(oCard);
@@ -572,12 +603,12 @@ const M8Lora = (() => {
     return file.slice(0, 8).arrayBuffer().then(function (buf) {
       const len = headerLength(new Uint8Array(buf));
       if (!len) {
-        throw new Error("这不是 safetensors 文件（开头 8 字节给不出合理的 header 长度）");
+        throw new Error(T("loraNotSafetensors", "Not a safetensors file (the first 8 bytes do not give a sensible header length)"));
       }
       /* 第二步：只把 header 那一段切出来读。张量数据一个字节都不碰。 */
       return file.slice(8, 8 + len).arrayBuffer().then(function (hb) {
         const parsed = parseHeader(new Uint8Array(hb));
-        if (!parsed) throw new Error("header 不是合法的 JSON");
+        if (!parsed) throw new Error(T("loraBadHeader", "The header is not valid JSON"));
         parsed.headerBytes = len;
         return parsed;
       });
@@ -589,20 +620,20 @@ const M8Lora = (() => {
     if (busy) return;
     const name = (file.name || "").toLowerCase();
     if (name && !/\.safetensors$/.test(name)) {
-      setStatus("只认 .safetensors 文件。", true);
+      setStatus(T("loraOnlySafetensors", "Only .safetensors files are accepted."), true);
       return;
     }
     busy = true;
     el.drop.classList.add("is-hidden");
     el.body.classList.remove("is-hidden");
-    setStatus("正在读头部…（只读开头那一段，不会把整个文件读进来）");
+    setStatus(T("loraReading", "Reading the header... (only the beginning is read; the file is never pulled in whole)"));
 
     readHeaderOnly(file)
       .then(function (parsed) {
         const userMeta = parsed.metadata;
         const info = extract(userMeta);
         render({
-          file: { name: file.name || "(没有名字)", size: file.size },
+          file: { name: file.name || T("unnamedFile", "(no name)"), size: file.size },
           headerBytes: parsed.headerBytes,
           tensorCount: parsed.tensors.length,
           tensors: parsed.tensors,
@@ -614,18 +645,19 @@ const M8Lora = (() => {
           tagGroups: info ? info.tagGroups : null,
         });
         const bits = [];
-        if (info && info.fields.length) bits.push("训练参数");
-        if (info && info.tagGroups) bits.push("训练标签");
-        if (info && info.spec.length) bits.push("模型信息");
+        if (info && info.fields.length) bits.push(T("loraGroup.train", "Training parameters"));
+        if (info && info.tagGroups) bits.push(T("loraTrainingTags", "Training tags"));
+        if (info && info.spec.length) bits.push(T("loraModelInfo", "Model info"));
         setStatus(bits.length
-          ? "读完了（只读了 " + fmtSize(parsed.headerBytes + 8) + "）：" + bits.join(" · ")
-          : "读完了，但里面没有训练参数。");
+          ? T("loraDoneRead", "Done (read {size} only): {parts}",
+            { size: fmtSize(parsed.headerBytes + 8), parts: bits.join(" · ") })
+          : T("loraDoneNoParams", "Done, but there are no training parameters inside."));
         el.again.classList.remove("is-hidden");
       })
       .catch(function (e) {
         el.drop.classList.remove("is-hidden");
         el.body.classList.add("is-hidden");
-        setStatus(e && e.message ? e.message : "读不出来。", true);
+        setStatus(e && e.message ? e.message : T("loraReadFailed", "Could not read it."), true);
       })
       .then(function () {
         busy = false;

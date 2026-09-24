@@ -10,6 +10,34 @@
  * 换掉，光标一丢、字就断了。所以增删才 render()，改动只更新那条的脏标记。
  * ==========================================================================*/
 
+/* 界面文案走 i18n.js。它是 module，而这些功能脚本是普通脚本，拿不到 import ——
+   i18n.js 因此挂了一份到 window。
+
+   用 var 而不是 const：普通脚本共享全局作用域，const 在这里重复声明会直接报
+   "Identifier 'T' has already been declared"，一个页面同时加载几个脚本就白屏。
+   var 重复声明是合法的，每个文件仍然自足，不依赖加载顺序。
+
+   宿主对象用 globalThis 取而不是直接写 window：前端测试在 Node 里跑这些脚本，
+   那边没有 window，直接解引用会当场 "window is not defined"。
+
+   i18n 没加载成功时走这里的兜底：**必须自己填占位符** —— 直接返回 fallback 的话，
+   界面上会原样显示 "{h} h {m} min" 这种花括号，比换不成中文更糟。 */
+var T = function (key, fallback, vars) {
+  var host = typeof globalThis !== "undefined" ? globalThis : {};
+  var i18n = host.M8I18n;
+  if (i18n && typeof i18n.t === "function") return i18n.t(key, fallback, vars);
+
+  var text = fallback === undefined ? key : fallback;
+  if (vars && typeof text === "string") {
+    for (var k in vars) {
+      if (Object.prototype.hasOwnProperty.call(vars, k)) {
+        text = text.split("{" + k + "}").join(String(vars[k]));
+      }
+    }
+  }
+  return text;
+};
+
 const M8OC = (() => {
   "use strict";
 
@@ -148,7 +176,9 @@ const M8OC = (() => {
 
     if (el.empty) el.empty.classList.toggle("is-hidden", state.list.length > 0);
     if (el.count) {
-      el.count.textContent = state.list.length ? state.list.length + " 个 OC" : "还没有 OC";
+      el.count.textContent = state.list.length
+        ? T("ocCount", "{n} OC{plural}", { n: state.list.length, plural: state.list.length === 1 ? "" : "s" })
+        : T("ocEmptyTitle", "No OCs yet");
     }
   }
 
@@ -160,7 +190,7 @@ const M8OC = (() => {
     /* --- 左：例图 --- */
     const photo = document.createElement("div");
     photo.className = "oc-photo";
-    photo.title = "点一下传例图";
+    photo.title = T("ocPhotoPickTip", "Click to upload a sample image");
     const input = document.createElement("input");
     input.type = "file";
     input.accept = "image/png,image/jpeg,image/webp,image/gif";
@@ -175,20 +205,20 @@ const M8OC = (() => {
     if (rec.image) {
       const im = document.createElement("img");
       im.src = rec.image;
-      im.alt = (rec.name || "OC " + (index + 1)) + " 的例图";
+      im.alt = T("ocPhotoAlt", "Sample image of {name}", { name: rec.name || "OC " + (index + 1) });
       photo.appendChild(im);
       const tools = document.createElement("div");
       tools.className = "oc-photo-tools";
       const swap = document.createElement("button");
       swap.type = "button";
-      swap.textContent = "换图";
+      swap.textContent = T("changeImage", "Change image");
       swap.addEventListener("click", function (ev) {
         ev.stopPropagation();
         input.click();
       });
       const wipe = document.createElement("button");
       wipe.type = "button";
-      wipe.textContent = "去掉";
+      wipe.textContent = T("ocPhotoRemove", "Remove");
       wipe.addEventListener("click", function (ev) {
         ev.stopPropagation();
         rec.image = "";
@@ -201,7 +231,8 @@ const M8OC = (() => {
     } else {
       const hint = document.createElement("div");
       hint.className = "oc-photo-hint";
-      hint.innerHTML = '<span class="plus">＋</span><span>传一张例图</span>';
+      hint.innerHTML = '<span class="plus">＋</span><span>'
+        + T("ocPhotoHint", "Upload a sample image") + "</span>";
       photo.appendChild(hint);
     }
     photo.addEventListener("click", function () { input.click(); });
@@ -215,14 +246,15 @@ const M8OC = (() => {
     name.className = "oc-name";
     name.type = "text";
     name.value = rec.name || "";
-    name.placeholder = "给这个 OC 起个名字";
+    name.placeholder = T("ocNamePlaceholder", "Name this OC");
     name.addEventListener("input", function () { touch(rec.id, { name: name.value }); });
     body.appendChild(name);
 
     const prompt = document.createElement("textarea");
     prompt.className = "oc-prompt";
     prompt.value = rec.prompt || "";
-    prompt.placeholder = "把特征词写在这里：发色、瞳色、服装、体态、画风……";
+    prompt.placeholder = T("ocPromptPlaceholder",
+      "Write the trait tags here: hair colour, eye colour, outfit, build, art style...");
     prompt.spellcheck = false;
     prompt.addEventListener("input", function () { touch(rec.id, { prompt: prompt.value }); });
     body.appendChild(prompt);
@@ -233,25 +265,25 @@ const M8OC = (() => {
     const copy = document.createElement("button");
     copy.type = "button";
     copy.className = "primary";
-    copy.textContent = "复制特征词";
+    copy.textContent = T("ocCopy", "Copy trait tags");
     copy.addEventListener("click", function () { copyOne(rec.id); });
 
     const save = document.createElement("button");
     save.type = "button";
-    save.textContent = "保存";
+    save.textContent = T("ocSave", "Save");
     save.addEventListener("click", function () { saveOne(rec.id); });
 
     const del = document.createElement("button");
     del.type = "button";
     del.className = "danger";
-    del.textContent = "删掉";
+    del.textContent = T("ocDelete", "Delete");
     /* 不直接删：先弹确认。一条里可能写着几十个字的特征词和一张例图，
        误点一下就没了。 */
     del.addEventListener("click", function () { askDelete(rec.id); });
 
     const st = document.createElement("span");
     st.className = "oc-state";
-    st.textContent = state.dirty[rec.id] ? "有改动没保存" : "已保存";
+    st.textContent = state.dirty[rec.id] ? T("ocUnsaved", "Unsaved changes") : T("ocSaved", "Saved");
 
     tools.appendChild(copy);
     tools.appendChild(save);
@@ -272,7 +304,7 @@ const M8OC = (() => {
     if (!row) return;
     row.classList.toggle("dirty", !!on);
     const st = row.querySelector ? row.querySelector(".oc-state") : null;
-    if (st) st.textContent = on ? "有改动没保存" : "已保存";
+    if (st) st.textContent = on ? T("ocUnsaved", "Unsaved changes") : T("ocSaved", "Saved");
   }
 
   /* ------------------------------------------------------------ 操作 */
@@ -290,7 +322,7 @@ const M8OC = (() => {
     rec.updatedAt = Date.now();
     return saveRec(rec).then(function () {
       markDirty(id, false);
-      setStatus("存好了。");
+      setStatus(T("ocSaveDone", "Saved."));
       return true;
     });
   }
@@ -300,23 +332,23 @@ const M8OC = (() => {
     if (!rec) return;
     const text = rec.prompt || "";
     if (!text) {
-      setStatus("这条还没写特征词。", true);
+      setStatus(T("ocCopyEmpty", "No trait tags written on this one yet."), true);
       return;
     }
     copyText(text).then(function () {
-      setStatus("特征词复制好了，直接粘去用。");
+      setStatus(T("ocCopyDone", "Trait tags copied - just paste them where you need them."));
     }).catch(function () {
-      setStatus("复制没成功，手动选一下文本吧。", true);
+      setStatus(T("ocCopyFailed", "Could not copy - select the text by hand."), true);
     });
   }
 
   function setPhoto(id, file) {
     const rec = find(id);
     if (!rec) return;
-    setStatus("正在读图…");
+    setStatus(T("ocReading", "Reading the image..."));
     readImage(file).then(function (dataUrl) {
       if (!dataUrl) {
-        setStatus("这张图读不出来。", true);
+        setStatus(T("ocImageUnreadable", "This image could not be read."), true);
         return;
       }
       rec.image = dataUrl;
@@ -325,7 +357,7 @@ const M8OC = (() => {
       return saveRec(rec).then(function () {
         markDirty(id, false);
         refreshRowMedia(id);
-        setStatus("例图换好了。");
+        setStatus(T("ocPhotoDone", "Sample image updated."));
       });
     });
   }
@@ -343,20 +375,20 @@ const M8OC = (() => {
     if (input) photo.appendChild(input);
     const im = document.createElement("img");
     im.src = rec.image;
-    im.alt = (rec.name || "OC") + " 的例图";
+    im.alt = T("ocPhotoAlt", "Sample image of {name}", { name: rec.name || "OC" });
     photo.appendChild(im);
     const tools = document.createElement("div");
     tools.className = "oc-photo-tools";
     const swap = document.createElement("button");
     swap.type = "button";
-    swap.textContent = "换图";
+    swap.textContent = T("changeImage", "Change image");
     swap.addEventListener("click", function (ev) {
       ev.stopPropagation();
       if (input) input.click();
     });
     const wipe = document.createElement("button");
     wipe.type = "button";
-    wipe.textContent = "去掉";
+    wipe.textContent = T("ocPhotoRemove", "Remove");
     wipe.addEventListener("click", function (ev) {
       ev.stopPropagation();
       rec.image = "";
@@ -379,7 +411,7 @@ const M8OC = (() => {
       rec.id = typeof id === "number" ? id : (state.list.length ? Math.max.apply(null, state.list.map(function (r) { return r.id; })) + 1 : 1);
       state.list.push(rec);
       render();
-      setStatus("加了一条，左边传例图、右边写特征词。");
+      setStatus(T("ocAdded", "Added one - upload a sample image on the left, write the trait tags on the right."));
       return rec;
     });
   }
@@ -393,10 +425,12 @@ const M8OC = (() => {
     if (el.delText) {
       /* 名字是用户自己输入的，拼进 HTML 前先转义 —— 不然名字里带个尖括号
          就能把这段结构撕坏。 */
-      const who = rec.name ? rec.name : "这一条";
+      const who = rec.name ? rec.name : T("ocUnnamed", "this one");
       el.delText.innerHTML =
-        '要删掉 <b class="who">「' + esc(who) + '」</b> 吗？' +
-        '<span class="sub">删了找不回来。例图和特征词都会一起没掉。</span>';
+        T("ocDelAsk", 'Delete <b class="who">"{who}"</b>?', { who: esc(who) }) +
+        '<span class="sub">' +
+        T("ocDelSub", "Gone for good: the sample image and the trait tags go with it.") +
+        "</span>";
     }
     if (el.delModal) el.delModal.classList.remove("is-hidden");
     document.body.classList.add("modal-open");
@@ -422,7 +456,7 @@ const M8OC = (() => {
     state.list = state.list.filter(function (r) { return r.id !== id; });
     delete state.dirty[id];
     dropRec(id).then(function () { render(); });
-    setStatus("删掉了。");
+    setStatus(T("delDone", "Deleted."));
   }
 
   /* ------------------------------------------------------------ 备份 */
@@ -433,13 +467,16 @@ const M8OC = (() => {
 
   function backupOut() {
     if (!state.list.length) {
-      setStatus("这里还没有东西可以导出。", true);
+      setStatus(T("backupNothingHere", "There is nothing here to export yet."), true);
       return;
     }
     const text = M8Backup.envelope("oc", state.list);
     M8Backup.download(M8Backup.fileNameFor("oc"), text);
-    setStatus("导出好了：" + state.list.length + " 个 OC，"
-      + M8Backup.fmtSize(text.length) + "。存到一个安全的地方去。");
+    setStatus(T("ocExportDone", "Exported: {n} OC{plural}, {size}. Keep it somewhere safe.", {
+      n: state.list.length,
+      plural: state.list.length === 1 ? "" : "s",
+      size: M8Backup.fmtSize(text.length),
+    }));
   }
 
   /* 连点两次会叠出两个确认框：第二个盖住第一个，关掉之后第一个还杵在那儿。
@@ -457,16 +494,18 @@ const M8OC = (() => {
         const obj = M8Backup.parse(text);
         if (obj.kind !== "oc") {
           const other = M8Backup.KINDS[obj.kind];
-          throw new Error("这份备份是「" + (other ? other.title : obj.kind) + "」的，不是 OC 工坊的。");
+          throw new Error(T("ocBackupKind",
+            "This backup is for {kind}, not the OC Workshop.",
+            { kind: other ? other.title : obj.kind }));
         }
-        return M8Backup.confirmImport("OC 工坊", obj.data.length, state.list.length)
+        return M8Backup.confirmImport(M8Backup.KINDS.oc.title, obj.data.length, state.list.length)
           .then(function (mode) {
             if (!mode) return null;
             return applyImport(obj.data, mode);
           });
       });
     }).catch(function (e) {
-      setStatus(e && e.message ? e.message : "导入失败。", true);
+      setStatus(e && e.message ? e.message : T("importFailed", "Import failed."), true);
     });
   }
 
@@ -485,7 +524,10 @@ const M8OC = (() => {
           state.list = list;
           state.dirty = {};
           render();
-          setStatus("替换完成：现在有 " + list.length + " 个 OC。");
+          setStatus(T("ocImportReplaced", "Replaced: {n} OC{plural} now.", {
+            n: list.length,
+            plural: list.length === 1 ? "" : "s",
+          }));
         });
     }
     const plan = M8Backup.mergeRows(state.list, rows, function (x) { return x.name; });
@@ -496,7 +538,10 @@ const M8OC = (() => {
       });
     })).then(function () {
       render();
-      setStatus("导入完成：新增 " + plan.fresh.length + " 个，跳过同名的 " + plan.skipped.length + " 个。");
+      setStatus(T("ocImportMerged", "Imported: {added} new, {skipped} with matching names skipped.", {
+        added: plan.fresh.length,
+        skipped: plan.skipped.length,
+      }));
     });
   }
 
@@ -546,7 +591,8 @@ const M8OC = (() => {
     render();
 
     if (!storeAvailable()) {
-      setStatus("这个浏览器不给存东西，这次加的内容关掉页面就没了。", true);
+      setStatus(T("ocNoStore",
+        "This browser will not store anything - what you add this time is gone once the page closes."), true);
       return;
     }
 
@@ -561,7 +607,8 @@ const M8OC = (() => {
       if (typeof M8Backup !== "undefined" && M8Backup.requestPersist) {
         M8Backup.requestPersist().then(function (r) {
           if (r && r.granted === false) {
-            setStatus("浏览器没给持久化权限：磁盘紧张时这里的数据可能被清掉，记得偶尔导出备份。", true);
+            setStatus(T("ocNoPersist",
+              "Persistent storage was not granted: when the disk gets tight this data may be cleared, so export a backup now and then."), true);
           }
         });
       }

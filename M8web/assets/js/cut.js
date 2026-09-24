@@ -11,6 +11,34 @@
  * 任何改动都走 render() 整层重画 —— n 最大才 10，重画比做增量同步可靠得多。
  * ==========================================================================*/
 
+/* 界面文案走 i18n.js。它是 module，而这些功能脚本是普通脚本，拿不到 import ——
+   i18n.js 因此挂了一份到 window。
+
+   用 var 而不是 const：普通脚本共享全局作用域，const 在这里重复声明会直接报
+   "Identifier 'T' has already been declared"，一个页面同时加载几个脚本就白屏。
+   var 重复声明是合法的，每个文件仍然自足，不依赖加载顺序。
+
+   宿主对象用 globalThis 取而不是直接写 window：前端测试在 Node 里跑这些脚本，
+   那边没有 window，直接解引用会当场 "window is not defined"。
+
+   i18n 没加载成功时走这里的兜底：**必须自己填占位符** —— 直接返回 fallback 的话，
+   界面上会原样显示 "{h} h {m} min" 这种花括号，比换不成中文更糟。 */
+var T = function (key, fallback, vars) {
+  var host = typeof globalThis !== "undefined" ? globalThis : {};
+  var i18n = host.M8I18n;
+  if (i18n && typeof i18n.t === "function") return i18n.t(key, fallback, vars);
+
+  var text = fallback === undefined ? key : fallback;
+  if (vars && typeof text === "string") {
+    for (var k in vars) {
+      if (Object.prototype.hasOwnProperty.call(vars, k)) {
+        text = text.split("{" + k + "}").join(String(vars[k]));
+      }
+    }
+  }
+  return text;
+};
+
 const M8Cut = (() => {
   "use strict";
 
@@ -130,7 +158,7 @@ const M8Cut = (() => {
       knob.className = "cut-knob";
       knob.setAttribute("role", "slider");
       knob.setAttribute("tabindex", "0");
-      knob.setAttribute("aria-label", "第 " + (i + 1) + " 条分割线");
+      knob.setAttribute("aria-label", T("cutSplitLineAria", "Split line {n}", { n: i + 1 }));
       knob.setAttribute("aria-valuemin", "0");
       knob.setAttribute("aria-valuemax", "100");
       knob.setAttribute("aria-valuenow", String(Math.round(pos)));
@@ -184,7 +212,8 @@ const M8Cut = (() => {
       btn.style.flex = share + " 1 0";
       btn.dataset.index = String(i);
       btn.setAttribute("aria-pressed", state.muted[i] ? "true" : "false");
-      btn.setAttribute("aria-label", "第 " + (i + 1) + " 段" + (state.muted[i] ? "已屏蔽" : "正常导出"));
+      btn.setAttribute("aria-label", T("cutPieceAria", "Piece {n}", { n: i + 1 })
+        + (state.muted[i] ? T("cutPieceMuted", ", muted") : T("cutPieceNormal", ", exported as is")));
       const dot = document.createElement("span");
       dot.textContent = state.muted[i] ? "⊘" : "○";
       btn.appendChild(dot);
@@ -225,7 +254,9 @@ const M8Cut = (() => {
     if (!el.generate) return;
     const left = activeIndexes().length;
     el.generate.disabled = !state.img || left === 0;
-    el.generate.textContent = left === 0 ? "全部已屏蔽" : "生成预览（" + left + " 段）";
+    el.generate.textContent = left === 0
+      ? T("cutAllMuted", "Everything is muted")
+      : T("cutGenerateCount", "Generate preview ({n} pieces)", { n: left });
   }
 
   /* ------------------------------------------------------------ 拖拽 */
@@ -311,7 +342,7 @@ const M8Cut = (() => {
     }
     el.source.src = st.url;
     setCount(parseInt(el.count.value, 10) || 3);
-    setStatus("拖动虚线中间的圆点调整位置；点每段旁边的圆钮屏蔽这一段。");
+    setStatus(T("cutStatusHint", "Drag the dot on a dashed line to move the split; click the circle beside a piece to mute it."));
   }
 
   /* ------------------------------------------------------------ 生成 */
@@ -330,11 +361,11 @@ const M8Cut = (() => {
     if (!state.img) return;
     const idx = activeIndexes();
     if (!idx.length) {
-      setStatus("所有段都被屏蔽了，没有可以导出的内容。", true);
+      setStatus(T("cutNoExportable", "Every piece is muted, so there is nothing to export."), true);
       return;
     }
     clearPreview();
-    setStatus("正在生成…");
+    setStatus(T("busyGenerating", "Generating..."));
 
     const total = idx.length;
     let done = 0;
@@ -373,12 +404,12 @@ const M8Cut = (() => {
     state.shots.sort(function (a, b) { return a.no - b.no; });
     renderPreview();
     if (!state.shots.length) {
-      setStatus("每段都太小了，切不出有效内容。", true);
+      setStatus(T("cutTooSmall", "Every piece is too small to cut anything usable."), true);
       return;
     }
     el.preview.classList.remove("is-hidden");
-    el.previewNote.textContent = state.shots.length + " 张 · 被屏蔽的段不会出现在这里";
-    setStatus("生成完毕，可以逐个下载，也可以一次全导。");
+    el.previewNote.textContent = T("cutPreviewNote", "{n} images - muted pieces never show up here", { n: state.shots.length });
+    setStatus(T("cutPreviewReady", "All done. Download them one by one, or export the lot."));
   }
 
   function renderPreview() {
@@ -393,7 +424,7 @@ const M8Cut = (() => {
       shot.className = "pv-shot";
       const im = document.createElement("img");
       im.src = s.url;
-      im.alt = "第 " + s.no + " 段预览";
+      im.alt = T("cutPiecePreviewAlt", "Preview of piece {n}", { n: s.no });
       shot.appendChild(im);
 
       const meta = document.createElement("div");
@@ -411,7 +442,7 @@ const M8Cut = (() => {
       save.className = "pv-save";
       save.href = s.url;
       save.download = s.name;
-      save.textContent = "下载这一段";
+      save.textContent = T("cutDownloadOne", "Download this piece");
 
       card.appendChild(shot);
       card.appendChild(meta);
@@ -462,7 +493,7 @@ const M8Cut = (() => {
 
     el.count.addEventListener("input", function () {
       const n = Math.min(10, Math.max(2, parseInt(el.count.value, 10) || 2));
-      el.countOut.textContent = n + " 段";
+      el.countOut.textContent = T("cutPieceCount", "{n} pieces", { n: n });
       setCount(n);
     });
 
@@ -480,7 +511,7 @@ const M8Cut = (() => {
     document.addEventListener("pointerup", endDrag);
     document.addEventListener("pointercancel", endDrag);
 
-    el.countOut.textContent = state.count + " 段";
+    el.countOut.textContent = T("cutPieceCount", "{n} pieces", { n: state.count });
     /* 先按段数把分割线建出来，再切方向 —— 不先建的话 cuts 是空数组，
        而 count 已经是 3，两份状态对不上，会渲染出一个横跨整图的「第 1 段」。 */
     setCount(state.count);

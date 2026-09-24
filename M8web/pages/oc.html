@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en" data-i18n-title="feat.oc.pageTitle">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>OC 工坊 · M8 工作台</title>
+  <title>OC Workshop - M8 Workbench</title>
   <link rel="icon" type="image/svg+xml" href="../assets/img/favicon.svg">
   <link rel="stylesheet" href="../assets/css/base.css">
   <link rel="stylesheet" href="../assets/css/shell.css">
@@ -29,18 +29,18 @@
 
           <header class="oc-head">
             <div class="oc-head-copy">
-              <h1>OC 工坊</h1>
-              <p>一个原创角色一条：左边放例图，右边写特征词。内容存在本机，下次打开还在。</p>
+              <h1 data-i18n="feat.oc.name">OC Workshop</h1>
+              <p data-i18n="ocLede">One entry per original character: a sample image on the left, trait tags on the right. Everything is kept on this machine and is still here next time.</p>
             </div>
             <div class="oc-head-actions">
               <span class="oc-count" id="ocCount"></span>
               <div class="backup-bar">
                 <button class="ghost-btn" id="ocBackupOut" type="button"
-                  title="把这里的 OC 连例图一起存成一个 json 文件">导出备份</button>
+                  data-i18n="backupOut" data-i18n-attr="title:backupOutTip">Export backup</button>
                 <button class="ghost-btn" id="ocBackupIn" type="button"
-                  title="从备份文件里读回来">导入备份</button>
+                  data-i18n="backupIn" data-i18n-attr="title:backupInTip">Import backup</button>
               </div>
-              <button class="gen-btn" id="ocAdd" type="button">＋ 新建一个 OC</button>
+              <button class="gen-btn" id="ocAdd" type="button" data-i18n="ocAdd">+ New OC</button>
             </div>
           </header>
 
@@ -48,8 +48,8 @@
 
           <div class="blank is-hidden" id="ocEmpty">
             <span class="blank-ico" aria-hidden="true">🎭</span>
-            <h2>还没有 OC</h2>
-            <p>点右上角「新建一个 OC」——左边传一张例图，右边把特征词写进去。</p>
+            <h2 data-i18n="ocEmptyTitle">No OCs yet</h2>
+            <p data-i18n="ocEmptyBody">Click "New OC" in the top right - upload a sample image on the left and write the trait tags on the right.</p>
           </div>
 
           <p class="status" id="ocStatus" role="status"></p>
@@ -63,15 +63,15 @@
   <div class="modal is-hidden" id="ocDelModal" role="dialog" aria-modal="true" aria-labelledby="ocDelTitle">
     <div class="modal-box sm">
       <header class="modal-head">
-        <h2 id="ocDelTitle">删掉这个 OC？</h2>
-        <button class="modal-x" id="ocDelX" type="button" aria-label="关闭">×</button>
+        <h2 id="ocDelTitle" data-i18n="ocDelTitle">Delete this OC?</h2>
+        <button class="modal-x" id="ocDelX" type="button" data-i18n-attr="aria-label:closeLabel">×</button>
       </header>
       <div class="modal-body">
         <p class="modal-text" id="ocDelText"></p>
       </div>
       <footer class="modal-foot">
-        <button class="ghost-btn" id="ocDelCancel" type="button">取消</button>
-        <button class="gen-btn danger" id="ocDelOk" type="button">确认删除</button>
+        <button class="ghost-btn" id="ocDelCancel" type="button" data-i18n="cancel">Cancel</button>
+        <button class="gen-btn danger" id="ocDelOk" type="button" data-i18n="deleteConfirm">Delete</button>
       </footer>
     </div>
   </div>
@@ -80,8 +80,10 @@
   <script src="../assets/js/migrate.js"></script>
   <script src="../assets/js/backup.js"></script>
   <script src="../assets/js/oc.js"></script>
-  <script>
-    boot({ activeId: "oc", title: "OC 工坊", base: "../" });
+  <script type="module">
+    import { bootI18n } from "../assets/js/i18n.js";
+    await bootI18n();
+    boot({ activeId: "oc", title: M8I18n.t("feat.oc.name", "OC Workshop"), base: "../" });
     M8OC.init();
   </script>
 </body>

@@ -12,6 +12,34 @@
  * 而这里需要一次拿很多张，所以自己管上传。
  * ==========================================================================*/
 
+/* 界面文案走 i18n.js。它是 module，而这些功能脚本是普通脚本，拿不到 import ——
+   i18n.js 因此挂了一份到 window。
+
+   用 var 而不是 const：普通脚本共享全局作用域，const 在这里重复声明会直接报
+   "Identifier 'T' has already been declared"，一个页面同时加载几个脚本就白屏。
+   var 重复声明是合法的，每个文件仍然自足，不依赖加载顺序。
+
+   宿主对象用 globalThis 取而不是直接写 window：前端测试在 Node 里跑这些脚本，
+   那边没有 window，直接解引用会当场 "window is not defined"。
+
+   i18n 没加载成功时走这里的兜底：**必须自己填占位符** —— 直接返回 fallback 的话，
+   界面上会原样显示 "{h} h {m} min" 这种花括号，比换不成中文更糟。 */
+var T = function (key, fallback, vars) {
+  var host = typeof globalThis !== "undefined" ? globalThis : {};
+  var i18n = host.M8I18n;
+  if (i18n && typeof i18n.t === "function") return i18n.t(key, fallback, vars);
+
+  var text = fallback === undefined ? key : fallback;
+  if (vars && typeof text === "string") {
+    for (var k in vars) {
+      if (Object.prototype.hasOwnProperty.call(vars, k)) {
+        text = text.split("{" + k + "}").join(String(vars[k]));
+      }
+    }
+  }
+  return text;
+};
+
 const M8Grid = (() => {
   "use strict";
 
@@ -95,16 +123,18 @@ const M8Grid = (() => {
       };
       im.onerror = function () {
         pending -= 1;
-        setStatus("有张图读不出来，跳过了。", true);
+        setStatus(T("gridImageBroken", "One image could not be read, so it was skipped."), true);
         try { URL.revokeObjectURL(url); } catch (e) { /* 无所谓 */ }
       };
       im.src = url;
     });
 
     if (skipped) {
-      setStatus("有 " + skipped + " 张没加进来：不是图片，或者已经满 " + MAX_IMAGES + " 张了。", true);
+      setStatus(T("gridSkipped",
+        "{n} images were not added: either they are not images, or the limit of {max} is already reached.",
+        { n: skipped, max: MAX_IMAGES }), true);
     } else if (took) {
-      setStatus("正在读 " + took + " 张图…");
+      setStatus(T("gridReading", "Reading {n} images...", { n: took }));
     }
   }
 
@@ -134,7 +164,7 @@ const M8Grid = (() => {
     el.files.value = "";
     clearPreview();
     render();
-    setStatus("清空了，重新选图吧。");
+    setStatus(T("gridCleared", "Cleared. Pick your images again."));
   }
 
   /* 把某张往前挪一位（缩略图上点箭头用） */
@@ -162,7 +192,7 @@ const M8Grid = (() => {
     state.images.splice(dst, 0, item);
     clearPreview();
     render();
-    setStatus("第 " + (from + 1) + " 张挪到了第 " + (dst + 1) + " 位。");
+    setStatus(T("gridMoved", "Moved image {from} to position {to}.", { from: from + 1, to: dst + 1 }));
     return true;
   }
 
@@ -273,7 +303,7 @@ const M8Grid = (() => {
       if (im) {
         const node = document.createElement("img");
         node.src = im.url;
-        node.alt = "第 " + (i + 1) + " 张";
+        node.alt = T("gridImageAlt", "Image {n}", { n: i + 1 });
         cell.appendChild(node);
       } else {
         cell.classList.add("empty");
@@ -294,8 +324,10 @@ const M8Grid = (() => {
       const cell = document.createElement("div");
       /* 超出格子的标灰：它们不会出现在拼图里 */
       cell.className = "thumb" + (i >= total ? " over" : "");
-      cell.title = "第 " + (i + 1) + " 张" +
-        (i >= total ? "（超出格子，不会被拼进去）" : " · 按住可以拖动排序");
+      cell.title = T("gridImageAlt", "Image {n}", { n: i + 1 }) +
+        (i >= total
+          ? T("gridThumbOver", " (outside the grid, so it will not be in the collage)")
+          : T("gridThumbSort", " - hold and drag to reorder"));
       cell.addEventListener("pointerdown", function (ev) {
         /* 点在删除钮上就别开始拖，不然想删却把顺序改了 */
         if (ev.target && ev.target.closest && ev.target.closest(".thumb-del")) return;
@@ -304,7 +336,7 @@ const M8Grid = (() => {
 
       const img = document.createElement("img");
       img.src = im.url;
-      img.alt = "第 " + (i + 1) + " 张";
+      img.alt = T("gridImageAlt", "Image {n}", { n: i + 1 });
       cell.appendChild(img);
 
       const no = document.createElement("span");
@@ -316,7 +348,7 @@ const M8Grid = (() => {
       del.type = "button";
       del.className = "thumb-del";
       del.textContent = "×";
-      del.setAttribute("aria-label", "去掉第 " + (i + 1) + " 张");
+      del.setAttribute("aria-label", T("gridRemoveAria", "Remove image {n}", { n: i + 1 }));
       del.addEventListener("click", function (ev) {
         ev.stopPropagation();
         removeImage(i);
@@ -328,7 +360,8 @@ const M8Grid = (() => {
 
     if (el.count) {
       const n = state.images.length;
-      el.count.textContent = n + " / " + total + (n > total ? "（只拼前 " + total + " 张）" : "");
+      el.count.textContent = n + " / " + total
+        + (n > total ? T("gridCountOver", " (only the first {n} are used)", { n: total }) : "");
     }
   }
 
@@ -338,8 +371,8 @@ const M8Grid = (() => {
     const usable = Math.min(state.images.length, n * n);
     el.generate.disabled = usable === 0;
     el.generate.textContent = usable === 0
-      ? "先导入图片"
-      : "生成拼图（" + n + "×" + n + "）";
+      ? T("gridGenerateEmpty", "Import images first")
+      : T("gridGenerateSized", "Build the grid ({n}x{n})", { n: n });
   }
 
   /* ------------------------------------------------------------ 生成 */
@@ -371,20 +404,20 @@ const M8Grid = (() => {
   function generate() {
     const usable = Math.min(state.images.length, capacity());
     if (!usable) {
-      setStatus("先导入图片。", true);
+      setStatus(T("gridStatusImportFirst", "Import some images first."), true);
       return;
     }
     clearPreview();
-    setStatus("正在拼…");
+    setStatus(T("gridAssembling", "Assembling..."));
     const cv = document.createElement("canvas");
     drawTo(cv);
     const name = "collage-" + state.n + "x" + state.n + ".png";
     if (typeof cv.toBlob !== "function") {
-      setStatus("这个浏览器不支持导出。", true);
+      setStatus(T("browserNoExport", "This browser cannot export."), true);
       return;
     }
     cv.toBlob(function (blob) {
-      if (!blob) { setStatus("拼不出来。", true); return; }
+      if (!blob) { setStatus(T("gridFailed", "Could not build the collage."), true); return; }
       state.shot = URL.createObjectURL(blob);
       showPreview(name, cv.width, cv.height, usable);
     }, "image/png");
@@ -399,7 +432,7 @@ const M8Grid = (() => {
     shot.className = "pv-shot";
     const im = document.createElement("img");
     im.src = state.shot;
-    im.alt = "拼图预览";
+    im.alt = T("gridPreviewAlt", "Preview of the collage");
     shot.appendChild(im);
     const meta = document.createElement("div");
     meta.className = "pv-meta";
@@ -411,7 +444,7 @@ const M8Grid = (() => {
     save.className = "pv-save";
     save.href = state.shot;
     save.download = name;
-    save.textContent = "导出这张拼图";
+    save.textContent = T("gridExportImage", "Export this collage");
     card.appendChild(shot);
     card.appendChild(meta);
     card.appendChild(save);
@@ -420,10 +453,10 @@ const M8Grid = (() => {
     if (el.previewNote) {
       const n = state.n;
       const empty = n * n - used;
-      el.previewNote.textContent = n + " × " + n + " · 用了 " + used + " 张" +
-        (empty > 0 ? " · 剩 " + empty + " 格是空的" : "");
+      el.previewNote.textContent = T("gridPreviewNote", "{n}x{n} - {used} images used", { n: n, used: used })
+        + (empty > 0 ? T("gridPreviewNoteEmpty", " - {empty} cells left empty", { empty: empty }) : "");
     }
-    setStatus("拼好了，确认没问题就导出。");
+    setStatus(T("gridPreviewReady", "Built. Export it once it looks right."));
   }
 
   /* ------------------------------------------------------------ 入口 */

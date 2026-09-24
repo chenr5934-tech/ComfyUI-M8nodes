@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en" data-i18n-title="feat.pixel.pageTitle">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>像素风转化 · M8 工作台</title>
+  <title>Pixel Art Conversion - M8 Workbench</title>
   <link rel="icon" type="image/svg+xml" href="../assets/img/favicon.svg">
   <link rel="stylesheet" href="../assets/css/base.css">
   <link rel="stylesheet" href="../assets/css/shell.css">
@@ -29,33 +29,31 @@
 
           <header class="px-head">
             <div>
-              <h1>像素风转化</h1>
-              <p>把图压成低分辨率的像素画：抗锯齿卷积、面积平均降维、锐化卷积、减色抖动、最近邻放大。
-                全程在本机算，图片不会上传。</p>
+              <h1 data-i18n="feat.pixel.name">Pixel Art Conversion</h1>
+              <p data-i18n="pixelLede">Compress an image into low-resolution pixel art: antialiasing convolution, area-average downsampling, sharpening convolution, colour-reduction dithering, nearest-neighbour upscale. Everything is computed on this machine and the image is never uploaded.</p>
             </div>
           </header>
 
           <p class="px-note">
-            <b>放大用的是最近邻，不是插值。</b>
-            插值会把每个像素之间的边界糊掉，出来的只是一张低分辨率图，不是像素画。
-            「像素块大小」是每个像素占多少原始像素 —— 调大就是更粗的颗粒。
+            <b data-i18n="pixelNoteLead">The upscale uses nearest-neighbour, not interpolation.</b>
+            <span data-i18n="pixelNoteBody">Interpolation blurs the boundary between pixels, which gives you a low-resolution image rather than pixel art. "Pixel block size" is how many source pixels each pixel covers - larger means coarser grain.</span>
           </p>
 
           <div class="px-form">
             <label class="px-field">
-              <span>风格</span>
+              <span data-i18n="pixelStyle">Style</span>
               <select id="pxStyle">
-                <option value="standard" selected>标准 · 均值 3×3 抗锯齿</option>
-                <option value="soft">柔和 · 高斯 5×5</option>
-                <option value="crisp">硬朗 · 抗锯齿 + 锐化</option>
-                <option value="clean">原味 · 不卷积</option>
+                <option value="standard" selected data-i18n="pixelStyleStandard">Standard - mean 3x3 antialiasing</option>
+                <option value="soft" data-i18n="pixelStyleSoft">Soft - Gaussian 5x5</option>
+                <option value="crisp" data-i18n="pixelStyleCrisp">Crisp - antialiasing + sharpening</option>
+                <option value="clean" data-i18n="pixelStyleClean">Plain - no convolution</option>
               </select>
             </label>
 
             <label class="px-field">
-              <span>像素块大小</span>
+              <span data-i18n="pixelBlock">Pixel block size</span>
               <select id="pxBlock">
-                <option value="2">2 px（最细）</option>
+                <option value="2" data-i18n="pixelBlock2">2 px (finest)</option>
                 <option value="3">3 px</option>
                 <option value="4">4 px</option>
                 <option value="6">6 px</option>
@@ -63,59 +61,59 @@
                 <option value="12">12 px</option>
                 <option value="16">16 px</option>
                 <option value="24">24 px</option>
-                <option value="32">32 px（最粗）</option>
+                <option value="32" data-i18n="pixelBlock32">32 px (coarsest)</option>
               </select>
             </label>
 
             <label class="px-field">
-              <span>颜色数</span>
+              <span data-i18n="pixelLevels">Colours</span>
               <select id="pxLevels">
-                <option value="0">不限色</option>
-                <option value="3">每通道 3 档（27 色）</option>
-                <option value="4">每通道 4 档（64 色）</option>
-                <option value="6">每通道 6 档（216 色）</option>
-                <option value="8" selected>每通道 8 档（512 色）</option>
-                <option value="16">每通道 16 档（4096 色）</option>
-                <option value="32">每通道 32 档</option>
+                <option value="0" data-i18n="pixelLevelsNone">Unlimited</option>
+                <option value="3" data-i18n="pixelLevels3">3 steps per channel (27 colours)</option>
+                <option value="4" data-i18n="pixelLevels4">4 steps per channel (64 colours)</option>
+                <option value="6" data-i18n="pixelLevels6">6 steps per channel (216 colours)</option>
+                <option value="8" selected data-i18n="pixelLevels8">8 steps per channel (512 colours)</option>
+                <option value="16" data-i18n="pixelLevels16">16 steps per channel (4096 colours)</option>
+                <option value="32" data-i18n="pixelLevels32">32 steps per channel</option>
               </select>
             </label>
 
             <label class="px-field">
-              <span>放大倍数</span>
+              <span data-i18n="pixelZoom">Upscale</span>
               <select id="pxZoom">
-                <option value="1">1×（保持像素尺寸）</option>
-                <option value="2">2×</option>
-                <option value="3">3×</option>
-                <option value="4" selected>4×</option>
-                <option value="6">6×</option>
-                <option value="8">8×</option>
-                <option value="12">12×</option>
-                <option value="16">16×</option>
+                <option value="1" data-i18n="pixelZoom1">1x (keep pixel size)</option>
+                <option value="2">2x</option>
+                <option value="3">3x</option>
+                <option value="4" selected>4x</option>
+                <option value="6">6x</option>
+                <option value="8">8x</option>
+                <option value="12">12x</option>
+                <option value="16">16x</option>
               </select>
             </label>
 
             <label class="px-check">
               <input id="pxDither" type="checkbox" checked>
-              <span>有序抖动（用规则点阵换更丰富的过渡）</span>
+              <span data-i18n="pixelDither">Ordered dithering (a regular dot pattern buys smoother transitions)</span>
             </label>
           </div>
 
           <div class="drop" id="pxDrop">
             <input id="pxFile" type="file" accept="image/png,image/jpeg,image/webp">
-            <img class="drop-thumb is-hidden" id="pxThumb" alt="要转化的图">
+            <img class="drop-thumb is-hidden" id="pxThumb" alt="" data-i18n-attr="alt:sourceImageAlt">
             <span class="drop-ico" id="pxIco" aria-hidden="true">＋</span>
-            <strong>点击选择、拖进来，或者 Ctrl+V 粘贴</strong>
+            <strong data-i18n="dropPrompt">Click to choose, drag it in, or paste with Ctrl+V</strong>
             <small id="pxHint">PNG / JPEG / WebP</small>
           </div>
 
           <div class="px-actions">
-            <button class="gen-btn" id="pxGo" type="button">转化</button>
-            <button class="ghost-btn is-hidden" id="pxAgain" type="button">重来</button>
+            <button class="gen-btn" id="pxGo" type="button" data-i18n="pixelGo">Convert</button>
+            <button class="ghost-btn is-hidden" id="pxAgain" type="button" data-i18n="pixelAgain">Start over</button>
           </div>
 
           <div class="px-body is-hidden" id="pxBody">
             <div class="px-preview">
-              <img id="pxOut" alt="像素图预览">
+              <img id="pxOut" alt="" data-i18n-attr="alt:pixelPreviewAlt">
               <p class="px-meta" id="pxMeta"></p>
             </div>
             <div class="info-panels" id="pxPanels"></div>
@@ -129,8 +127,10 @@
   <script src="../assets/js/app.js"></script>
   <script src="../assets/js/migrate.js"></script>
   <script src="../assets/js/pixel.js"></script>
-  <script>
-    boot({ activeId: "pixel", title: "像素风转化", base: "../" });
+  <script type="module">
+    import { bootI18n } from "../assets/js/i18n.js";
+    await bootI18n();
+    boot({ activeId: "pixel", title: M8I18n.t("feat.pixel.name", "Pixel Art Conversion"), base: "../" });
     M8Pixel.init();
   </script>
 </body>

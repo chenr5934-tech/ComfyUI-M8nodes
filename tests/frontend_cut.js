@@ -274,7 +274,7 @@ step('全部屏蔽时生成按钮禁用', () => {
   if (el.generate.disabled) throw new Error('正常情况下生成按钮不该是禁用的');
   c.toggleMute(0); c.toggleMute(1); c.toggleMute(2);
   if (!el.generate.disabled) throw new Error('全屏蔽了按钮还是可点的');
-  if (el.generate.textContent.indexOf('全部已屏蔽') < 0) throw new Error('按钮文案没提示原因');
+  if (el.generate.textContent.indexOf('Everything is muted') < 0) throw new Error('按钮文案没提示原因');
   c.toggleMute(1);
   if (el.generate.disabled) throw new Error('解屏蔽后按钮应恢复');
 });

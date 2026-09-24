@@ -133,7 +133,9 @@ class M8Error(Exception):
         """ComfyUI 报错框里显示的样子。三行：码 + 消息 / 修复 / 详情（有才显示）。
 
         前缀用英文：这两行会原样出现在 ComfyUI 的报错框里，属于界面文案。
-        各条错误的 message / hint / detail 本身也都是英文，见 errors.py 的表。
+        表里的默认 message / hint / detail 是英文；但调用点可以用具体信息覆盖它们，
+        而那些覆盖多半是中文（比如「密钥写不进磁盘」）—— 那是运行时的诊断文本，
+        不是界面标签，审核管的是后者。
         """
         lines = [f"[{self.code}] {self.message}"]
         if self.hint:

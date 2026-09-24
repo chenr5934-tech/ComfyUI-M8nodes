@@ -15,6 +15,34 @@
  * 这一层是纯函数，不碰 DOM。
  * ==========================================================================*/
 
+/* 界面文案走 i18n.js。它是 module，而这些功能脚本是普通脚本，拿不到 import ——
+   i18n.js 因此挂了一份到 window。
+
+   用 var 而不是 const：普通脚本共享全局作用域，const 在这里重复声明会直接报
+   "Identifier 'T' has already been declared"，一个页面同时加载几个脚本就白屏。
+   var 重复声明是合法的，每个文件仍然自足，不依赖加载顺序。
+
+   宿主对象用 globalThis 取而不是直接写 window：前端测试在 Node 里跑这些脚本，
+   那边没有 window，直接解引用会当场 "window is not defined"。
+
+   i18n 没加载成功时走这里的兜底：**必须自己填占位符** —— 直接返回 fallback 的话，
+   界面上会原样显示 "{h} h {m} min" 这种花括号，比换不成中文更糟。 */
+var T = function (key, fallback, vars) {
+  var host = typeof globalThis !== "undefined" ? globalThis : {};
+  var i18n = host.M8I18n;
+  if (i18n && typeof i18n.t === "function") return i18n.t(key, fallback, vars);
+
+  var text = fallback === undefined ? key : fallback;
+  if (vars && typeof text === "string") {
+    for (var k in vars) {
+      if (Object.prototype.hasOwnProperty.call(vars, k)) {
+        text = text.split("{" + k + "}").join(String(vars[k]));
+      }
+    }
+  }
+  return text;
+};
+
 const M8Pixel = (() => {
   "use strict";
 
@@ -198,7 +226,7 @@ const M8Pixel = (() => {
     const o = opts || {};
     const W = image.width, H = image.height;
     if (!W || !H || !image.data || image.data.length < W * H * 4) {
-      throw new Error("图片数据不完整");
+      throw new Error(T("pxIncomplete", "The image data is incomplete"));
     }
     const block = clampInt(o.block, 2, 64, 8);
     const style = STYLES.indexOf(o.style) >= 0 ? o.style : "standard";
@@ -292,11 +320,14 @@ const M8Pixel = (() => {
 
   function loadImage(f) {
     return new Promise(function (resolve, reject) {
-      if (!f) { reject(new Error("没有选中文件")); return; }
+      if (!f) { reject(new Error(T("pxNoFile", "No file was selected"))); return; }
       const url = URL.createObjectURL(f);
       const img = new Image();
       img.onload = function () { URL.revokeObjectURL(url); resolve(img); };
-      img.onerror = function () { URL.revokeObjectURL(url); reject(new Error("这个文件读不出图片内容")); };
+      img.onerror = function () {
+        URL.revokeObjectURL(url);
+        reject(new Error(T("pxUnreadable", "No image could be read from this file")));
+      };
       img.src = url;
     });
   }
@@ -338,7 +369,7 @@ const M8Pixel = (() => {
     if (thumb) el.thumb.src = thumb.url;
     el.drop.querySelector("strong").textContent = file
       ? file.name
-      : "点击选择、拖进来，或者 Ctrl+V 粘贴";
+      : T("dropPrompt", "Click to choose, drag it in, or paste with Ctrl+V");
     el.hint.textContent = thumb ? thumb.w + " × " + thumb.h : "PNG / JPEG / WebP";
   }
 
@@ -346,7 +377,7 @@ const M8Pixel = (() => {
     file = f;
     thumb = null;
     paint();
-    setStatus(f ? "图已就位，可以转化了。" : "");
+    setStatus(f ? T("pxReady", "The image is in place - you can convert it now.") : "");
     if (!f) return;
     makeThumb(f).then(function (t) {
       if (file === f) { thumb = t; paint(); }
@@ -366,18 +397,21 @@ const M8Pixel = (() => {
     paint();
   }
 
-  const STYLE_LABEL = {
-    clean: "原味（不卷积）",
-    standard: "标准（均值 3×3）",
-    soft: "柔和（高斯 5×5）",
-    crisp: "硬朗（抗锯齿 + 锐化）",
-  };
+  /* 风格名当场查表：这里是模块顶层，本文件先于 i18n.js 执行，
+     顶层取值只会拿到 undefined。四个键和 pixel.html 的选项共用同一份译文。 */
+  function styleLabel(style) {
+    if (style === "clean") return T("pixelStyleClean", "Plain - no convolution");
+    if (style === "standard") return T("pixelStyleStandard", "Standard - mean 3x3 antialiasing");
+    if (style === "soft") return T("pixelStyleSoft", "Soft - Gaussian 5x5");
+    if (style === "crisp") return T("pixelStyleCrisp", "Crisp - antialiasing + sharpening");
+    return style;
+  }
 
   async function run() {
     if (busy) return;
-    if (!file) { setStatus("先选一张图。", true); return; }
+    if (!file) { setStatus(T("pxPickFirst", "Choose an image first."), true); return; }
     busy = true;
-    setStatus("正在算…");
+    setStatus(T("pxComputing", "Working it out..."));
 
     let out;
     try {
@@ -390,7 +424,7 @@ const M8Pixel = (() => {
         zoom: Number(el.zoom.value),
       });
     } catch (e) {
-      setStatus(e && e.message ? e.message : "出错了。", true);
+      setStatus(e && e.message ? e.message : T("pxFailed", "Something went wrong."), true);
       busy = false;
       return;
     }
@@ -398,27 +432,36 @@ const M8Pixel = (() => {
     const r = out.report;
     const url = toURL({ data: out.data, width: out.width, height: out.height });
     el.out.src = url;
-    el.meta.textContent = out.width + " × " + out.height + " · PNG"
-      + "（像素尺寸 " + r.pixelW + " × " + r.pixelH + "）";
+    el.meta.textContent = T("pxMeta", "{outW} × {outH} · PNG (pixel size {pw} × {ph})", {
+      outW: out.width,
+      outH: out.height,
+      pw: r.pixelW,
+      ph: r.pixelH,
+    });
     el.panels.innerHTML = "";
 
-    const card = infoCard("像素图", "转好了");
+    const card = infoCard(T("pxCardTitle", "Pixel art"), T("pxCardTag", "Done"));
     const note = document.createElement("p");
     note.className = "info-note";
-    note.textContent = "截图里放大看，每个像素应该是一个规整的方块，边界是硬的 —— "
-      + "那说明用的是最近邻。要是边界发糊，那就是插值了。";
+    note.textContent = T("pxNote",
+      "Zoom into the result: every pixel should be a tidy square with hard edges, which is what nearest-neighbour gives you. If the edges look soft, something interpolated them.");
     card.appendChild(note);
     card.appendChild(kv([
-      ["原始尺寸", r.srcW + " × " + r.srcH],
-      ["像素尺寸", r.pixelW + " × " + r.pixelH + "（" + r.pixelW * r.pixelH + " 个像素）"],
-      ["输出尺寸", out.width + " × " + out.height],
+      [T("pxSourceSize", "Source size"), r.srcW + " × " + r.srcH],
+      [T("pxPixelSize", "Pixel size"), T("pxPixelSizeVal", "{w} × {h} ({n} pixel{plural})", {
+        w: r.pixelW,
+        h: r.pixelH,
+        n: r.pixelW * r.pixelH,
+        plural: r.pixelW * r.pixelH === 1 ? "" : "s",
+      })],
+      [T("pxOutputSize", "Output size"), out.width + " × " + out.height],
     ]));
     const acts = document.createElement("div");
     acts.className = "card-actions";
     const dl = document.createElement("button");
     dl.type = "button";
     dl.className = "gen-btn";
-    dl.textContent = "下载像素图";
+    dl.textContent = T("pxDownload", "Download the pixel art");
     dl.addEventListener("click", function () {
       const a = document.createElement("a");
       a.href = el.out.src;
@@ -430,25 +473,31 @@ const M8Pixel = (() => {
     acts.appendChild(dl);
     card.querySelector("h2").appendChild(acts);
 
-    const card2 = infoCard("这一张是怎么算的", "卷积链路");
+    const card2 = infoCard(T("pxHowTitle", "How this one was worked out"), T("pxHowTag", "Convolution chain"));
     card2.appendChild(kv([
-      ["风格", STYLE_LABEL[r.style] || r.style],
-      ["像素块", r.block + " px（每 " + r.block + " × " + r.block + " 个原始像素合成一个）"],
-      ["颜色", r.levels > 0 ? "每通道 " + r.levels + " 档（最多 " + r.colors.toLocaleString() + " 色）" : "不限色"],
-      ["抖动", r.levels > 0 ? (r.dither ? "开（Bayer 4×4 有序抖动）" : "关") : "—"],
-      ["放大", r.zoom + "× 最近邻"],
+      [T("pixelStyle", "Style"), styleLabel(r.style)],
+      [T("pixelBlock", "Pixel block size"), T("pxBlockVal",
+        "{n} px (every {n} × {n} source pixels become one)", { n: r.block })],
+      [T("pixelLevels", "Colours"), r.levels > 0
+        ? T("pxLevelsVal", "{n} steps per channel (up to {colors} colours)",
+          { n: r.levels, colors: r.colors.toLocaleString() })
+        : T("pxLevelsUnlimited", "No colour limit")],
+      [T("pxDitherLabel", "Dithering"), r.levels > 0
+        ? (r.dither ? T("pxDitherOn", "On (Bayer 4x4 ordered dither)") : T("pxDitherOff", "Off"))
+        : "—"],
+      [T("pixelZoom", "Upscale"), T("pxZoomVal", "{n}× nearest neighbour", { n: r.zoom })],
     ]));
     const p2 = document.createElement("p");
     p2.className = "info-note";
-    p2.textContent = "链路：抗锯齿卷积 → 面积平均降维 → 锐化卷积 → 减色 → 最近邻放大。"
-      + "选「原味」就是把卷积那两步关掉，直接面积平均，可以拿它对比卷积到底做了什么。";
+    p2.textContent = T("pxChain",
+      "Chain: antialiasing convolution -> area-average downsample -> sharpening convolution -> colour reduction -> nearest-neighbour upscale. Picking \"Plain\" turns the two convolution steps off and goes straight to area averaging, which is how you can see what convolution was doing.");
     card2.appendChild(p2);
 
     el.panels.appendChild(card);
     el.panels.appendChild(card2);
     el.body.classList.remove("is-hidden");
     el.again.classList.remove("is-hidden");
-    setStatus("转好了。");
+    setStatus(T("pxDone", "Done"));
     busy = false;
   }
 
@@ -509,13 +558,13 @@ const M8Pixel = (() => {
     [el.style, el.block, el.levels, el.zoom].forEach(function (s) {
       s.addEventListener("change", function () {
         if (!el.body.classList.contains("is-hidden")) {
-          setStatus("参数变了，点「转化」重新算一次。");
+          setStatus(T("pxParamsChanged", "The parameters changed - click Convert to run it again."));
         }
       });
     });
     el.dither.addEventListener("change", function () {
       if (!el.body.classList.contains("is-hidden")) {
-        setStatus("参数变了，点「转化」重新算一次。");
+        setStatus(T("pxParamsChanged", "The parameters changed - click Convert to run it again."));
       }
     });
 

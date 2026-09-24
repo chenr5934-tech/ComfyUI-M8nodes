@@ -15,13 +15,41 @@
  * 放大到 4000px 也是清晰的；直接缩放位图会糊。
  * ==========================================================================*/
 
+/* 界面文案走 i18n.js。它是 module，而这些功能脚本是普通脚本，拿不到 import ——
+   i18n.js 因此挂了一份到 window。
+
+   用 var 而不是 const：普通脚本共享全局作用域，const 在这里重复声明会直接报
+   "Identifier 'T' has already been declared"，一个页面同时加载几个脚本就白屏。
+   var 重复声明是合法的，每个文件仍然自足，不依赖加载顺序。
+
+   宿主对象用 globalThis 取而不是直接写 window：前端测试在 Node 里跑这些脚本，
+   那边没有 window，直接解引用会当场 "window is not defined"。
+
+   i18n 没加载成功时走这里的兜底：**必须自己填占位符** —— 直接返回 fallback 的话，
+   界面上会原样显示 "{h} h {m} min" 这种花括号，比换不成中文更糟。 */
+var T = function (key, fallback, vars) {
+  var host = typeof globalThis !== "undefined" ? globalThis : {};
+  var i18n = host.M8I18n;
+  if (i18n && typeof i18n.t === "function") return i18n.t(key, fallback, vars);
+
+  var text = fallback === undefined ? key : fallback;
+  if (vars && typeof text === "string") {
+    for (var k in vars) {
+      if (Object.prototype.hasOwnProperty.call(vars, k)) {
+        text = text.split("{" + k + "}").join(String(vars[k]));
+      }
+    }
+  }
+  return text;
+};
+
 const M8Paint = (() => {
   "use strict";
 
   const COLORS = ["#ffffff", "#000000", "#e53e3e", "#d69e2e", "#38a169", "#3182ce", "#805ad5", "#ff5ea8"];
   const FONT = "800 %spx MiSans, 'Microsoft YaHei', 'PingFang SC', sans-serif";
   const LINE_RATIO = 1.2;
-  const DEFAULT_TEXT = "点这里改字";
+  const DEFAULT_TEXT = "Click here to edit";
   const MIN_SIZE = 2;
   const MAX_SIZE = 20;
 
@@ -87,7 +115,7 @@ const M8Paint = (() => {
     state.seq += 1;
     const t = {
       id: state.seq,
-      body: DEFAULT_TEXT,
+      body: T("paintDefaultText", DEFAULT_TEXT),
       x: x === undefined ? 50 : x,
       y: y === undefined ? 50 : y,
       size: 7,
@@ -97,7 +125,7 @@ const M8Paint = (() => {
     state.texts.push(t);
     state.selected = state.texts.length - 1;
     render();
-    setStatus("加好了，在右边改内容，或者在图上拖它挪位置。");
+    setStatus(T("paintAdded", "Added. Edit it on the right, or drag it on the image to move it."));
     return t;
   }
 
@@ -119,7 +147,7 @@ const M8Paint = (() => {
     if (!state.texts.length) state.selected = -1;
     else if (state.selected >= state.texts.length) state.selected = state.texts.length - 1;
     render();
-    setStatus("那条文字删掉了。");
+    setStatus(T("paintRemoved", "That text box was deleted."));
   }
 
   /* ------------------------------------------------------------ 画笔 */
@@ -148,19 +176,19 @@ const M8Paint = (() => {
 
   function undoStroke() {
     if (!state.strokes.length) {
-      setStatus("没有可以撤销的笔画。");
+      setStatus(T("paintNoUndo", "There is no stroke left to undo."));
       return;
     }
     state.strokes.pop();
     renderStrokes();
-    setStatus("撤了一笔。");
+    setStatus(T("paintUndone", "Undid one stroke."));
   }
 
   function clearStrokes() {
     state.strokes = [];
     state.drawing = null;
     renderStrokes();
-    setStatus("笔画全清了。");
+    setStatus(T("paintStrokesCleared", "All strokes cleared."));
   }
 
   /* ------------------------------------------------------------ 渲染 */
@@ -197,7 +225,7 @@ const M8Paint = (() => {
       b.className = "swatch" + (c === state.color ? " on" : "");
       b.style.background = c;
       b.dataset.color = c;
-      b.setAttribute("aria-label", "颜色 " + c);
+      b.setAttribute("aria-label", T("paintColorAria", "Colour {c}", { c: c }));
       b.setAttribute("aria-pressed", c === state.color ? "true" : "false");
       b.addEventListener("click", function () {
         state.color = c;
@@ -232,7 +260,7 @@ const M8Paint = (() => {
     state.texts.forEach(function (t, i) {
       const node = document.createElement("div");
       node.className = "paint-text" + (i === state.selected ? " on" : "") + (t.outline ? " outline" : "");
-      node.textContent = t.body || "（空）";
+      node.textContent = t.body || T("paintEmptyText", "(empty)");
       node.dataset.index = String(i);
       node.style.left = t.x + "%";
       node.style.top = t.y + "%";
@@ -397,20 +425,20 @@ const M8Paint = (() => {
   function generate() {
     if (!state.img) return;
     if (!state.strokes.length && !state.texts.length) {
-      setStatus("还没写也没画，没什么可生成的。", true);
+      setStatus(T("paintNothing", "Nothing written and nothing drawn, so there is nothing to generate."), true);
       return;
     }
     clearPreview();
-    setStatus("正在生成…");
+    setStatus(T("busyGenerating", "Generating..."));
     const cv = document.createElement("canvas");
     drawTo(cv);
     const name = M8Studio.state.name + "-paint.png";
     if (typeof cv.toBlob !== "function") {
-      setStatus("这个浏览器不支持导出。", true);
+      setStatus(T("browserNoExport", "This browser cannot export."), true);
       return;
     }
     cv.toBlob(function (blob) {
-      if (!blob) { setStatus("生成失败。", true); return; }
+      if (!blob) { setStatus(T("generateFailed", "Generation failed."), true); return; }
       state.shot = URL.createObjectURL(blob);
       showPreview(name, cv.width, cv.height);
     }, "image/png");
@@ -425,7 +453,7 @@ const M8Paint = (() => {
     shot.className = "pv-shot";
     const im = document.createElement("img");
     im.src = state.shot;
-    im.alt = "文字与画笔预览";
+    im.alt = T("paintPreviewAlt", "Preview of the text and brush layers");
     shot.appendChild(im);
     const meta = document.createElement("div");
     meta.className = "pv-meta";
@@ -437,16 +465,17 @@ const M8Paint = (() => {
     save.className = "pv-save";
     save.href = state.shot;
     save.download = name;
-    save.textContent = "导出这张图";
+    save.textContent = T("exportThisImage", "Export this image");
     card.appendChild(shot);
     card.appendChild(meta);
     card.appendChild(save);
     box.appendChild(card);
     el.preview.classList.remove("is-hidden");
     if (el.previewNote) {
-      el.previewNote.textContent = state.texts.length + " 条文字 · " + state.strokes.length + " 笔";
+      el.previewNote.textContent = T("paintPreviewNote", "{texts} text boxes - {strokes} strokes",
+        { texts: state.texts.length, strokes: state.strokes.length });
     }
-    setStatus("生成好了，确认没问题就导出。");
+    setStatus(T("previewReadyExport", "Done. Export it once it looks right."));
   }
 
   /* ------------------------------------------------------------ 入口 */
@@ -481,7 +510,7 @@ const M8Paint = (() => {
     el.base.src = st.url;
     el.frame.style.aspectRatio = (st.img.naturalWidth || 1) + " / " + (st.img.naturalHeight || 1);
     render();
-    setStatus("文字模式点一下加字；切到画笔按住直接画。");
+    setStatus(T("paintStatusHint", "In text mode, click to add a box; switch to brush mode and hold to draw."));
   }
 
   function init() {

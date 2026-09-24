@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en" data-i18n-title="feat.prompts.pageTitle">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>提示词归纳 · M8 工作台</title>
+  <title>Prompt Collection - M8 Workbench</title>
   <link rel="icon" type="image/svg+xml" href="../assets/img/favicon.svg">
   <link rel="stylesheet" href="../assets/css/base.css">
   <link rel="stylesheet" href="../assets/css/shell.css">
@@ -29,19 +29,18 @@
 
           <header class="pg-head">
             <div class="pg-head-copy">
-              <h1>提示词归纳</h1>
-              <p>一张卡一条概念提示词 —— 构图、光影、质感、画风这种。写好归到分类里，用的时候一键复制。
-                内容存在本机，下次打开还在。</p>
+              <h1 data-i18n="feat.prompts.name">Prompt Collection</h1>
+              <p data-i18n="promptsLede">One card per concept prompt - framing, lighting, texture, art style and the like. Write it, file it under a category, copy it in one click when you need it. Everything is kept on this machine and is still here next time.</p>
             </div>
             <div class="pg-head-actions">
               <span class="pg-count" id="pgCount"></span>
               <div class="backup-bar">
                 <button class="ghost-btn" id="pgBackupOut" type="button"
-                  title="把卡片、分类和例图一起存成一个 json 文件">导出备份</button>
+                  data-i18n="backupOut" data-i18n-attr="title:backupOutTip">Export backup</button>
                 <button class="ghost-btn" id="pgBackupIn" type="button"
-                  title="从备份文件里读回来">导入备份</button>
+                  data-i18n="backupIn" data-i18n-attr="title:backupInTip">Import backup</button>
               </div>
-              <button class="gen-btn" id="pgAddCard" type="button">＋ 新建一张卡</button>
+              <button class="gen-btn" id="pgAddCard" type="button" data-i18n="pgAddCard">+ New card</button>
             </div>
           </header>
 
@@ -51,8 +50,8 @@
 
           <div class="blank is-hidden" id="pgEmpty">
             <span class="blank-ico" aria-hidden="true">🗂</span>
-            <h2>还没有卡片</h2>
-            <p>点右上角「新建一张卡」——名字写「仰拍构图」，提示词写 from below, low angle…，再挑个分类。</p>
+            <h2 data-i18n="pgEmptyTitle">No cards yet</h2>
+            <p data-i18n="pgEmptyBody">Click "New card" in the top right - name it something like "low-angle framing", write the prompt as from below, low angle..., then pick a category.</p>
           </div>
 
           <p class="status" id="pgStatus" role="status"></p>
@@ -65,15 +64,15 @@
   <div class="modal is-hidden" id="pgDelModal" role="dialog" aria-modal="true" aria-labelledby="pgDelTitle">
     <div class="modal-box sm">
       <header class="modal-head">
-        <h2 id="pgDelTitle">删掉这张卡？</h2>
-        <button class="modal-x" id="pgDelX" type="button" aria-label="关闭">×</button>
+        <h2 id="pgDelTitle" data-i18n="pgDelTitle">Delete this card?</h2>
+        <button class="modal-x" id="pgDelX" type="button" data-i18n-attr="aria-label:closeLabel">x</button>
       </header>
       <div class="modal-body">
         <p class="modal-text" id="pgDelText"></p>
       </div>
       <footer class="modal-foot">
-        <button class="ghost-btn" id="pgDelCancel" type="button">取消</button>
-        <button class="gen-btn danger" id="pgDelOk" type="button">确认删除</button>
+        <button class="ghost-btn" id="pgDelCancel" type="button" data-i18n="cancel">Cancel</button>
+        <button class="gen-btn danger" id="pgDelOk" type="button" data-i18n="deleteConfirm">Delete</button>
       </footer>
     </div>
   </div>
@@ -82,18 +81,19 @@
   <div class="modal is-hidden" id="pgNameModal" role="dialog" aria-modal="true" aria-labelledby="pgNameTitle">
     <div class="modal-box sm">
       <header class="modal-head">
-        <h2 id="pgNameTitle">这个分类叫什么？</h2>
-        <button class="modal-x" id="pgNameX" type="button" aria-label="关闭">×</button>
+        <h2 id="pgNameTitle" data-i18n="pgNameTitle">What is this category called?</h2>
+        <button class="modal-x" id="pgNameX" type="button" data-i18n-attr="aria-label:closeLabel">x</button>
       </header>
       <div class="modal-body">
         <label class="pg-field">
           <input class="pg-input" id="pgNameInput" type="text" maxlength="40" autocomplete="off"
-            placeholder="比如：构图 / 光影 / 质感 / 画风">
+            data-i18n-attr="placeholder:pgNamePlaceholder"
+            placeholder="For example: framing / lighting / texture / art style">
         </label>
       </div>
       <footer class="modal-foot">
-        <button class="ghost-btn" id="pgNameCancel" type="button">取消</button>
-        <button class="gen-btn" id="pgNameOk" type="button">确定</button>
+        <button class="ghost-btn" id="pgNameCancel" type="button" data-i18n="cancel">Cancel</button>
+        <button class="gen-btn" id="pgNameOk" type="button" data-i18n="confirm">OK</button>
       </footer>
     </div>
   </div>
@@ -102,8 +102,10 @@
   <script src="../assets/js/migrate.js"></script>
   <script src="../assets/js/backup.js"></script>
   <script src="../assets/js/prompts.js"></script>
-  <script>
-    boot({ activeId: "prompts", title: "提示词归纳", base: "../" });
+  <script type="module">
+    import { bootI18n } from "../assets/js/i18n.js";
+    await bootI18n();
+    boot({ activeId: "prompts", title: M8I18n.t("feat.prompts.name", "Prompt Collection"), base: "../" });
     M8Prompts.init();
   </script>
 </body>

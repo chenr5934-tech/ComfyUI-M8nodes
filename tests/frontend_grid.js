@@ -383,7 +383,7 @@ step('改网格会清掉旧预览', () => {
 step('没有图时点生成只会提示，不会炸', () => {
   m = boot();
   m.generate();
-  if (m._el().status.textContent.indexOf('先导入') < 0) {
+  if (m._el().status.textContent.indexOf('Import some images first') < 0) {
     throw new Error('没提示，实际是：' + m._el().status.textContent);
   }
 });
@@ -393,7 +393,7 @@ step('生成按钮上写着当前网格', () => {
   m.setN(4);
   m._addImage(fakeImg(), 'blob:a');
   const label = m._el().generate.textContent;
-  if (label.indexOf('4×4') < 0) throw new Error('按钮上没写网格：' + label);
+  if (label.indexOf('4x4') < 0) throw new Error('按钮上没写网格：' + label);
 });
 
 
@@ -461,7 +461,7 @@ step('缩略图上带着可以拖的提示', () => {
   m = boot();
   m._addImage(fakeImg(), 'blob:a');
   const t = m._el().thumbs.children[0];
-  if (String(t.title).indexOf('拖动') < 0) throw new Error('没提示可以拖：' + t.title);
+  if (String(t.title).indexOf('hold and drag') < 0) throw new Error('没提示可以拖：' + t.title);
   if (!t.style.cursor && t.classList) { /* 光标由 CSS 给，这里只确认监听挂上去了 */ }
 });
 
