@@ -145,7 +145,7 @@ def build_messages(*, system: str, user: str, extra: str, images: list[str], ski
 class M8LLMLocal:
     """M8 · Local LLM Inference"""
 
-    CATEGORY = "M8/LLM"
+    CATEGORY = "M8/大模型"
     FUNCTION = "run"
     RETURN_TYPES = ("STRING", "STRING")
     RETURN_NAMES = ("text", "status")
@@ -165,51 +165,51 @@ class M8LLMLocal:
         return {
             "required": {
                 "model": (names, {
-                    "tooltip": "The main .gguf in models/LLM. If the list is empty, check that folder.",
+                    "tooltip": "models/LLM 目录里的 .gguf 主模型。列不出来就去看看那个目录。",
                 }),
                 "system_prompt": ("STRING", {
                     "multiline": True,
                     "default": "",
                     "dynamicPrompts": False,
-                    "tooltip": "System prompt. Combined with any skill into the system block, skill first.",
+                    "tooltip": "系统提示词。和 skill 一起拼进系统段，skill 在前。",
                 }),
                 "user_prompt": ("STRING", {
                     "multiline": True,
                     "default": "",
                     "dynamicPrompts": False,
-                    "tooltip": "What you want to ask this round.",
+                    "tooltip": "这一轮要问的话。",
                 }),
                 "extra_text": ("STRING", {
                     "multiline": True,
                     "default": "",
                     "dynamicPrompts": False,
-                    "tooltip": "Extra text appended after the prompt. Good for additional requirements, style constraints, fields to reference.",
+                    "tooltip": "额外文本，拼在提问后面。放补充要求、风格约束、要参考的字段这类东西。",
                 }),
             },
             "optional": {
                 "image": ("IMAGE", {
-                    "tooltip": "Images for the model to look at. Without it the run is text only. Needs an mmproj file next to the model, otherwise vision does nothing.",
+                    "tooltip": "要给它看的图。不接就是纯文本。需要模型目录里有 mmproj 文件。",
                 }),
                 "skill": ("M8_SKILL", {
-                    "tooltip": "Wire the output of a skill loader node here to use it as a knowledge pack.",
+                    "tooltip": "接 skill 装载节点的输出，当知识包用。",
                 }),
                 "mmproj": (mm, {
-                    "tooltip": "Multimodal projection file. Auto-paired by name; pick one manually if that guessed wrong.",
+                    "tooltip": "多模态投影文件。默认按名字自动配；配错了就手动挑。",
                 }),
                 "max_tokens": ("INT", {"default": 512, "min": 16, "max": 8192, "step": 16}),
                 "temperature": ("FLOAT", {"default": 0.7, "min": 0.0, "max": 2.0, "step": 0.05}),
                 "top_p": ("FLOAT", {"default": 0.95, "min": 0.05, "max": 1.0, "step": 0.05}),
                 "ctx": ("INT", {
                     "default": 4096, "min": 512, "max": 32768, "step": 512,
-                    "tooltip": "Context length. Larger uses more memory; only needed for long conversations or many images.",
+                    "tooltip": "上下文长度。调大更吃内存，长对话或者多张图才需要。",
                 }),
                 "gpu_layers": ("INT", {
                     "default": -1, "min": -1, "max": 200, "step": 1,
-                    "tooltip": "-1 = offload as many layers as the GPU allows (recommended; depends on whether llama-cpp-python was built with CUDA). 0 = CPU only.",
+                    "tooltip": "-1 = 能上多少层显卡就上多少。0 = 纯 CPU。",
                 }),
                 "thinking": ("BOOLEAN", {
                     "default": False,
-                    "tooltip": "Whether the model should show its thinking. Off gives cleaner output; some models ignore it, in which case ask in the prompt too.",
+                    "tooltip": "要不要让模型把思考过程说出来。关掉输出更干净。",
                 }),
             },
         }
@@ -336,4 +336,4 @@ class M8LLMLocal:
 
 
 NODE_CLASS_MAPPINGS = {"M8LLMLocal": M8LLMLocal}
-NODE_DISPLAY_NAME_MAPPINGS = {"M8LLMLocal": "M8 · Local LLM Inference"}
+NODE_DISPLAY_NAME_MAPPINGS = {"M8LLMLocal": "M8 · 本地大模型推理"}

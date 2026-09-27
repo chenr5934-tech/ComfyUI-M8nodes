@@ -152,7 +152,7 @@ class M8CameraControl:
     RETURN_TYPES = ("STRING",)
     RETURN_NAMES = ("prompt",)
     FUNCTION = "execute"
-    CATEGORY = "M8/Camera"
+    CATEGORY = "M8/相机"
     DESCRIPTION = ("Visual camera positioning: outputs the matching camera prompt "
                    "(direction split by ratio + height / distance / tilt + lens / depth / motion / composition / style)")
 
@@ -487,5 +487,5 @@ NODE_CLASS_MAPPINGS = {
     "M8CameraControl": M8CameraControl,
 }
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "M8CameraControl": "M8 · Camera Control",
+    "M8CameraControl": "M8 · 相机控制",
 }

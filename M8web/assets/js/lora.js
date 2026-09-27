@@ -312,12 +312,12 @@ const M8Lora = (() => {
   }
 
   function fmtDur(sec) {
-    if (sec < 60) return T("loraSeconds", "{n} sec", { n: sec });
+    if (sec < 60) return T("loraSeconds", "{n} 秒", { n: sec });
     const h = Math.floor(sec / 3600);
     const m = Math.floor((sec % 3600) / 60);
-    if (h) return T("loraHoursMinutes", "{h} h {m} min", { h: h, m: m });
+    if (h) return T("loraHoursMinutes", "{h} 小时 {m} 分", { h: h, m: m });
     const s = sec % 60;
-    return T("loraMinutesSeconds", "{m} min {s} sec", { m: m, s: s });
+    return T("loraMinutesSeconds", "{m} 分 {s} 秒", { m: m, s: s });
   }
 
   /* 起止时间都是 unix 秒（带小数）。两个都在才算得出来。 */
@@ -344,7 +344,7 @@ const M8Lora = (() => {
     if (!d || typeof d !== "object" || Array.isArray(d)) return [];
     return Object.keys(d).map(function (k) {
       const v = d[k];
-      return [T("loraNetworkArg", "Network arg · {key}", { key: k }), typeof v === "object" ? JSON.stringify(v) : v];
+      return [T("loraNetworkArg", "网络参数 · {key}", { key: k }), typeof v === "object" ? JSON.stringify(v) : v];
     });
   }
 
@@ -361,8 +361,8 @@ const M8Lora = (() => {
       if (g.id === "process") {
         const span = trainingSpan(metadata);
         if (span) {
-          pairs.push([T("loraFieldTrainingTime", "Training time"), span.dur]);
-          if (span.started) pairs.push([T("loraFieldTrainingStarted", "Training started"), span.started]);
+          pairs.push([T("loraFieldTrainingTime", "训练耗时"), span.dur]);
+          if (span.started) pairs.push([T("loraFieldTrainingStarted", "训练开始"), span.started]);
         }
       }
       g.keys.forEach(function (f) {
@@ -453,10 +453,10 @@ const M8Lora = (() => {
   function copyButton(text) {
     const b = document.createElement("button");
     b.type = "button";
-    b.textContent = T("copy", "Copy");
+    b.textContent = T("copy", "复制");
     b.addEventListener("click", function () {
-      copyText(text).then(function () { setStatus(T("copyDone", "Copied.")); })
-        .catch(function () { setStatus(T("copyFailed", "Could not copy - select it by hand."), true); });
+      copyText(text).then(function () { setStatus(T("copyDone", "复制好了。")); })
+        .catch(function () { setStatus(T("copyFailed", "复制没成功，手动选一下吧。"), true); });
     });
     return b;
   }
@@ -506,7 +506,7 @@ const M8Lora = (() => {
       if (g.tags.length > TOP_TAGS) {
         const more = document.createElement("p");
         more.className = "tag-more";
-        more.textContent = T("loraTagsMore", "{n} more tags are not listed ({total} in total)",
+        more.textContent = T("loraTagsMore", "还有 {n} 个标签没列（一共 {total} 个）",
           { n: g.tags.length - TOP_TAGS, total: g.tags.length });
         box.appendChild(more);
       }
@@ -520,26 +520,26 @@ const M8Lora = (() => {
     panels.innerHTML = "";
 
     /* --- 文件 --- */
-    const fCard = infoCard(T("fileCard", "File"));
+    const fCard = infoCard(T("fileCard", "文件"));
     const headPairs = [
-      [T("fileName", "File name"), info.file.name],
-      [T("fileSize", "Size"), fmtSize(info.file.size)],
-      [T("loraTensorCount", "Tensors"), info.tensorCount],
-      ["header", T("loraHeaderValue", "{size} (only this part was read)", { size: fmtSize(info.headerBytes) })],
+      [T("fileName", "文件名"), info.file.name],
+      [T("fileSize", "大小"), fmtSize(info.file.size)],
+      [T("loraTensorCount", "张量数"), info.tensorCount],
+      ["header", T("loraHeaderValue", "{size}（只读了这一段）", { size: fmtSize(info.headerBytes) })],
     ];
     /* dtype 汇总：LoRA 通常就 F16 / BF16 / F32 一两种 */
     const dtypes = {};
     (info.tensors || []).forEach(function (t) { if (t.dtype) dtypes[t.dtype] = (dtypes[t.dtype] || 0) + 1; });
     const dt = Object.keys(dtypes).map(function (k) { return k + " × " + dtypes[k]; }).join(" · ");
-    if (dt) headPairs.push([T("loraDataType", "Data type"), dt]);
+    if (dt) headPairs.push([T("loraDataType", "数据类型"), dt]);
     fCard.appendChild(kv(headPairs));
     panels.appendChild(fCard);
 
     if (!info.metadata) {
-      const nCard = infoCard(T("loraNoMetadataTitle", "No training parameters"));
+      const nCard = infoCard(T("loraNoMetadataTitle", "没有训练参数"));
       const p = document.createElement("p");
       p.className = "info-note";
-      p.textContent = T("loraNoMetadataBody", "This safetensors has no __metadata__ section - it may be plain model weights, or a LoRA that was merged or converted (many tools drop the training info when converting formats).");
+      p.textContent = T("loraNoMetadataBody", "这个 safetensors 里没有 __metadata__ 段 —— 可能是普通模型权重，或者合并/转换过的 LoRA（很多工具在转格式时会把训练信息丢掉）。");
       nCard.appendChild(p);
       panels.appendChild(nCard);
       return;
@@ -547,7 +547,7 @@ const M8Lora = (() => {
 
     /* --- 模型信息 --- */
     if (info.spec.length) {
-      const sCard = infoCard(T("loraModelInfo", "Model info"), "modelspec");
+      const sCard = infoCard(T("loraModelInfo", "模型信息"), "modelspec");
       sCard.appendChild(kv(info.spec));
       panels.appendChild(sCard);
     }
@@ -563,14 +563,14 @@ const M8Lora = (() => {
 
     /* --- 标签频率 --- */
     if (info.tagGroups) {
-      const gCard = infoCard(T("loraTrainingTags", "Training tags"), T("loraByCount", "By count"));
+      const gCard = infoCard(T("loraTrainingTags", "训练标签"), T("loraByCount", "按出现次数"));
       gCard.appendChild(tagChart(info.tagGroups));
       panels.appendChild(gCard);
     }
 
     /* --- 其他参数 --- */
     if (info.others.length) {
-      const oCard = infoCard(T("loraOtherParams", "Other parameters"));
+      const oCard = infoCard(T("loraOtherParams", "其他参数"));
       const acts = document.createElement("div");
       acts.className = "card-actions";
       const all = JSON.stringify(info.metadata, null, 2);
@@ -581,14 +581,14 @@ const M8Lora = (() => {
         const p = document.createElement("p");
         p.className = "info-note";
         p.style.marginTop = "8px";
-        p.textContent = T("loraOthersMore", "{n} more entries are not listed (hit Copy above to get all of them)",
+        p.textContent = T("loraOthersMore", "还有 {n} 项没列（点上面的「复制」能拿到全部）",
           { n: info.others.length - 60 });
         oCard.appendChild(p);
       }
       if (info.skipped) {
         const p = document.createElement("p");
         p.className = "info-note";
-        p.textContent = T("loraSkippedNote", "{n} bulky entries with no reference value were skipped too (embedded thumbnails, say) - Copy still has them.",
+        p.textContent = T("loraSkippedNote", "另外省略了 {n} 项体积很大又没参考价值的内容（比如内嵌缩略图），「复制」里仍然有。",
           { n: info.skipped });
         oCard.appendChild(p);
       }
@@ -603,12 +603,12 @@ const M8Lora = (() => {
     return file.slice(0, 8).arrayBuffer().then(function (buf) {
       const len = headerLength(new Uint8Array(buf));
       if (!len) {
-        throw new Error(T("loraNotSafetensors", "Not a safetensors file (the first 8 bytes do not give a sensible header length)"));
+        throw new Error(T("loraNotSafetensors", "这不是 safetensors 文件（开头 8 字节给不出合理的 header 长度）"));
       }
       /* 第二步：只把 header 那一段切出来读。张量数据一个字节都不碰。 */
       return file.slice(8, 8 + len).arrayBuffer().then(function (hb) {
         const parsed = parseHeader(new Uint8Array(hb));
-        if (!parsed) throw new Error(T("loraBadHeader", "The header is not valid JSON"));
+        if (!parsed) throw new Error(T("loraBadHeader", "header 不是合法的 JSON"));
         parsed.headerBytes = len;
         return parsed;
       });
@@ -620,20 +620,20 @@ const M8Lora = (() => {
     if (busy) return;
     const name = (file.name || "").toLowerCase();
     if (name && !/\.safetensors$/.test(name)) {
-      setStatus(T("loraOnlySafetensors", "Only .safetensors files are accepted."), true);
+      setStatus(T("loraOnlySafetensors", "只认 .safetensors 文件。"), true);
       return;
     }
     busy = true;
     el.drop.classList.add("is-hidden");
     el.body.classList.remove("is-hidden");
-    setStatus(T("loraReading", "Reading the header... (only the beginning is read; the file is never pulled in whole)"));
+    setStatus(T("loraReading", "正在读头部…（只读开头那一段，不会把整个文件读进来）"));
 
     readHeaderOnly(file)
       .then(function (parsed) {
         const userMeta = parsed.metadata;
         const info = extract(userMeta);
         render({
-          file: { name: file.name || T("unnamedFile", "(no name)"), size: file.size },
+          file: { name: file.name || T("unnamedFile", "(没有名字)"), size: file.size },
           headerBytes: parsed.headerBytes,
           tensorCount: parsed.tensors.length,
           tensors: parsed.tensors,
@@ -645,19 +645,19 @@ const M8Lora = (() => {
           tagGroups: info ? info.tagGroups : null,
         });
         const bits = [];
-        if (info && info.fields.length) bits.push(T("loraGroup.train", "Training parameters"));
-        if (info && info.tagGroups) bits.push(T("loraTrainingTags", "Training tags"));
-        if (info && info.spec.length) bits.push(T("loraModelInfo", "Model info"));
+        if (info && info.fields.length) bits.push(T("loraGroup.train", "训练参数"));
+        if (info && info.tagGroups) bits.push(T("loraTrainingTags", "训练标签"));
+        if (info && info.spec.length) bits.push(T("loraModelInfo", "模型信息"));
         setStatus(bits.length
-          ? T("loraDoneRead", "Done (read {size} only): {parts}",
+          ? T("loraDoneRead", "读完了（只读了 {size}）：{parts}",
             { size: fmtSize(parsed.headerBytes + 8), parts: bits.join(" · ") })
-          : T("loraDoneNoParams", "Done, but there are no training parameters inside."));
+          : T("loraDoneNoParams", "读完了，但里面没有训练参数。"));
         el.again.classList.remove("is-hidden");
       })
       .catch(function (e) {
         el.drop.classList.remove("is-hidden");
         el.body.classList.add("is-hidden");
-        setStatus(e && e.message ? e.message : T("loraReadFailed", "Could not read it."), true);
+        setStatus(e && e.message ? e.message : T("loraReadFailed", "读不出来。"), true);
       })
       .then(function () {
         busy = false;

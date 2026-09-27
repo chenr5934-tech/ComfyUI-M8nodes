@@ -64,7 +64,7 @@ const HANDLERS = {
     const data = await res.json();
     const running = data.queue_running || [];
     const pending = data.queue_pending || [];
-    const lines = [T("queueSummary", "Running {running}, queued {pending}", {
+    const lines = [T("queueSummary", "正在跑 {running} 个，排队 {pending} 个", {
       running: running.length,
       pending: pending.length,
     })];
@@ -79,7 +79,7 @@ const HANDLERS = {
 
   async interrupt() {
     await api.fetchApi("/interrupt", { method: "POST" });
-    return T("interruptDone", "Interrupt sent; the running task will stop.");
+    return T("interruptDone", "已发送中断请求，正在跑的任务会停下。");
   },
 
   async clear_queue() {
@@ -88,22 +88,22 @@ const HANDLERS = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ clear: true }),
     });
-    return T("clearQueueDone", "Pending queue cleared (the running task is unaffected).");
+    return T("clearQueueDone", "等待中的队列已清空（正在跑的不受影响）。");
   },
 
   async set_node_widget({ node_id, widget, value } = {}) {
     const node = app.graph?.getNodeById?.(node_id) || (app.graph?._nodes || []).find((n) => n.id === node_id);
     if (!node) {
-      return T("nodeNotFound", "No node with id {id}.", { id: node_id });
+      return T("nodeNotFound", "找不到编号为 {id} 的节点。", { id: node_id });
     }
 
     const target = (node.widgets || []).find((w) => w.name === widget);
     if (!target) {
       const names = (node.widgets || []).map((w) => w.name).filter(Boolean).join(", ");
-      return T("widgetNotFound", "Node #{id} has no widget named {widget}. It has: {names}", {
+      return T("widgetNotFound", "节点 #{id} 上没有叫 {widget} 的参数。它有的是：{names}", {
         id: node_id,
         widget,
-        names: names || T("noWidgets", "(no widgets)"),
+        names: names || T("noWidgets", "（没有参数）"),
       });
     }
 
@@ -117,7 +117,7 @@ const HANDLERS = {
     }
     app.graph.setDirtyCanvas(true, true);
 
-    return T("widgetChanged", "Node #{id}: {widget} changed from \"{before}\" to \"{value}\".", {
+    return T("widgetChanged", "已把节点 #{id} 的 {widget} 从「{before}」改成「{value}」。", {
       id: node_id,
       widget,
       before: String(before).slice(0, 60),
@@ -128,7 +128,7 @@ const HANDLERS = {
   async list_loras() {
     const data = await M8.apiGet("/whale/loras");
     if (!data.count) {
-      return T("noLoras", "No LoRA is installed on this machine (the models/loras directory is empty).");
+      return T("noLoras", "这台机器上没有装 LoRA（models/loras 目录是空的）。");
     }
 
     // LoRA 目录动辄上百个，全塞进上下文不划算。列一截，并说清还有多少 ——
@@ -136,9 +136,9 @@ const HANDLERS = {
     const MAX = 120;
     const shown = data.loras.slice(0, MAX);
     const tail = data.count > MAX
-      ? "\n" + T("lorasTruncated", "({n} more not listed; ask the user for a keyword if needed)", { n: data.count - MAX })
+      ? "\n" + T("lorasTruncated", "（还有 {n} 个没列出来，需要的话让用户说个关键词）", { n: data.count - MAX })
       : "";
-    return T("lorasHeader", "{n} LoRAs:\n{list}", { n: data.count, list: shown.join("\n") }) + tail;
+    return T("lorasHeader", "共 {n} 个 LoRA：\n{list}", { n: data.count, list: shown.join("\n") }) + tail;
   },
 
   async get_recent_errors() {
@@ -165,21 +165,21 @@ const HANDLERS = {
 
     if (!failures.length) {
       // 说清楚查的是哪儿 —— 「没报错」和「没查到」是两件事
-      return T("noErrors", "No failures in the recent task history. If you just saw an error, it may be in an older entry or already cleared.");
+      return T("noErrors", "最近的任务记录里没有失败。如果刚看到报错，可能是它发生在更早的记录里，或者已经被清掉了。");
     }
 
     const recent = failures.slice(-5);
-    const lines = [T("errorsFound", "Found {n} failures (most recent last):", { n: recent.length })];
+    const lines = [T("errorsFound", "找到 {n} 条失败记录（最近的排后面）：", { n: recent.length })];
     for (const item of recent) {
       lines.push("");
-      lines.push(`- ${T("errorTask", "task")} ${String(item.promptId).slice(0, 8)}`);
+      lines.push(`- ${T("errorTask", "任务")} ${String(item.promptId).slice(0, 8)}`);
       if (item.nodeType) {
-        lines.push(`  ${T("errorNode", "node")}: ${item.nodeType}${item.nodeId != null ? " (#" + item.nodeId + ")" : ""}`);
+        lines.push(`  ${T("errorNode", "节点")}: ${item.nodeType}${item.nodeId != null ? " (#" + item.nodeId + ")" : ""}`);
       }
-      if (item.type) lines.push(`  ${T("errorType", "exception type")}: ${item.type}`);
-      if (item.message) lines.push(`  ${T("errorMessage", "message")}: ${String(item.message).slice(0, 400)}`);
+      if (item.type) lines.push(`  ${T("errorType", "异常类型")}: ${item.type}`);
+      if (item.message) lines.push(`  ${T("errorMessage", "信息")}: ${String(item.message).slice(0, 400)}`);
       if (item.traceback) {
-        lines.push(`  ${T("errorTraceback", "tail of the traceback")}:\n${String(item.traceback).slice(0, 700)}`);
+        lines.push(`  ${T("errorTraceback", "末尾堆栈")}:\n${String(item.traceback).slice(0, 700)}`);
       }
     }
     return lines.join("\n");
@@ -189,7 +189,7 @@ const HANDLERS = {
     // 用 ComfyUI 自己的提交路径：参数校验、缺模型提示、错误弹窗全都照旧生效。
     // 绕过去自己 POST /prompt 的话，这些保护就都没了。
     await app.queuePrompt(0, 1);
-    return T("queued", "Queued.");
+    return T("queued", "已提交排队。");
   },
 };
 
@@ -222,7 +222,7 @@ const MUTATING = new Set(["interrupt", "clear_queue", "set_node_widget", "queue_
 export async function runToolCall(call) {
   const name = call?.function?.name;
   const handler = HANDLERS[name];
-  if (!handler) return T("noSuchTool", "There is no tool named {name}.", { name });
+  if (!handler) return T("noSuchTool", "没有叫 {name} 的工具。", { name });
 
   let args = {};
   const rawArgs = call.function?.arguments;
@@ -230,7 +230,7 @@ export async function runToolCall(call) {
     try {
       args = JSON.parse(rawArgs);
     } catch {
-      return T("badToolArgs", "Tool arguments are not valid JSON: {raw}", { raw: String(rawArgs).slice(0, 200) });
+      return T("badToolArgs", "工具参数不是合法 JSON：{raw}", { raw: String(rawArgs).slice(0, 200) });
     }
   } else if (rawArgs && typeof rawArgs === "object") {
     args = rawArgs;
@@ -240,7 +240,7 @@ export async function runToolCall(call) {
     return await handler(args);
   } catch (exc) {
     M8.warn(`工具 ${name} 执行失败：`, exc);
-    return T("toolFailed", "Failed: {message}", { message: exc?.message || exc });
+    return T("toolFailed", "执行失败：{message}", { message: exc?.message || exc });
   }
 }
 

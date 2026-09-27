@@ -144,7 +144,7 @@ class WhaleWidget {
 
     this.el = document.createElement("div");
     this.el.className = "m8-whale";
-    this.el.title = T("widgetTitle", "Left click: refresh balance - right click: open chat - drag to move");
+    this.el.title = T("widgetTitle", "左键刷新余额 · 右键打开对话 · 拖动可以挪位置");
 
     // body 层：按压的 Q 弹做在它身上。
     // 单开一层是必须的 —— root 要留着做左吸附的镜像翻转（scaleX(-1)），
@@ -155,7 +155,7 @@ class WhaleWidget {
     const img = document.createElement("img");
     img.className = "m8-whale-img";
     img.src = assetUrl("whale.png");
-    img.alt = T("widgetAlt", "Little Whale");
+    img.alt = T("widgetAlt", "小鲸鱼");
     img.draggable = false;
     this.bodyEl.appendChild(img);
 
@@ -194,7 +194,7 @@ class WhaleWidget {
     this.menuBtn = document.createElement("button");
     this.menuBtn.type = "button";
     this.menuBtn.className = "m8-whale-menu-btn";
-    this.menuBtn.title = T("menuTip", "Menu");
+    this.menuBtn.title = T("menuTip", "菜单");
     // 三条横线用三个 span 画，原版就是这么干的 —— 不用图标字体、不用图
     this.menuBtn.innerHTML = "<span></span><span></span><span></span>";
 
@@ -271,7 +271,7 @@ class WhaleWidget {
    * 金额来自接口，过一遍转义 —— 它是拼进 innerHTML 的，
    * 虽然数据可信，但边界上的转义是习惯不是负担。
    */
-  renderBubble({ label = T("balanceLabel", "DeepSeek balance"), symbol = "¥", amount = "—", hint = "", hintHtml = "" } = {}) {
+  renderBubble({ label = T("balanceLabel", "DeepSeek 余额"), symbol = "¥", amount = "—", hint = "", hintHtml = "" } = {}) {
     const esc = M8.escapeHtml;
     // hintHtml 是调用方自己拼好并转义过的（比如里面要带一个着色 span），
     // hint 是纯文本、由这里转义。两个都给，用哪个由调用方决定。
@@ -582,7 +582,7 @@ class WhaleWidget {
   /** 查一次余额。quiet=true 时失败不弹气泡（后台轮询不该打扰人）。 */
   async refresh({ quiet = false } = {}) {
     if (!this.mounted) return;
-    if (!quiet) this.showBubble(this.renderBubble({ amount: "…", hint: T("checking", "Checking...") }), 0);
+    if (!quiet) this.showBubble(this.renderBubble({ amount: "…", hint: T("checking", "查询中") }), 0);
 
     try {
       const data = await M8.apiGet(`${API_BASE}/balance`);
@@ -594,7 +594,7 @@ class WhaleWidget {
       if (!quiet) {
         this.showBubble(
           this.renderBubble({
-            amount: T("unavailable", "N/A"),
+            amount: T("unavailable", "查不到"),
             hint: `${exc.code ? exc.code + " · " : ""}${exc.message}`.slice(0, 40),
           }),
           BUBBLE_MS * 1.6,
@@ -617,7 +617,7 @@ class WhaleWidget {
     const primary = data?.balance?.primary;
     if (!primary) {
       this.showBubble(
-        this.renderBubble({ amount: "—", hint: T("noBalanceData", "The API returned no balance data") }),
+        this.renderBubble({ amount: "—", hint: T("noBalanceData", "接口没给余额数据") }),
         BUBBLE_MS,
         "err",
       );
@@ -636,9 +636,9 @@ class WhaleWidget {
 
     const spent = Number(data.usage?.spent || 0);
     if (spent > 0) {
-      parts.push(T("spentToday", "Spent today {money}", { money: esc(symbol) + esc(spent.toFixed(2)) }));
+      parts.push(T("spentToday", "今日已用 {money}", { money: esc(symbol) + esc(spent.toFixed(2)) }));
     } else if (data.balance?.available === false) {
-      parts.push(T("accountDisabled", "Account disabled"));
+      parts.push(T("accountDisabled", "账号已停用"));
     }
 
     const amount = Number(primary.totalValue ?? primary.total ?? 0);
@@ -750,8 +750,8 @@ class WhaleWidget {
       !!data.pricing?.peak,
       labels,
       spent > 0
-        ? T("spentToday", "Spent today {money}", { money: symbol + spent.toFixed(2) })
-        : T("noSpendToday", "Nothing spent today"),
+        ? T("spentToday", "今日已用 {money}", { money: symbol + spent.toFixed(2) })
+        : T("noSpendToday", "今天还没花钱"),
     ));
   }
 
@@ -789,8 +789,8 @@ function registerSidebar() {
   manager.registerSidebarTab({
     id: SIDEBAR_ID,
     icon: "pi pi-cloud",
-    title: T("sidebarTitle", "Little Whale"),
-    tooltip: T("sidebarTooltip", "DeepSeek balance and chat"),
+    title: T("sidebarTitle", "小鲸鱼"),
+    tooltip: T("sidebarTooltip", "DeepSeek 余额与对话"),
     type: "custom",
     render(el) {
       buildSettingsPanel(el, ctx);

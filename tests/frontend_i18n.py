@@ -1,4 +1,7 @@
-"""M8web 的界面语言：源码英文、译文在 locales 里，两边键集必须对得上。
+"""M8web 的界面语言：zh / en 两份语言文件，键集必须对得上。
+
+注：界面文案现在是**中文写在代码里**当默认值（不再为审核让步），
+语言包是「同一种语言的另一份」，不是唯一的来源。
 
 这个检查的价值在于「键名写错」是最容易发生、又最不容易发现的一类错误 ——
 写错了不会报任何错，只会静默显示英文原文，中文用户看到的就是没翻译的界面。
@@ -136,52 +139,6 @@ class TestWebLocale(unittest.TestCase):
         self.assertEqual(dead, [], "语言文件里这些键没人用了")
 
 
-def strip_comments(src: str) -> list:
-    """把 /* */ 与 // 注释换成等长空白，保留换行。
-
-    必须真的剥掉，不能用「行首是不是 //」这种启发式：
-      - 块注释的续行不以 * 开头（比如续行的中文说明）
-      - 行尾注释跟在代码后面，行首判断看不见它
-    两种都会造成假阳性 —— 把一句注释里的中文报成界面文案。
-    换成等长空白是为了行号和列号都还对得上。
-    """
-    out = []
-    i, n = 0, len(src)
-    in_block = False
-    while i < n:
-        ch = src[i]
-        nxt = src[i + 1] if i + 1 < n else ""
-        if in_block:
-            if ch == "*" and nxt == "/":
-                out.append("  ")
-                i += 2
-                in_block = False
-                continue
-            out.append("\n" if ch == "\n" else " ")
-            i += 1
-            continue
-        if ch == "/" and nxt == "*":
-            out.append("  ")
-            i += 2
-            in_block = True
-            continue
-        if ch == "/" and nxt == "/":
-            while i < n and src[i] != "\n":
-                out.append(" ")
-                i += 1
-            continue
-        out.append(ch)
-        i += 1
-    return "".join(out).splitlines()
-
-
-def strip_html_comments(src: str) -> list:
-    """<!-- --> 同样换成等长空白。"""
-    def blank(m):
-        return "".join("\n" if c == "\n" else " " for c in m.group(0))
-    return re.sub(r"<!--.*?-->", blank, src, flags=re.S).splitlines()
-
-
 class TestWebRequestPaths(unittest.TestCase):
     """工作台可能被挂在子路径下（/comfy/m8/web/），所以请求地址不能写死。
 
@@ -223,44 +180,98 @@ class TestWebRequestPaths(unittest.TestCase):
         self.assertIn(probe, i18n, "i18n.js 的路径推导和 app.js 不一致")
 
 
-class TestWebSourceIsEnglish(unittest.TestCase):
-    """用户可见的字符串必须是英文 —— 注释和内部日志不受此限。
+class TestDefaultsMatchLocale(unittest.TestCase):
+    """代码里写的默认文案，必须和 locales/zh 里那份一字不差。
 
-    审核管的是界面文案；注释是给维护者看的，console.* 只出现在开发者工具里。
-    单纯「行里有引号 + 中文」会把这些全报成违规，所以两样都要排掉。
+    界面文案现在是**中文直接写在代码里当默认值**（不再为审核让步，见
+    docs/ARCHITECTURE.md 第八节）。locales/ 下留着同样的一份，中文环境会拉它
+    覆盖一遍 —— 两份一旦漂移，中文用户看到的是语言包里的旧版本，英文用户看到的
+    是代码里的新版本：同一个按钮两种说法，**而且不会有任何报错**。
+    这条断言就是为这个而设的。
     """
 
-    STRING_WITH_CJK = re.compile(r"""["'\`][^"'\`]*[\u4e00-\u9fff]""")
-    LOG_CALL = re.compile(r"\b(console\.[a-z]+|M8\.(log|warn|error|debug))\s*\(")
+    JS_T = re.compile(r"""\b(T|coreT)\(\s*(["'])([A-Za-z0-9_.\-]+)\2\s*,\s*(["'])((?:[^"'\\]|\\.)*)\4""")
+    TFOR = re.compile(r"""\.tFor\(\s*["']([A-Za-z0-9_]+)["']""")
+    CJK = re.compile(r"[\u4e00-\u9fff]")
 
-    def _offenders(self, path: Path, lang: str) -> list:
-        src = path.read_text(encoding="utf-8")
-        lines = strip_html_comments(src) if lang == "html" else strip_comments(src)
+    @classmethod
+    def setUpClass(cls):
+        cls.en = json.loads((LOCALES / "en" / "main.json").read_text(encoding="utf-8"))
+        cls.zh = json.loads((LOCALES / "zh" / "main.json").read_text(encoding="utf-8"))
+
+    @staticmethod
+    def _unescape(s, quote):
+        out = s.replace("\\" + quote, quote)
+        out = out.replace("\\n", "\n").replace("\\r", "\r").replace("\\t", "\t")
+        return out.replace("\\\\", "\\")
+
+    def _check_js(self, root, section_of):
+        """section_of(path, src) -> 语言包里的段名；返回 None 表示这个文件不查。"""
         bad = []
-        for n, line in enumerate(lines, 1):
-            if not CJK.search(line):
+        for path in sorted(root.rglob("*.js")):
+            src = path.read_text(encoding="utf-8")
+            section = section_of(path, src)
+            if not section:
                 continue
-            if self.LOG_CALL.search(line):
+            table = self.zh["ui"].get(section)
+            if not table:
+                bad.append(f"{path.name}: 语言包里没有 ui.{section} 这一段")
                 continue
-            if self.STRING_WITH_CJK.search(line):
-                bad.append(f"{path.relative_to(WEB)}:{n}: {line.strip()[:80]}")
+            for m in self.JS_T.finditer(src):
+                key = m.group(3)
+                default = self._unescape(m.group(5), m.group(4))
+                want = table.get(key)
+                if want is None:
+                    bad.append(f"{path.name}: {key} 不在 ui.{section} 里")
+                elif want != default:
+                    bad.append(f"{path.name}: {key}\n      代码: {default}\n      语言包: {want}")
         return bad
 
-    def test_locale_tables_themselves_are_exempt(self):
-        # locales/ 在插件根下，不在 M8web 里，这个断言只是把边界写明白
-        self.assertFalse(str(LOCALES).startswith(str(WEB)))
+    def test_node_and_whale_defaults_match_zh(self):
+        plugin_js = PLUGIN / "js"
 
-    def test_no_chinese_in_javascript_strings(self):
+        def section_of(path, src):
+            # m8_core.js 用 coreT，段固定是 M8Core
+            if path.name == "m8_core.js":
+                return "M8Core"
+            hit = self.TFOR.search(src)
+            return hit.group(1) if hit else None
+
+        bad = self._check_js(plugin_js, section_of)
+        self.assertEqual(bad, [], "代码默认值和 locales/zh 对不上：\n  " + "\n  ".join(bad[:12]))
+
+    def test_m8web_defaults_match_zh(self):
         bad = []
-        for path in sorted((WEB / "assets" / "js").glob("*.js")):
-            bad += self._offenders(path, "js")
-        self.assertEqual(bad, [], "JS 里还有中文字符串（注释可以留）")
+        root = WEB / "assets" / "js"
+        for path in sorted(root.glob("*.js")):
+            src = path.read_text(encoding="utf-8")
+            for m in self.JS_T.finditer(src):
+                key = m.group(3)
+                default = self._unescape(m.group(5), m.group(4))
+                want = self.zh["web"].get(key)
+                if want is None:
+                    bad.append(f"{path.name}: {key} 不在 web 段里")
+                elif want != default:
+                    bad.append(f"{path.name}: {key}\n      代码: {default}\n      语言包: {want}")
+        self.assertEqual(bad, [], "M8web 的默认值和 locales/zh 对不上：\n  " + "\n  ".join(bad[:12]))
 
-    def test_no_chinese_in_page_markup(self):
+    def test_html_defaults_match_zh(self):
+        """HTML 里 data-i18n 的默认文字也要和语言包一致。"""
+        plain = re.compile(
+            r'<(?P<tag>[a-zA-Z][a-zA-Z0-9]*)\b[^>]*?\bdata-i18n="(?P<key>[^"]+)"[^>]*?>'
+            r'(?P<body>[^<]*)</(?P=tag)>'
+        )
         bad = []
         for rel in PAGES:
-            bad += self._offenders(WEB / rel, "html")
-        self.assertEqual(bad, [], "页面里还有中文（注释可以留）")
+            src = (WEB / rel).read_text(encoding="utf-8")
+            for m in plain.finditer(src):
+                key, body = m.group("key"), m.group("body")
+                want = self.zh["web"].get(key)
+                if want is None:
+                    bad.append(f"{rel}: {key} 不在 web 段里")
+                elif want.strip() != body.strip():
+                    bad.append(f"{rel}: {key}\n      页面: {body.strip()[:70]}\n      语言包: {want.strip()[:70]}")
+        self.assertEqual(bad, [], "页面默认文字和 locales/zh 对不上：\n  " + "\n  ".join(bad[:12]))
 
 
 if __name__ == "__main__":

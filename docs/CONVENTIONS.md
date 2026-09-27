@@ -106,16 +106,20 @@ class M8Xxx:
 
 | 对象 | 规范 | 例子 |
 | --- | --- | --- |
-> **界面文案一律英文。** 节点显示名、widget 标签、tooltip、错误提示都算 ——
-> 这是 ComfyUI 审核的硬要求（"write the node UI strings in English"）。中文靠
-> `locales/zh/main.json` 提供，见 [I18N 那节](#i18n)。代码注释和内部日志不受此限。
+> **界面文案一律中文，直接写在代码里。** 节点显示名、widget 标签、tooltip、
+> 错误提示都算。写法是 `T("key", "中文")`。详见
+> [ARCHITECTURE 的界面语言那节](ARCHITECTURE.md)。
 >
-> 早期版本这里是中文，改名之后**老工作流不受影响**：`CATEGORY` 只决定右键菜单的
-> 分组，节点类型名没动，已连线的工作流照常加载。
+> 2026-09 之前这里写的是英文 —— 那是为了过 ComfyUI-Manager 的审核
+> （"write the node UI strings in English"）。现在不再为上架要求改变用户的界面
+> 语言：这是给中文用户的工具，默认就该是中文，`locales/` 里那份只是同一份内容的副本。
+>
+> 显示名和 `CATEGORY` 改回中文**不影响老工作流**：`CATEGORY` 只决定右键菜单的
+> 分组，节点类型名（`M8LLMInference` 这些）从头到尾没动过，已连线的工作流照常加载。
 
 | 节点类 | `M8` + 大驼峰 | `M8LLMInference` |
-| 节点显示名 | `M8 · English Name` | `M8 · LLM Inference` |
-| CATEGORY | `M8/<Shelf>`，英文 | `M8/LLM` |
+| 节点显示名 | `M8 · 中文名` | `M8 · 大模型推理` |
+| CATEGORY | `M8/<中文货架名>` | `M8/大模型` |
 | 路由 | `/m8/<货架>/<动作>` | `/m8/llm/models` |
 | 自定义连线类型 | `M8_` + 大写 | `M8_SKILL` |
 | 错误码 | `M8-<货架>-###` | `M8-LLM-001` |

@@ -162,7 +162,7 @@ function renderThemes() {
   const box = document.createElement("div");
   box.className = "themes";
   box.setAttribute("role", "group");
-  box.setAttribute("aria-label", T("theme", "Theme"));
+  box.setAttribute("aria-label", T("theme", "主题"));
   box.innerHTML = THEMES.map(
     (t) => '<button type="button" data-t="' + t.id + '" aria-pressed="false">'
       + T("theme." + t.id, t.name) + "</button>",
@@ -191,34 +191,34 @@ function renderSidebar(activeId, base) {
 
   side.innerHTML =
     '<a class="brand" href="' + base + 'index.html">' +
-    '<span class="mark">M8</span><span class="word">' + T("brand", "M8 Workbench") + "</span>" +
+    '<span class="mark">M8</span><span class="word">' + T("brand", "M8 工作台") + "</span>" +
     "</a>" +
     '<nav class="nav">' +
     '<a class="nav-item" href="' + base + 'index.html">' +
-    '<span class="ico">⌂</span><span class="label">' + T("navHome", "Back to home") + "</span>" +
+    '<span class="ico">⌂</span><span class="label">' + T("navHome", "返回首页") + "</span>" +
     "</a>" +
-    '<div class="nav-group">' + T("navGroup", "Features") + "</div>" +
+    '<div class="nav-group">' + T("navGroup", "功能") + "</div>" +
     items +
     "</nav>" +
     '<div class="side-foot">' +
     '<button class="side-toggle" id="sideToggle" type="button">' +
-    '<span class="ico">⇔</span><span class="label">' + T("sideCollapse", "Collapse sidebar") + "</span>" +
+    '<span class="ico">⇔</span><span class="label">' + T("sideCollapse", "收起侧栏") + "</span>" +
     "</button>" +
     "</div>";
 
   const toggle = side.querySelector("#sideToggle");
   const label = toggle ? toggle.querySelector(".label") : null;
   const collapsed = document.documentElement.classList.contains("is-side-collapsed");
-  if (label && collapsed) label.textContent = T("sideExpand", "Expand sidebar");
+  if (label && collapsed) label.textContent = T("sideExpand", "展开侧栏");
   if (toggle) {
-    toggle.setAttribute("title", collapsed ? T("sideExpand", "Expand sidebar") : T("sideCollapse", "Collapse sidebar"));
+    toggle.setAttribute("title", collapsed ? T("sideExpand", "展开侧栏") : T("sideCollapse", "收起侧栏"));
     toggle.addEventListener("click", () => {
       const root = document.documentElement;
       root.classList.toggle("is-side-collapsed");
       const off = root.classList.contains("is-side-collapsed");
       writeStore(SIDE_KEY, off ? "1" : "0");
-      if (label) label.textContent = off ? T("sideExpand", "Expand sidebar") : T("sideCollapse", "Collapse sidebar");
-      toggle.setAttribute("title", off ? T("sideExpand", "Expand sidebar") : T("sideCollapse", "Collapse sidebar"));
+      if (label) label.textContent = off ? T("sideExpand", "展开侧栏") : T("sideCollapse", "收起侧栏");
+      toggle.setAttribute("title", off ? T("sideExpand", "展开侧栏") : T("sideCollapse", "收起侧栏"));
     });
   }
 
@@ -237,7 +237,7 @@ function renderTopbar(host, title, base) {
   if (!host) return;
   host.innerHTML =
     "<h1>" + title + "</h1>" +
-    '<span class="crumb"><a href="' + base + 'index.html">' + T("brand", "M8 Workbench") + "</a></span>";
+    '<span class="crumb"><a href="' + base + 'index.html">' + T("brand", "M8 工作台") + "</a></span>";
 }
 
 /* ---------------------------------------------------------------- 首页卡片 */
@@ -274,11 +274,11 @@ var M8Api = (function () {
   function call(path, opt) {
     return fetch(base() + path, opt).then(function (res) {
       return res.json().catch(function () {
-        throw new Error(T("badResponse", "The backend did not return usable data (is it running?)"));
+        throw new Error(T("badResponse", "后端没给回正经数据（可能没在跑？）"));
       });
     }).then(function (data) {
       if (!data || !data.ok) {
-        throw new Error((data && (data.hint || data.error)) || T("actionFailed", "The action failed"));
+        throw new Error((data && (data.hint || data.error)) || T("actionFailed", "操作失败"));
       }
       return data;
     });
@@ -342,36 +342,36 @@ function showMigrateBar(items) {
 
   const text = document.createElement("span");
   text.className = "migrate-text";
-  text.textContent = T("migrateFound", "There is still old data in this browser ({n} entries: ", { n: total }) 
+  text.textContent = T("migrateFound", "浏览器里还存着旧数据（{n} 条：", { n: total }) 
     + items.map(function (it) {
       return T("migrateKinds." + it.kind, it.label) + " " + it.rows.length;
     }).join(", ")
-    + T("migrateAsk", "). Data lives on the server now. Move it over?");
+    + T("migrateAsk", "）。现在数据存在服务器上了，要搬过去吗？");
 
   const yes = document.createElement("button");
   yes.type = "button";
   yes.className = "gen-btn";
-  yes.textContent = T("migrateYes", "Move it");
+  yes.textContent = T("migrateYes", "搬过去");
 
   const no = document.createElement("button");
   no.type = "button";
   no.className = "ghost-btn";
-  no.textContent = T("migrateNo", "Not now");
+  no.textContent = T("migrateNo", "先不搬");
   no.addEventListener("click", function () { bar.remove(); });
 
   yes.addEventListener("click", function () {
     yes.disabled = true;
-    text.textContent = T("migrateBusy", "Moving...");
+    text.textContent = T("migrateBusy", "正在搬…");
     M8Migrate.run(items).then(function (n) {
       return M8Migrate.dropOld().then(function () { return n; });
     }).then(function (n) {
-      text.textContent = T("migrateDone", "Done, {n} entries in total. Refresh the page to see them.", { n });
-      no.textContent = T("migrateOk", "Got it");
+      text.textContent = T("migrateDone", "搬完了，一共 {n} 条。刷新一下页面就能看到。", { n });
+      no.textContent = T("migrateOk", "知道了");
       yes.remove();
     }).catch(function (e) {
       yes.disabled = false;
-      text.textContent = T("migrateFailed", "Could not move the data: ") + (e && e.message ? e.message : String(e))
-        + T("migrateFailedHint", ". Make sure the service is running and try again.");
+      text.textContent = T("migrateFailed", "没搬成：") + (e && e.message ? e.message : String(e))
+        + T("migrateFailedHint", "。确认服务在跑，再试一次。");
     });
   });
 
@@ -402,22 +402,22 @@ function shortcutURL() {
 function makeShortcut() {
   const note = document.getElementById("mkShortcutNote");
   const btn = document.getElementById("mkShortcut");
-  if (note) note.textContent = T("shortcutBusy", "Creating...");
+  if (note) note.textContent = T("shortcutBusy", "正在创建…");
   if (btn) btn.disabled = true;
   /* 首页在 /m8/web/ 下，所以 ../shortcut 就是 /m8/shortcut */
   fetch("../shortcut/desktop", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ url: shortcutURL(), name: T("shortcutName", "M8 Workbench") }),
+    body: JSON.stringify({ url: shortcutURL(), name: T("shortcutName", "M8工作台") }),
   }).then(function (res) {
     return res.json();
   }).then(function (data) {
     if (!data || !data.ok) {
-      throw new Error((data && (data.hint || data.error)) || T("shortcutFailed", "Could not create it"));
+      throw new Error((data && (data.hint || data.error)) || T("shortcutFailed", "创建失败"));
     }
-    if (note) note.textContent = T("shortcutDone", "Created: {name} on your desktop", { name: data.fileName });
+    if (note) note.textContent = T("shortcutDone", "建好了，桌面上的「{name}」", { name: data.fileName });
   }).catch(function (e) {
-    if (note) note.textContent = T("shortcutError", "Could not create it: ") + (e && e.message ? e.message : String(e));
+    if (note) note.textContent = T("shortcutError", "没建成：") + (e && e.message ? e.message : String(e));
   }).then(function () {
     if (btn) btn.disabled = false;
   });
@@ -437,7 +437,7 @@ function boot(opt) {
   }
 
   mountSidebar(o.activeId || "", base);
-  renderTopbar(document.getElementById("topbar"), o.title || T("brand", "M8 Workbench"), base);
+  renderTopbar(document.getElementById("topbar"), o.title || T("brand", "M8 工作台"), base);
 
   /* 只有首页有那个按钮，别的页面拿不到就跳过 */
   const mk = document.getElementById("mkShortcut");

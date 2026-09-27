@@ -178,13 +178,13 @@ const M8Meta = (() => {
             p++;
           }
           const body = data.subarray(p);
-          out.texts[s.slice(0, k)] = flag ? T("metaCompressedContent", "(compressed content)") : utf8(body);
+          out.texts[s.slice(0, k)] = flag ? T("metaCompressedContent", "(压缩内容)") : utf8(body);
         }
       } else if (type === "zTXt") {
         /* keyword\0 method(1) 压缩数据 —— 不引 zlib 解不开，只记个名 */
         const s = latin1(data);
         const k = s.indexOf("\u0000");
-        if (k > 0) out.texts[s.slice(0, k)] = T("metaCompressedRaw", "(compressed content, not unpacked)");
+        if (k > 0) out.texts[s.slice(0, k)] = T("metaCompressedRaw", "(压缩内容，没解)");
       } else if (type === "IEND") {
         break;
       }
@@ -289,13 +289,13 @@ const M8Meta = (() => {
         return s.trim();
       }
       if (type === 1 || type === 7) {
-        return num === 1 ? t[off] : T("metaBinaryBytes", "(binary, {n} bytes)", { n: num });
+        return num === 1 ? t[off] : T("metaBinaryBytes", "(二进制 {n} 字节)", { n: num });
       }
       if (type === 3) {
-        return num === 1 ? u16(off) : T("metaArray", "(array)");
+        return num === 1 ? u16(off) : T("metaArray", "(数组)");
       }
       if (type === 4) {
-        return num === 1 ? u32f(off) : T("metaArray", "(array)");
+        return num === 1 ? u32f(off) : T("metaArray", "(数组)");
       }
       if (type === 5 || type === 10) {
         const n = u32f(off);
@@ -421,12 +421,12 @@ const M8Meta = (() => {
   function copyButton(text) {
     const b = document.createElement("button");
     b.type = "button";
-    b.textContent = T("copy", "Copy");
+    b.textContent = T("copy", "复制");
     b.addEventListener("click", function () {
       M8Meta.copyText(text).then(function () {
-        setStatus(T("copyDone", "Copied."));
+        setStatus(T("copyDone", "复制好了。"));
       }).catch(function () {
-        setStatus(T("copyFailed", "Could not copy - select it by hand."), true);
+        setStatus(T("copyFailed", "复制没成功，手动选一下吧。"), true);
       });
     });
     return b;
@@ -461,7 +461,7 @@ const M8Meta = (() => {
     pre.className = "code-block";
     /* 太长的 JSON 截一下，不然一个几十万字的工作流会把页面卡住 */
     const LIMIT = 200000;
-    pre.textContent = text.length > LIMIT ? text.slice(0, LIMIT) + T("metaTruncated", "\n... (too long, cut off)") : text;
+    pre.textContent = text.length > LIMIT ? text.slice(0, LIMIT) + T("metaTruncated", "\n…（太长，截断了）") : text;
     return pre;
   }
 
@@ -470,38 +470,38 @@ const M8Meta = (() => {
     panels.innerHTML = "";
 
     /* --- 文件信息 --- */
-    const fileCard = card(T("fileCard", "File"));
+    const fileCard = card(T("fileCard", "文件"));
     fileCard.appendChild(kv([
-      [T("fileName", "File name"), result.file.name],
-      [T("fileFormat", "Format"), result.file.format],
-      [T("fileSize", "Size"), fmtSize(result.file.size)],
-      [T("fileDimensions", "Dimensions"), result.file.width && result.file.height
-        ? T("metaSizePx", "{w} × {h} px", { w: result.file.width, h: result.file.height }) : ""],
-      [T("fileDepth", "Bit depth"), result.file.depth ? result.file.depth + " bit" : ""],
-      [T("fileColour", "Colour"), result.file.colorType || ""],
+      [T("fileName", "文件名"), result.file.name],
+      [T("fileFormat", "格式"), result.file.format],
+      [T("fileSize", "大小"), fmtSize(result.file.size)],
+      [T("fileDimensions", "尺寸"), result.file.width && result.file.height
+        ? T("metaSizePx", "{w} × {h} 像素", { w: result.file.width, h: result.file.height }) : ""],
+      [T("fileDepth", "位深"), result.file.depth ? result.file.depth + " bit" : ""],
+      [T("fileColour", "色彩"), result.file.colorType || ""],
     ]));
     panels.appendChild(fileCard);
 
     /* --- ComfyUI 生成参数 --- */
     if (result.comfy) {
       const c = result.comfy;
-      const cCard = card(T("metaParamsCard", "Generation parameters"), "ComfyUI");
+      const cCard = card(T("metaParamsCard", "生成参数"), "ComfyUI");
       cCard.appendChild(paramsGrid([
-        [T("metaModel", "Model"), c.models.length ? c.models.join("\n") : "", true],
+        [T("metaModel", "模型"), c.models.length ? c.models.join("\n") : "", true],
         ["LoRA", c.loras.length ? c.loras.join("\n") : "", true],
-        [T("metaSampler", "Sampler"), c.samplers.length ? c.samplers.join(" · ") : ""],
-        [T("metaSteps", "Steps"), c.steps],
+        [T("metaSampler", "采样器"), c.samplers.length ? c.samplers.join(" · ") : ""],
+        [T("metaSteps", "步数"), c.steps],
         ["CFG", c.cfg],
-        [T("metaSeed", "Seed"), c.seed],
-        [T("metaDenoise", "Denoise"), c.denoise],
-        [T("metaCanvas", "Canvas"), c.sizes.length ? c.sizes.join(" · ") : ""],
-        [T("metaNodeCount", "Nodes"), c.count],
+        [T("metaSeed", "种子"), c.seed],
+        [T("metaDenoise", "降噪"), c.denoise],
+        [T("metaCanvas", "画布"), c.sizes.length ? c.sizes.join(" · ") : ""],
+        [T("metaNodeCount", "节点数"), c.count],
       ]));
       panels.appendChild(cCard);
 
       /* --- 提示词 --- */
       if (c.prompts.length) {
-        const pCard = card(T("metaPrompts", "Prompts"));
+        const pCard = card(T("metaPrompts", "提示词"));
         const actions = document.createElement("div");
         actions.className = "card-actions";
         actions.appendChild(copyButton(c.prompts.join("\n\n---\n\n")));
@@ -510,7 +510,7 @@ const M8Meta = (() => {
           const pre = document.createElement("pre");
           pre.className = "code-block";
           pre.style.maxHeight = "160px";
-          pre.textContent = (c.prompts.length > 1 ? T("metaPromptIndex", "[{n}]\n", { n: i + 1 }) : "") + t;
+          pre.textContent = (c.prompts.length > 1 ? T("metaPromptIndex", "【{n}】\n", { n: i + 1 }) : "") + t;
           pCard.appendChild(pre);
         });
         panels.appendChild(pCard);
@@ -518,12 +518,12 @@ const M8Meta = (() => {
 
       /* --- 原始工作流 --- */
       if (result.workflowText) {
-        const wCard = card(T("metaWorkflowCard", "Workflow JSON"));
+        const wCard = card(T("metaWorkflowCard", "工作流 JSON"));
         const acts = document.createElement("div");
         acts.className = "card-actions";
         const fold = document.createElement("button");
         fold.type = "button";
-        fold.textContent = T("metaFold", "Expand / collapse");
+        fold.textContent = T("metaFold", "展开 / 收起");
         fold.addEventListener("click", function () { wCard.classList.toggle("folded"); });
         acts.appendChild(fold);
         acts.appendChild(copyButton(result.workflowText));
@@ -539,7 +539,7 @@ const M8Meta = (() => {
       const rows = [];
       Object.keys(result.exif.tags).forEach(function (k) {
         let v = result.exif.tags[k];
-        if (k === T("metaExifOrientation", "Orientation") && ORIENT[v]) v = T(ORIENT[v][0], ORIENT[v][1]);
+        if (k === T("metaExifOrientation", "方向") && ORIENT[v]) v = T(ORIENT[v][0], ORIENT[v][1]);
         if (v && typeof v === "object" && v.n !== undefined) {
           v = v.d > 1 ? (v.n / v.d).toFixed(2).replace(/\.?0+$/, "") : v.n;
         }
@@ -549,7 +549,7 @@ const M8Meta = (() => {
         return ["GPS · " + k, result.exif.gps[k]];
       });
       if (rows.length || gpsRows.length) {
-        const eCard = card("EXIF", T("metaCameraTag", "Camera info"));
+        const eCard = card("EXIF", T("metaCameraTag", "相机信息"));
         eCard.appendChild(kv(rows.concat(gpsRows)));
         panels.appendChild(eCard);
       }
@@ -560,7 +560,7 @@ const M8Meta = (() => {
       return k !== "prompt" && k !== "workflow";
     });
     if (others.length) {
-      const oCard = card(T("metaOtherText", "Embedded text"));
+      const oCard = card(T("metaOtherText", "内嵌文本"));
       others.forEach(function (k) {
         const h = document.createElement("p");
         h.className = "info-note";
@@ -578,10 +578,10 @@ const M8Meta = (() => {
 
     /* --- 什么都没有 --- */
     if (!panels.children.length) {
-      const nCard = card(T("metaNothingTitle", "Nothing to show"));
+      const nCard = card(T("metaNothingTitle", "没读到什么"));
       const p = document.createElement("p");
       p.className = "info-note";
-      p.textContent = T("metaNothingBody", "This image carries no generation parameters and no EXIF. It may have been through a screenshot tool or a social platform - they usually strip that info out.");
+      p.textContent = T("metaNothingBody", "这张图里没有生成参数，也没有 EXIF。可能是被截图工具或社交平台处理过 —— 它们通常会把这些信息抹掉。");
       nCard.appendChild(p);
       panels.appendChild(nCard);
     }
@@ -592,7 +592,7 @@ const M8Meta = (() => {
   function readFile(file) {
     if (!file) return;
     if (!/^image\//.test(file.type || "")) {
-      setStatus(T("metaNotImage", "This is not an image file."), true);
+      setStatus(T("metaNotImage", "这不是图片文件。"), true);
       return;
     }
     if (lastUrl) {
@@ -601,15 +601,15 @@ const M8Meta = (() => {
     }
     lastUrl = URL.createObjectURL(file);
     el.thumb.src = lastUrl;
-    el.name.textContent = file.name || T("unnamedFile", "(no name)");
-    setStatus(T("metaParsing", "Parsing..."));
+    el.name.textContent = file.name || T("unnamedFile", "(没有名字)");
+    setStatus(T("metaParsing", "正在解析…"));
 
     const name = (file.name || "").toLowerCase();
     const format = /\.png$/.test(name) || file.type === "image/png" ? "PNG"
       : /\.jpe?g$/.test(name) || file.type === "image/jpeg" ? "JPEG"
       : /\.webp$/.test(name) ? "WebP"
       : /\.gif$/.test(name) ? "GIF"
-      : (file.type || T("metaUnknownFormat", "unknown")).replace("image/", "").toUpperCase();
+      : (file.type || T("metaUnknownFormat", "未知")).replace("image/", "").toUpperCase();
 
     Promise.resolve()
       .then(function () {
@@ -630,7 +630,7 @@ const M8Meta = (() => {
             result.file.depth = png.info.depth;
             const ct = COLOR_TYPES[png.info.colorType];
             result.file.colorType = ct ? T(ct[0], ct[1])
-              : T("metaColorTypeUnknown", "Type {n}", { n: png.info.colorType });
+              : T("metaColorTypeUnknown", "类型 {n}", { n: png.info.colorType });
             result.texts = png.texts;
             /* ComfyUI 把工作流塞在 workflow 里，API 格式的参数塞在 prompt 里 */
             result.workflowText = png.texts.workflow || "";
@@ -655,16 +655,16 @@ const M8Meta = (() => {
         el.body.classList.remove("is-hidden");
         render(result);
         const bits = [];
-        if (result.comfy) bits.push(T("metaParamsCard", "Generation parameters"));
-        if (result.workflowText) bits.push(T("metaWorkflow", "Workflow"));
+        if (result.comfy) bits.push(T("metaParamsCard", "生成参数"));
+        if (result.workflowText) bits.push(T("metaWorkflow", "工作流"));
         if (result.exif) bits.push("EXIF");
         setStatus(bits.length
-          ? T("metaReadOk", "Read: {parts}", { parts: bits.join(" · ") })
-          : T("metaReadNothing", "No metadata found in this image."));
+          ? T("metaReadOk", "读到了：{parts}", { parts: bits.join(" · ") })
+          : T("metaReadNothing", "这张图里没读到元数据。"));
       })
       .catch(function (e) {
-        setStatus(T("metaParseError", "Parsing failed: ")
-          + (e && e.message ? e.message : T("metaUnknownReason", "unknown reason")), true);
+        setStatus(T("metaParseError", "解析出错了： ")
+          + (e && e.message ? e.message : T("metaUnknownReason", "未知原因")), true);
       });
   }
 

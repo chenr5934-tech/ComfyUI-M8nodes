@@ -226,7 +226,7 @@ const M8Pixel = (() => {
     const o = opts || {};
     const W = image.width, H = image.height;
     if (!W || !H || !image.data || image.data.length < W * H * 4) {
-      throw new Error(T("pxIncomplete", "The image data is incomplete"));
+      throw new Error(T("pxIncomplete", "图片数据不完整"));
     }
     const block = clampInt(o.block, 2, 64, 8);
     const style = STYLES.indexOf(o.style) >= 0 ? o.style : "standard";
@@ -320,13 +320,13 @@ const M8Pixel = (() => {
 
   function loadImage(f) {
     return new Promise(function (resolve, reject) {
-      if (!f) { reject(new Error(T("pxNoFile", "No file was selected"))); return; }
+      if (!f) { reject(new Error(T("pxNoFile", "没有选中文件"))); return; }
       const url = URL.createObjectURL(f);
       const img = new Image();
       img.onload = function () { URL.revokeObjectURL(url); resolve(img); };
       img.onerror = function () {
         URL.revokeObjectURL(url);
-        reject(new Error(T("pxUnreadable", "No image could be read from this file")));
+        reject(new Error(T("pxUnreadable", "这个文件读不出图片内容")));
       };
       img.src = url;
     });
@@ -369,7 +369,7 @@ const M8Pixel = (() => {
     if (thumb) el.thumb.src = thumb.url;
     el.drop.querySelector("strong").textContent = file
       ? file.name
-      : T("dropPrompt", "Click to choose, drag it in, or paste with Ctrl+V");
+      : T("dropPrompt", "点击选择、拖进来，或者 Ctrl+V 粘贴");
     el.hint.textContent = thumb ? thumb.w + " × " + thumb.h : "PNG / JPEG / WebP";
   }
 
@@ -377,7 +377,7 @@ const M8Pixel = (() => {
     file = f;
     thumb = null;
     paint();
-    setStatus(f ? T("pxReady", "The image is in place - you can convert it now.") : "");
+    setStatus(f ? T("pxReady", "图已就位，可以转化了。") : "");
     if (!f) return;
     makeThumb(f).then(function (t) {
       if (file === f) { thumb = t; paint(); }
@@ -400,18 +400,18 @@ const M8Pixel = (() => {
   /* 风格名当场查表：这里是模块顶层，本文件先于 i18n.js 执行，
      顶层取值只会拿到 undefined。四个键和 pixel.html 的选项共用同一份译文。 */
   function styleLabel(style) {
-    if (style === "clean") return T("pixelStyleClean", "Plain - no convolution");
-    if (style === "standard") return T("pixelStyleStandard", "Standard - mean 3x3 antialiasing");
-    if (style === "soft") return T("pixelStyleSoft", "Soft - Gaussian 5x5");
-    if (style === "crisp") return T("pixelStyleCrisp", "Crisp - antialiasing + sharpening");
+    if (style === "clean") return T("pixelStyleClean", "原味 · 不卷积");
+    if (style === "standard") return T("pixelStyleStandard", "标准 · 均值 3×3 抗锯齿");
+    if (style === "soft") return T("pixelStyleSoft", "柔和 · 高斯 5×5");
+    if (style === "crisp") return T("pixelStyleCrisp", "硬朗 · 抗锯齿 + 锐化");
     return style;
   }
 
   async function run() {
     if (busy) return;
-    if (!file) { setStatus(T("pxPickFirst", "Choose an image first."), true); return; }
+    if (!file) { setStatus(T("pxPickFirst", "先选一张图。"), true); return; }
     busy = true;
-    setStatus(T("pxComputing", "Working it out..."));
+    setStatus(T("pxComputing", "正在算…"));
 
     let out;
     try {
@@ -424,7 +424,7 @@ const M8Pixel = (() => {
         zoom: Number(el.zoom.value),
       });
     } catch (e) {
-      setStatus(e && e.message ? e.message : T("pxFailed", "Something went wrong."), true);
+      setStatus(e && e.message ? e.message : T("pxFailed", "出错了。"), true);
       busy = false;
       return;
     }
@@ -432,7 +432,7 @@ const M8Pixel = (() => {
     const r = out.report;
     const url = toURL({ data: out.data, width: out.width, height: out.height });
     el.out.src = url;
-    el.meta.textContent = T("pxMeta", "{outW} × {outH} · PNG (pixel size {pw} × {ph})", {
+    el.meta.textContent = T("pxMeta", "{outW} × {outH} · PNG（像素尺寸 {pw} × {ph}）", {
       outW: out.width,
       outH: out.height,
       pw: r.pixelW,
@@ -440,28 +440,27 @@ const M8Pixel = (() => {
     });
     el.panels.innerHTML = "";
 
-    const card = infoCard(T("pxCardTitle", "Pixel art"), T("pxCardTag", "Done"));
+    const card = infoCard(T("pxCardTitle", "像素图"), T("pxCardTag", "转好了"));
     const note = document.createElement("p");
     note.className = "info-note";
-    note.textContent = T("pxNote",
-      "Zoom into the result: every pixel should be a tidy square with hard edges, which is what nearest-neighbour gives you. If the edges look soft, something interpolated them.");
+    note.textContent = T("pxNote", "截图里放大看，每个像素应该是一个规整的方块，边界是硬的 —— 那说明用的是最近邻。要是边界发糊，那就是插值了。");
     card.appendChild(note);
     card.appendChild(kv([
-      [T("pxSourceSize", "Source size"), r.srcW + " × " + r.srcH],
-      [T("pxPixelSize", "Pixel size"), T("pxPixelSizeVal", "{w} × {h} ({n} pixel{plural})", {
+      [T("pxSourceSize", "原始尺寸"), r.srcW + " × " + r.srcH],
+      [T("pxPixelSize", "像素尺寸"), T("pxPixelSizeVal", "{w} × {h}（{n} 个像素）", {
         w: r.pixelW,
         h: r.pixelH,
         n: r.pixelW * r.pixelH,
         plural: r.pixelW * r.pixelH === 1 ? "" : "s",
       })],
-      [T("pxOutputSize", "Output size"), out.width + " × " + out.height],
+      [T("pxOutputSize", "输出尺寸"), out.width + " × " + out.height],
     ]));
     const acts = document.createElement("div");
     acts.className = "card-actions";
     const dl = document.createElement("button");
     dl.type = "button";
     dl.className = "gen-btn";
-    dl.textContent = T("pxDownload", "Download the pixel art");
+    dl.textContent = T("pxDownload", "下载像素图");
     dl.addEventListener("click", function () {
       const a = document.createElement("a");
       a.href = el.out.src;
@@ -473,31 +472,29 @@ const M8Pixel = (() => {
     acts.appendChild(dl);
     card.querySelector("h2").appendChild(acts);
 
-    const card2 = infoCard(T("pxHowTitle", "How this one was worked out"), T("pxHowTag", "Convolution chain"));
+    const card2 = infoCard(T("pxHowTitle", "这一张是怎么算的"), T("pxHowTag", "卷积链路"));
     card2.appendChild(kv([
-      [T("pixelStyle", "Style"), styleLabel(r.style)],
-      [T("pixelBlock", "Pixel block size"), T("pxBlockVal",
-        "{n} px (every {n} × {n} source pixels become one)", { n: r.block })],
-      [T("pixelLevels", "Colours"), r.levels > 0
-        ? T("pxLevelsVal", "{n} steps per channel (up to {colors} colours)",
+      [T("pixelStyle", "风格"), styleLabel(r.style)],
+      [T("pixelBlock", "像素块大小"), T("pxBlockVal", "{n} px（每 {n} × {n} 个原始像素合成一个）", { n: r.block })],
+      [T("pixelLevels", "颜色数"), r.levels > 0
+        ? T("pxLevelsVal", "每通道 {n} 档（最多 {colors} 色）",
           { n: r.levels, colors: r.colors.toLocaleString() })
-        : T("pxLevelsUnlimited", "No colour limit")],
-      [T("pxDitherLabel", "Dithering"), r.levels > 0
-        ? (r.dither ? T("pxDitherOn", "On (Bayer 4x4 ordered dither)") : T("pxDitherOff", "Off"))
+        : T("pxLevelsUnlimited", "不限色")],
+      [T("pxDitherLabel", "抖动"), r.levels > 0
+        ? (r.dither ? T("pxDitherOn", "开（Bayer 4×4 有序抖动）") : T("pxDitherOff", "关"))
         : "—"],
-      [T("pixelZoom", "Upscale"), T("pxZoomVal", "{n}× nearest neighbour", { n: r.zoom })],
+      [T("pixelZoom", "放大倍数"), T("pxZoomVal", "{n}× 最近邻", { n: r.zoom })],
     ]));
     const p2 = document.createElement("p");
     p2.className = "info-note";
-    p2.textContent = T("pxChain",
-      "Chain: antialiasing convolution -> area-average downsample -> sharpening convolution -> colour reduction -> nearest-neighbour upscale. Picking \"Plain\" turns the two convolution steps off and goes straight to area averaging, which is how you can see what convolution was doing.");
+    p2.textContent = T("pxChain", "链路：抗锯齿卷积 → 面积平均降维 → 锐化卷积 → 减色 → 最近邻放大。选「原味」就是把卷积那两步关掉，直接面积平均，可以拿它对比卷积到底做了什么。");
     card2.appendChild(p2);
 
     el.panels.appendChild(card);
     el.panels.appendChild(card2);
     el.body.classList.remove("is-hidden");
     el.again.classList.remove("is-hidden");
-    setStatus(T("pxDone", "Done"));
+    setStatus(T("pxDone", "转好了。"));
     busy = false;
   }
 
@@ -558,13 +555,13 @@ const M8Pixel = (() => {
     [el.style, el.block, el.levels, el.zoom].forEach(function (s) {
       s.addEventListener("change", function () {
         if (!el.body.classList.contains("is-hidden")) {
-          setStatus(T("pxParamsChanged", "The parameters changed - click Convert to run it again."));
+          setStatus(T("pxParamsChanged", "参数变了，点「转化」重新算一次。"));
         }
       });
     });
     el.dither.addEventListener("change", function () {
       if (!el.body.classList.contains("is-hidden")) {
-        setStatus(T("pxParamsChanged", "The parameters changed - click Convert to run it again."));
+        setStatus(T("pxParamsChanged", "参数变了，点「转化」重新算一次。"));
       }
     });
 

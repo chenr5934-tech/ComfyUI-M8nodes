@@ -213,7 +213,7 @@ const M8Mask = (() => {
       strip.dataset.index = String(i);
       strip.setAttribute("role", "slider");
       strip.setAttribute("tabindex", "0");
-      strip.setAttribute("aria-label", T("maskBandAria", "Band {n}", { n: i + 1 }));
+      strip.setAttribute("aria-label", T("maskBandAria", "第 {n} 条遮罩", { n: i + 1 }));
       strip.setAttribute("aria-valuemin", "0");
       strip.setAttribute("aria-valuemax", "100");
       strip.setAttribute("aria-valuenow", String(Math.round(c)));
@@ -277,17 +277,17 @@ const M8Mask = (() => {
 
   function renderInfo() {
     if (!el.countOut) return;
-    el.countOut.textContent = T("maskBandCount", "{n} bands", { n: state.count });
+    el.countOut.textContent = T("maskBandCount", "{n} 条", { n: state.count });
     if (!el.info) return;
     if (!state.img) { el.info.textContent = ""; return; }
     const r = rectOf(0);
     const one = state.dir === "h"
-      ? T("maskPixelTall", "{n} px tall", { n: Math.round(r.h) })
-      : T("maskPixelWide", "{n} px wide", { n: Math.round(r.w) });
-    let text = T("maskInfo", "{n} bands - {one} each - about {pct}% covered in total",
+      ? T("maskPixelTall", "{n} 像素高", { n: Math.round(r.h) })
+      : T("maskPixelWide", "{n} 像素宽", { n: Math.round(r.w) });
+    let text = T("maskInfo", "{n} 条 · 每条 {one} · 合计盖住约 {pct}%",
       { n: state.count, one: one, pct: Math.round(state.count * state.thick) });
     /* 字号已经缩到下限还是排不下时说清楚，别让用户以为是自己没看见 */
-    if (state.tight) text += T("maskTightNote", " - the text runs long and the font is already at its smallest; thicker bands read better");
+    if (state.tight) text += T("maskTightNote", " · 文字偏长，字号已到最小，加厚遮罩会更清楚");
     el.info.textContent = text;
   }
 
@@ -379,18 +379,18 @@ const M8Mask = (() => {
   function generate() {
     if (!state.img) return;
     clearPreview();
-    setStatus(T("busyGenerating", "Generating..."));
+    setStatus(T("busyGenerating", "正在生成…"));
     const cv = document.createElement("canvas");
     drawTo(cv);
     const name = M8Studio.state.name + "-masked.png";
     if (typeof cv.toBlob === "function") {
       cv.toBlob(function (blob) {
-        if (!blob) { setStatus(T("generateFailed", "Generation failed."), true); return; }
+        if (!blob) { setStatus(T("generateFailed", "生成失败。"), true); return; }
         state.shot = URL.createObjectURL(blob);
         showPreview(name, cv.width, cv.height);
       }, "image/png");
     } else {
-      setStatus(T("browserNoExport", "This browser cannot export."), true);
+      setStatus(T("browserNoExport", "这个浏览器不支持导出。"), true);
     }
   }
 
@@ -404,7 +404,7 @@ const M8Mask = (() => {
     shot.className = "pv-shot";
     const im = document.createElement("img");
     im.src = state.shot;
-    im.alt = T("maskPreviewAlt", "Preview of the covered image");
+    im.alt = T("maskPreviewAlt", "遮挡效果预览");
     shot.appendChild(im);
 
     const meta = document.createElement("div");
@@ -418,7 +418,7 @@ const M8Mask = (() => {
     save.className = "pv-save";
     save.href = state.shot;
     save.download = name;
-    save.textContent = T("exportThisImage", "Export this image");
+    save.textContent = T("exportThisImage", "导出这张图");
 
     card.appendChild(shot);
     card.appendChild(meta);
@@ -426,10 +426,10 @@ const M8Mask = (() => {
     box.appendChild(card);
     el.preview.classList.remove("is-hidden");
     if (el.previewNote) {
-      el.previewNote.textContent = T("maskPreviewNote", "{n} bands", { n: state.count })
-        + (state.text ? "" : T("maskPreviewNoteNoText", " - no text written"));
+      el.previewNote.textContent = T("maskPreviewNote", "{n} 条遮罩", { n: state.count })
+        + (state.text ? "" : T("maskPreviewNoteNoText", " · 没有写文字"));
     }
-    setStatus(T("previewReadyExport", "Done. Export it once it looks right."));
+    setStatus(T("previewReadyExport", "生成好了，确认没问题就导出。"));
   }
 
   /* ------------------------------------------------------------ 入口 */
@@ -459,7 +459,7 @@ const M8Mask = (() => {
     state.centers = evenCenters(state.count);
     clearPreview();
     render();
-    setStatus(T("maskStatusHint", "Drag a band to move it; bands can overlap each other."));
+    setStatus(T("maskStatusHint", "拖黑条可以挪位置；条之间可以叠在一起。"));
   }
 
   function init() {

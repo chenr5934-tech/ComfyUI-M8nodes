@@ -50,7 +50,7 @@ function injectCss() {
 function presets() {
   return [
     {
-      label: T('presetRunLabel', 'Run one image'),
+      label: T('presetRunLabel', '跑一张图'),
       prompt: T('presetRunPrompt', [
         'Run one image on this canvas. Please work like this:',
         '1. Look at the canvas structure first and find where the prompt goes (keyword or positive-prompt nodes).',
@@ -63,7 +63,7 @@ function presets() {
       ].join('\n')),
     },
     {
-      label: T('presetLoraLabel', 'Pick LoRAs'),
+      label: T('presetLoraLabel', '选 LoRA'),
       prompt: T('presetLoraPrompt', [
         'Help me pick a few LoRAs. Call list_loras first to see what I have installed,',
         'then recommend 3 to 5 that fit what this canvas is currently doing:',
@@ -72,7 +72,7 @@ function presets() {
       ].join('\n')),
     },
     {
-      label: T('presetErrorsLabel', 'Check errors'),
+      label: T('presetErrorsLabel', '查报错'),
       prompt: T('presetErrorsPrompt', [
         'Check whether any recent task failed. Call get_recent_errors to get the records.',
         'If something failed, say clearly: which node, what the message was, the likely cause, and how to fix it.',
@@ -100,7 +100,7 @@ function readAsDataUrl(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(String(reader.result || ''));
-    reader.onerror = () => reject(reader.error || new Error(T('readFileFailed', 'Could not read the file')));
+    reader.onerror = () => reject(reader.error || new Error(T('readFileFailed', '读文件失败')));
     reader.readAsDataURL(file);
   });
 }
@@ -162,19 +162,19 @@ export class WhaleDialog {
     el.innerHTML = [
       '<div class="m8-cw-head">',
       '  <img src="' + assetUrl('whale.png') + '" alt="">',
-      '  <span class="m8-cw-title">' + T('dialogTitle', 'Little Whale') + '</span>',
-      '  <button class="m8-cw-btn" data-act="clear" title="' + T('clearTitle', 'Clear this conversation') + '">⌫</button>',
-      '  <button class="m8-cw-btn" data-act="close" title="' + T('closeTitle', 'Close') + '">×</button>',
+      '  <span class="m8-cw-title">' + T('dialogTitle', '小鲸鱼') + '</span>',
+      '  <button class="m8-cw-btn" data-act="clear" title="' + T('clearTitle', '清空这段对话') + '">⌫</button>',
+      '  <button class="m8-cw-btn" data-act="close" title="' + T('closeTitle', '关闭') + '">×</button>',
       '</div>',
       '<div class="m8-cw-body"></div>',
       '<div class="m8-cw-attach"></div>',
       '<div class="m8-cw-chips"></div>',
       '<div class="m8-cw-foot">',
-      '  <button class="m8-cw-btn" data-act="attach" title="' + T('attachTitle', 'Add images (for models that can see them)') + '">＋</button>',
-      '  <textarea class="m8-cw-input" rows="1" placeholder="' + T('inputPlaceholder', 'Say something... (type / to reference a skill, Shift+Enter for a newline)') + '"></textarea>',
-      '  <button class="m8-cw-send">' + T('send', 'Send') + '</button>',
+      '  <button class="m8-cw-btn" data-act="attach" title="' + T('attachTitle', '加图片（发给能看图的模型）') + '">＋</button>',
+      '  <textarea class="m8-cw-input" rows="1" placeholder="' + T('inputPlaceholder', '说点什么…（打 / 引用 skill，Shift+Enter 换行）') + '"></textarea>',
+      '  <button class="m8-cw-send">' + T('send', '发送') + '</button>',
       '</div>',
-      '<div class="m8-cw-resize" title="' + T('resizeTitle', 'Drag to resize') + '"></div>',
+      '<div class="m8-cw-resize" title="' + T('resizeTitle', '拖动调整大小') + '"></div>',
     ].join('\n');
     document.body.appendChild(el);
 
@@ -231,18 +231,18 @@ export class WhaleDialog {
 
     for (const file of files) {
       if (this.attachments.length >= MAX_IMAGES) {
-        M8.notify(T('tooManyImages', 'At most {n} images at a time', { n: MAX_IMAGES }), { kind: 'warn' });
+        M8.notify(T('tooManyImages', '一次最多带 {n} 张图', { n: MAX_IMAGES }), { kind: 'warn' });
         break;
       }
       if (file.size > MAX_IMAGE_BYTES) {
         M8.notify(
-          T('imageTooLarge', '{name} is too large ({mb} MB); pick a smaller one', {
+          T('imageTooLarge', '{name} 太大（{mb} MB），换小一点的', {
             name: file.name,
             mb: Math.round(file.size / 1024 / 1024),
           }),
           {
             kind: 'warn',
-            hint: T('imageTooLargeHint', 'Oversized images get rejected by the API and burn tokens'),
+            hint: T('imageTooLargeHint', '太大会被接口拒掉，也费 token'),
           },
         );
         continue;
@@ -273,7 +273,7 @@ export class WhaleDialog {
       const del = document.createElement('button');
       del.className = 'm8-cw-thumb-del';
       del.textContent = '×';
-      del.title = T('removeAttachment', 'Remove');
+      del.title = T('removeAttachment', '移除');
       del.addEventListener('click', () => {
         this.attachments.splice(index, 1);
         this.renderAttachments();
@@ -333,7 +333,7 @@ export class WhaleDialog {
     // 打 / 弹出已上传的 skill，和节点上是同一套交互
     M8.attachMention(this.inputEl, {
       getItems: async () => (await M8.apiGet('/skills/list')).skills,
-      emptyHint: T('noSkillsHint', 'No skill uploaded yet. Upload one from the Skill Loader node.'),
+      emptyHint: T('noSkillsHint', '还没有上传 skill。去 Skill 装载节点传一个。'),
     });
   }
 
@@ -468,7 +468,7 @@ export class WhaleDialog {
       // 空着一片黑看着像窗口坏了 —— 给一句照着能做的话
       const tip = document.createElement('div');
       tip.className = 'm8-cw-empty';
-      tip.textContent = T('emptyHint', 'Type something below to start. Use / to reference an installed skill.');
+      tip.textContent = T('emptyHint', '在下面说点什么就能聊。打 / 可以引用已装的 skill。');
       this.bodyEl.appendChild(tip);
       return;
     }
@@ -495,7 +495,7 @@ export class WhaleDialog {
       for (const url of images) {
         const img = document.createElement('img');
         img.src = url;
-        img.alt = T('attachmentAlt', 'Attachment');
+        img.alt = T('attachmentAlt', '附件');
         strip.appendChild(img);
       }
       el.appendChild(strip);
@@ -504,7 +504,7 @@ export class WhaleDialog {
     if (thinking) {
       const box = document.createElement('div');
       box.className = 'm8-cw-think';
-      box.textContent = T('thinkingShow', 'Thinking ▾');
+      box.textContent = T('thinkingShow', '思考过程 ▾');
       const inner = document.createElement('div');
       inner.className = 'm8-cw-think-body';
       inner.textContent = thinking;
@@ -512,8 +512,8 @@ export class WhaleDialog {
       box.addEventListener('click', () => {
         box.classList.toggle('-open');
         box.firstChild.textContent = box.classList.contains('-open')
-          ? T('thinkingHide', 'Thinking ▴')
-          : T('thinkingShow', 'Thinking ▾');
+          ? T('thinkingHide', '思考过程 ▴')
+          : T('thinkingShow', '思考过程 ▾');
       });
       el.appendChild(box);
     }
@@ -546,7 +546,7 @@ export class WhaleDialog {
     // 图片跟着消息走：读成 data URL 直接塞进 content，不落盘、不走上传接口
     const images = this.attachments.map((item) => item.dataUrl);
     this.history.push({ role: 'user', content: this.buildUserContent(text) });
-    this.appendMessage('user', text || T('imageOnly', '(image)'), { images });
+    this.appendMessage('user', text || T('imageOnly', '（图片）'), { images });
 
     this.attachments = [];
     this.renderAttachments();
@@ -584,7 +584,7 @@ export class WhaleDialog {
     for (let round = 1; round <= MAX_TOOL_ROUNDS; round++) {
       const busyEl = this.appendMessage(
         'assistant',
-        round === 1 ? T('thinking', 'Little Whale is thinking...') : T('stillThinking', 'Still thinking...'),
+        round === 1 ? T('thinking', '小鲸鱼在想…') : T('stillThinking', '接着想…'),
         { kind: 'busy' },
       );
 
@@ -614,7 +614,7 @@ export class WhaleDialog {
       this.history.push(turn);
 
       if (!calls.length) {
-        if (!data.text) this.note(T('emptyReply', 'The model returned no content this time.'));
+        if (!data.text) this.note(T('emptyReply', '模型这次没给出内容。'));
         this.reportCost(data);
         return;
       }
@@ -622,19 +622,19 @@ export class WhaleDialog {
       for (const call of calls) {
         const name = call.function?.name || '?';
         const label = toolLabel(name);
-        const pending = this.note(T('runningTool', 'Running {label}...', { label }), 'busy');
+        const pending = this.note(T('runningTool', '正在{label}…', { label }), 'busy');
         const result = await runToolCall(call);
         pending.remove();
         // 工具干了什么要留在对话里 —— 尤其改参数和排队，
         // 用户得能回头看见它到底动了什么
-        this.note(T('toolResult', '[{label}] {result}', { label, result }), 'tool');
+        this.note(T('toolResult', '【{label}】{result}', { label, result }), 'tool');
         this.history.push({ role: 'tool', tool_call_id: call.id, content: result });
       }
 
       this.persist();
     }
 
-    this.note(T('toolRoundsExceeded', 'The tool went back and forth {n} rounds without finishing, so I stopped - I may be going in circles on something.', { n: MAX_TOOL_ROUNDS }));
+    this.note(T('toolRoundsExceeded', '工具来回跑了 {n} 轮还没收尾，先停一下 —— 可能我在某件事上绕圈了。', { n: MAX_TOOL_ROUNDS }));
   }
 
   /**
@@ -646,8 +646,8 @@ export class WhaleDialog {
   reportCost(data) {
     if (!data || !(data.cost > 0)) return;
 
-    const peak = data.peak ? T('peakSuffix', ' (peak rate)') : '';
-    this.note(T('turnCostNote', 'This turn cost {cost}{peak}', { cost: data.costText, peak }), 'tool');
+    const peak = data.peak ? T('peakSuffix', '（高峰单价）') : '';
+    this.note(T('turnCostNote', '本轮消耗 {cost}{peak}', { cost: data.costText, peak }), 'tool');
 
     if (this.ctx.settings?.turnCost === false) return;
 
@@ -657,10 +657,10 @@ export class WhaleDialog {
     // 同一只鲸鱼说两种长相的话，看着像两个插件拼起来的
     widget.showBubble(
       widget.renderBubble({
-        label: T('turnCostBubbleLabel', 'Last turn cost'),
+        label: T('turnCostBubbleLabel', '上一轮对话消耗'),
         symbol: '¥',
         amount: String(data.costText || '').replace(/^¥/, ''),
-        hint: data.peak ? T('peakRate', 'peak rate') : T('offPeakRate', 'off-peak rate'),
+        hint: data.peak ? T('peakRate', '高峰单价') : T('offPeakRate', '空闲单价'),
       }),
       Number(this.ctx.settings?.turnCostCloseMs ?? 4000),
     );

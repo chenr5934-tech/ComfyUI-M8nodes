@@ -146,33 +146,33 @@ const DIST_FAR_STRONGER = new Set(["medium", "full", "wide"]);
    一刻就求值定死了，那时中文还没到 —— 表里永远是英文，之后再也不会更新。getter
    每次访问才求值，所以取到的一直是当前语言。 */
 const AXIS_LABELS = {
-  get x() { return T("axis.x", "Left / Right (X)"); },
-  get y() { return T("axis.y", "Up / Down (Y)"); },
-  get z() { return T("axis.z", "Near / Far (Z)"); },
-  get roll() { return T("axis.roll", "Roll"); },
+  get x() { return T("axis.x", "左右 (X)"); },
+  get y() { return T("axis.y", "上下 (Y)"); },
+  get z() { return T("axis.z", "远近 (Z)"); },
+  get roll() { return T("axis.roll", "翻滚 (R)"); },
 };
 const EXTRA_LABELS = {
-  get lens() { return T("extra.lens", "Lens"); },
-  get dof() { return T("extra.dof", "Depth"); },
-  get movement() { return T("extra.movement", "Camera move"); },
-  get composition() { return T("extra.composition", "Composition"); },
-  get style() { return T("extra.style", "Style"); },
+  get lens() { return T("extra.lens", "镜头"); },
+  get dof() { return T("extra.dof", "景深"); },
+  get movement() { return T("extra.movement", "运镜"); },
+  get composition() { return T("extra.composition", "构图"); },
+  get style() { return T("extra.style", "风格"); },
 };
 const FIELD_LABELS = {
-  get front() { return T("field.front", "Front"); },
-  get back() { return T("field.back", "Back"); },
-  get left() { return T("field.left", "Left"); },
-  get right() { return T("field.right", "Right"); },
+  get front() { return T("field.front", "正面"); },
+  get back() { return T("field.back", "背面"); },
+  get left() { return T("field.left", "左侧"); },
+  get right() { return T("field.right", "右侧"); },
   get bird() { return T("field.bird", "Bird's eye"); },
-  get high() { return T("field.high", "High angle"); },
-  get eye() { return T("field.eye", "Eye level"); },
-  get low() { return T("field.low", "Low angle"); },
+  get high() { return T("field.high", "俯视"); },
+  get eye() { return T("field.eye", "平视"); },
+  get low() { return T("field.low", "仰视"); },
   get worm() { return T("field.worm", "Worm's eye"); },
-  get ecu() { return T("field.ecu", "Extreme close-up"); },
-  get cu() { return T("field.cu", "Close-up"); },
-  get medium() { return T("field.medium", "Medium shot"); },
-  get full() { return T("field.full", "Full shot"); },
-  get wide() { return T("field.wide", "Wide shot"); },
+  get ecu() { return T("field.ecu", "大特写"); },
+  get cu() { return T("field.cu", "特写"); },
+  get medium() { return T("field.medium", "中景"); },
+  get full() { return T("field.full", "全身"); },
+  get wide() { return T("field.wide", "远景"); },
 };
 const LENS_OPTIONS = [
   "85mm lens", "50mm lens", "35mm lens", "24mm lens",
@@ -779,8 +779,8 @@ function makeFieldRow(label, value, onInput, placeholder) {
 
 /* 这两条是字符串不是表，没法用 getter；改成函数，取的时候才是当前语言。
    用处都在同一段里（下面 hintEl.textContent 那几处）。 */
-const hintRelative = () => T("hint.relative", "Drag the canvas: grabs the world and rotates it, no jumps");
-const hintAbsolute = () => T("hint.absolute", "Drag the canvas: the pointer position is the parameter (absolute mapping)");
+const hintRelative = () => T("hint.relative", "拖拽画布 · 抓住世界旋转（不跳变）");
+const hintAbsolute = () => T("hint.absolute", "拖拽画布 · 鼠标位置即参数（绝对映射）");
 
 function setup(node) {
   const w = {
@@ -842,15 +842,15 @@ function setup(node) {
 
   /* ---------------- 拖拽模式 + 归位 ---------------- */
   const modeRow = el("div", "display:flex;gap:8px;align-items:center;flex-wrap:wrap;");
-  const modeBtn = makeButton(T("relDrag", "Relative drag"), () => {
+  const modeBtn = makeButton(T("relDrag", "相对拖拽"), () => {
     state.absolute = !state.absolute;
-    modeBtn.textContent = state.absolute ? T("absDrag", "Absolute drag") : T("relDrag", "Relative drag");
+    modeBtn.textContent = state.absolute ? T("absDrag", "绝对拖拽") : T("relDrag", "相对拖拽");
     hintEl.textContent = state.absolute ? hintAbsolute() : hintRelative();
     paint();
   });
-  modeBtn.title = T("modeTip", "Relative: grabs the world and rotates it without jumps. Absolute: the pointer position is the parameter.");
+  modeBtn.title = T("modeTip", "相对：抓住世界旋转，不跳变。绝对：鼠标位置即参数。");
   modeRow.appendChild(modeBtn);
-  modeRow.appendChild(makeButton(T("reset", "Reset (X/Y/Z/R=0)"), () => {
+  modeRow.appendChild(makeButton(T("reset", "归位 (X/Y/Z/R=0)"), () => {
     state.x = 0; state.y = 0; state.z = 0; state.roll = 0;
     commit();
   }));
@@ -858,7 +858,7 @@ function setup(node) {
 
   /* ---------------- 提示词预览 ---------------- */
   const previewLabel = el("div", "font-size:12px;color:rgba(255,255,255,0.55);");
-  previewLabel.textContent = T("previewLabel", "Camera prompt");
+  previewLabel.textContent = T("previewLabel", "相机提示词");
   root.appendChild(previewLabel);
 
   const preview = el("textarea", "width:100%;min-height:52px;resize:vertical;font-size:13px;line-height:1.5;background:rgb(0 0 0 / 23%);border:1px solid #333;color:" + PALETTE.orbitAz + ";box-sizing:border-box;border-radius:6px;padding:6px;font-family:monospace;");
@@ -951,7 +951,7 @@ function setup(node) {
       const baseZ = state.z;
       const step = clamp(Number(state.cfg.drag_step) || 0.004, 0.0005, 0.02);
       canvas.style.cursor = "ew-resize";
-      hintEl.textContent = T("hintDrag", "drag left/right: distance");
+      hintEl.textContent = T("hintDrag", "左右拖 · 调远近");
 
       const move = (e) => {
         state.z = clamp(baseZ - (e.clientX - startX) * step, -1, 1);
@@ -980,8 +980,8 @@ function setup(node) {
     const baseY = state.y;
     canvas.style.cursor = "none";
     hintEl.textContent = state.absolute
-        ? T("hintAbsActive", "absolute mapping: the pointer is the camera direction")
-        : T("hintRelActive", "relative drag: grabs the world and rotates it");
+        ? T("hintAbsActive", "绝对映射中 · 鼠标即相机方位")
+        : T("hintRelActive", "相对拖拽中 · 抓住世界旋转");
 
     const apply = (e) => {
       if (state.absolute) {
@@ -1060,7 +1060,7 @@ function setup(node) {
 
   /* ------------------------------------------------------------ 按钮行 */
 
-  presetSelect.appendChild(new Option(T("loadConfig", "Load config"), "", true, true));
+  presetSelect.appendChild(new Option(T("loadConfig", "加载配置"), "", true, true));
   presetSelect.disabled = false;
 
   async function refreshPresets(select) {
@@ -1068,7 +1068,7 @@ function setup(node) {
       const data = await M8.apiGet("/cam/configs");
       const files = data.files || [];
       presetSelect.innerHTML = "";
-      const head = new Option(T("loadConfig", "Load config"), "", true, true);
+      const head = new Option(T("loadConfig", "加载配置"), "", true, true);
       head.disabled = true;
       presetSelect.appendChild(head);
       for (const name of files) presetSelect.appendChild(new Option(name, name));
@@ -1078,79 +1078,79 @@ function setup(node) {
     }
   }
 
-  bar.appendChild(makeButton(T("save", "Save"), async () => {
+  bar.appendChild(makeButton(T("save", "保存"), async () => {
     const suggested = "camera_" + Date.now().toString().slice(-6);
-    const name = window.prompt(T("promptName", "Config name (stored in m8/data/camera-configs/)"), suggested);
+    const name = window.prompt(T("promptName", "配置名（存在 m8/data/camera-configs/）"), suggested);
     if (name == null) return;
     const clean = String(name).trim();
     if (!clean) {
-      M8.notify(T("nameRequired", "The name cannot be empty"), { kind: "warn" });
+      M8.notify(T("nameRequired", "名字不能空着"), { kind: "warn" });
       return;
     }
     try {
       await M8.apiPost("/cam/configs/save", { name: clean, config: state.cfg });
-      M8.notify(T("configSaved", "Config saved: {name}", { name: clean }), { kind: "ok", timeout: 3200 });
+      M8.notify(T("configSaved", "配置已保存：{name}", { name: clean }), { kind: "ok", timeout: 3200 });
       await refreshPresets(clean);
     } catch (exc) {
-      M8.notifyError(exc, T("savingConfig", "saving the camera config"));
+      M8.notifyError(exc, T("savingConfig", "保存相机配置"));
     }
   }));
 
-  bar.appendChild(makeButton(T("copy", "Copy"), async () => {
+  bar.appendChild(makeButton(T("copy", "复制"), async () => {
     const text = computePrompt(state.x, state.y, state.z, state.roll, state.cfg);
     if (!text) {
-      M8.notify(T("nothingToCopy", "There is no prompt to copy yet"), { kind: "warn" });
+      M8.notify(T("nothingToCopy", "当前没有可复制的提示词"), { kind: "warn" });
       return;
     }
     try {
       await navigator.clipboard.writeText(text);
-      M8.notify(T("copied", "Prompt copied"), { kind: "ok", timeout: 2600 });
+      M8.notify(T("copied", "提示词已复制"), { kind: "ok", timeout: 2600 });
     } catch (exc) {
       M8.warn("复制失败：", exc);
-      M8.notify(T("clipboardBlocked", "The browser blocked the clipboard"),
-        { kind: "warn", hint: T("clipboardBlockedHint", "Selecting it manually from the preview above works just as well") });
+      M8.notify(T("clipboardBlocked", "浏览器拦了剪贴板"),
+        { kind: "warn", hint: T("clipboardBlockedHint", "从上面的预览框里手动选走也一样") });
     }
   }));
 
-  bar.appendChild(makeButton(T("paste", "Paste"), async () => {
+  bar.appendChild(makeButton(T("paste", "粘贴"), async () => {
     if (!navigator.clipboard?.readText) {
-      M8.notify(T("noClipboard", "This environment cannot read the clipboard"), { kind: "warn" });
+      M8.notify(T("noClipboard", "当前环境不支持读剪贴板"), { kind: "warn" });
       return;
     }
     try {
       const text = await navigator.clipboard.readText();
       const cfg = JSON.parse(text);
       if (!cfg || typeof cfg !== "object" || Array.isArray(cfg)) {
-        M8.notify(T("notAConfig", "The clipboard does not hold a config object"),
-        { kind: "warn", hint: T("notAConfigHint", "It should be JSON in the form { ... }") });
+        M8.notify(T("notAConfig", "剪贴板里不是配置对象"),
+        { kind: "warn", hint: T("notAConfigHint", "内容该是 { ... } 形式的 JSON") });
         return;
       }
       w.config.value = text;
       state.cfg = loadConfig(text);
       commit();
-      M8.notify(T("configFromClipboard", "Config loaded from the clipboard"), { kind: "ok", timeout: 2600 });
+      M8.notify(T("configFromClipboard", "配置已从剪贴板载入"), { kind: "ok", timeout: 2600 });
     } catch (exc) {
-      M8.notify(T("badJsonClipboard", "The clipboard does not hold valid JSON"),
+      M8.notify(T("badJsonClipboard", "剪贴板里不是合法 JSON"),
         { kind: "err", hint: String(exc.message || exc) });
     }
   }));
 
-  bar.appendChild(makeButton(T("settings", "Settings"), () => {
+  bar.appendChild(makeButton(T("settings", "设置"), () => {
     const cfg = JSON.stringify(state.cfg, null, 2);
-    const text = window.prompt(T("promptConfig", "Camera config (JSON)"), cfg);
+    const text = window.prompt(T("promptConfig", "相机配置（JSON）"), cfg);
     if (text == null) return;
     try {
       const parsed = JSON.parse(text);
       if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-        M8.notify(T("topLevelObject", "The config must be an object at the top level"), { kind: "warn" });
+        M8.notify(T("topLevelObject", "配置顶层要是一个对象"), { kind: "warn" });
         return;
       }
       w.config.value = text;
       state.cfg = loadConfig(text);
       commit();
-      M8.notify(T("configApplied", "Config applied"), { kind: "ok", timeout: 2600 });
+      M8.notify(T("configApplied", "配置已应用"), { kind: "ok", timeout: 2600 });
     } catch (exc) {
-      M8.notify(T("badJson", "That is not valid JSON"), { kind: "err", hint: String(exc.message || exc) });
+      M8.notify(T("badJson", "这段不是合法 JSON"), { kind: "err", hint: String(exc.message || exc) });
     }
   }));
 
@@ -1164,17 +1164,17 @@ function setup(node) {
       w.config.value = JSON.stringify(data.config);
       state.cfg = loadConfig(w.config.value);
       commit();
-      M8.notify(T("configLoaded", "Config loaded: {name}", { name }), { kind: "ok", timeout: 2600 });
+      M8.notify(T("configLoaded", "已载入配置：{name}", { name }), { kind: "ok", timeout: 2600 });
     } catch (exc) {
-      M8.notifyError(exc, T("loadingConfig", "loading the camera config"));
+      M8.notifyError(exc, T("loadingConfig", "载入相机配置"));
     }
   });
 
   /* ------------------------------------------------------------ 折叠区 */
 
   /* 权重设置：四条轴的总预算 + 死区 + 权重边界。 */
-  const foldWeight = makeFold(T("foldWeights", "Weight settings"), false);
-  const azRow = makeFieldRow(T("azBudget", "Direction budget"), "", (on, v) => {
+  const foldWeight = makeFold(T("foldWeights", "权重设置"), false);
+  const azRow = makeFieldRow(T("azBudget", "方位预算"), "", (on, v) => {
     state.cfg.azimuth.enabled = on;
     state.cfg.azimuth.weight = parseFloat(v) || 10;
     w.config.value = JSON.stringify(state.cfg);
@@ -1184,7 +1184,7 @@ function setup(node) {
   azRow.input.value = String(state.cfg.azimuth.weight);
   foldWeight.body.appendChild(azRow.row);
 
-  const dzRow = makeFieldRow(T("azDeadzone", "Direction dead zone"), "", (on, v) => {
+  const dzRow = makeFieldRow(T("azDeadzone", "方位死区"), "", (on, v) => {
     state.cfg.azimuth.deadzone_ratio = parseFloat(v) || 0.2;
     w.config.value = JSON.stringify(state.cfg);
     commit();
@@ -1192,7 +1192,7 @@ function setup(node) {
   dzRow.input.value = String(state.cfg.azimuth.deadzone_ratio);
   foldWeight.body.appendChild(dzRow.row);
 
-  const wminRow = makeFieldRow(T("weightMin", "Weight floor"), "", (on, v) => {
+  const wminRow = makeFieldRow(T("weightMin", "权重下限"), "", (on, v) => {
     state.cfg.weight_min = parseFloat(v) || 0.1;
     w.config.value = JSON.stringify(state.cfg);
     commit();
@@ -1200,7 +1200,7 @@ function setup(node) {
   wminRow.input.value = String(state.cfg.weight_min);
   foldWeight.body.appendChild(wminRow.row);
 
-  const wmaxRow = makeFieldRow(T("weightMax", "Weight ceiling"), "", (on, v) => {
+  const wmaxRow = makeFieldRow(T("weightMax", "权重上限"), "", (on, v) => {
     state.cfg.weight_max = parseFloat(v) || 10;
     w.config.value = JSON.stringify(state.cfg);
     commit();
@@ -1208,14 +1208,14 @@ function setup(node) {
   wmaxRow.input.value = String(state.cfg.weight_max);
   foldWeight.body.appendChild(wmaxRow.row);
 
-  const nwRow = makeFieldRow(T("noWeight", "No weighting"), "", (on) => {
+  const nwRow = makeFieldRow(T("noWeight", "不加权"), "", (on) => {
     state.cfg.no_weight = on;
     w.config.value = JSON.stringify(state.cfg);
     commit();
   });
   nwRow.cb.checked = !!state.cfg.no_weight;
   nwRow.input.value = String(state.cfg.no_weight_threshold);
-  nwRow.input.placeholder = T("minorThreshold", "minor-direction threshold");
+  nwRow.input.placeholder = T("minorThreshold", "次要方向阈值");
   nwRow.input.addEventListener("input", () => {
     state.cfg.no_weight_threshold = parseFloat(nwRow.input.value) || 0.5;
     w.config.value = JSON.stringify(state.cfg);
@@ -1225,7 +1225,7 @@ function setup(node) {
   root.appendChild(foldWeight.box);
 
   /* 自定义提示词：五个开关各自的文案。 */
-  const foldExtras = makeFold(T("foldCustom", "Custom prompt tags"), false);
+  const foldExtras = makeFold(T("foldCustom", "自定义提示词"), false);
   for (const key of ["lens", "dof", "movement", "composition", "style"]) {
     const item = state.cfg.extras[key] || {};
     const row = makeFieldRow(EXTRA_LABELS[key], item.value, (on, v) => {
@@ -1250,11 +1250,11 @@ function setup(node) {
   root.appendChild(foldExtras.box);
 
   /* 相机控制：各档的文案与开关。改词就在这里。 */
-  const foldFields = makeFold(T("foldCamera", "Camera control"), false);
+  const foldFields = makeFold(T("foldCamera", "相机控制"), false);
   const fieldGroups = [
-    ["azimuth", "directions", T("fieldRow.azimuth", "Direction")],
-    ["elevation", "categories", T("fieldRow.elevation", "Height")],
-    ["distance", "categories", T("fieldRow.distance", "Distance")],
+    ["azimuth", "directions", T("fieldRow.azimuth", "方位")],
+    ["elevation", "categories", T("fieldRow.elevation", "高度")],
+    ["distance", "categories", T("fieldRow.distance", "距离")],
   ];
   for (const [section, table, title] of fieldGroups) {
     const head = el("div", "font-size:12px;color:rgba(255,255,255,0.5);margin-top:2px;");
@@ -1271,7 +1271,7 @@ function setup(node) {
       foldFields.body.appendChild(row.row);
     }
   }
-  const tiltRow = makeFieldRow(T("fieldRow.tilt", "Tilt"), state.cfg.tilt.dutch_tag, (on, v) => {
+  const tiltRow = makeFieldRow(T("fieldRow.tilt", "倾斜"), state.cfg.tilt.dutch_tag, (on, v) => {
     state.cfg.tilt.enabled = on;
     state.cfg.tilt.dutch_tag = v;
     w.config.value = JSON.stringify(state.cfg);

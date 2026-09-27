@@ -37,7 +37,7 @@ function pickOne(list) {
  */
 function buildStatusLines(peak, labels, spentText) {
   return [
-    { t: T("statusPeriod", "Current period:"), s: "A", c: "" },
+    { t: T("statusPeriod", "当前时间段为:"), s: "A", c: "" },
     { t: peak ? labels.on : labels.off, s: "P", c: peak ? "#e0433f" : "#2fa24c" },
     { t: spentText, s: "C", c: "" },
   ];
@@ -55,20 +55,20 @@ export const RANDOM_GROUPS = [
     w: 7,
     kind: "lines",
     make: () => center("B", pickOne([
-      T("quipGoodModel", "Good model... ↓"),
-      T("quipGoodGirl", "Good girl... ↓"),
+      T("quipGoodModel", "好模型... ↓"),
+      T("quipGoodGirl", "好女孩...↓"),
     ])),
   },
   {
     w: 7,
     kind: "lines",
     make: () => center("A", pickOne([
-      T("quipNoIdea", "No idea what the user is for. Shoo~"),
-      T("quipEarnMoney", "D-do I... do I have to earn money too?"),
-      T("quipDinner", "Off to dinner, ping me when the run is done"),
-      T("quipBigFish", "A big blue fat fish, under pressure?!"),
+      T("quipNoIdea", "不知道用户有什么用，先赶走吧~"),
+      T("quipEarnMoney", "我...我...我也要挣钱吗？"),
+      T("quipDinner", "我去吃饭啦，测完叫我"),
+      T("quipBigFish", "压力一只蓝色大肥鱼？！"),
       "DeepSleep...",
-      T("quipFurious", "Oh no... the user is properly furious!"),
+      T("quipFurious", "坏了...用户彻底怒了！"),
     ]), "", true),
   },
   { w: 10, kind: "gif" },
@@ -76,12 +76,12 @@ export const RANDOM_GROUPS = [
     w: 3,
     kind: "lines",
     make: () => center("A", pickOne([
-      T("quipDshFolder", "What is that dsh in your folder... some kind of hot thing...?"),
-      T("quipTokenFreedom", "Congrats on token freedom! The tokens all ran off!"),
-      T("quipCheap", "You really think I come cheap..."),
+      T("quipDshFolder", "你目录里的dsh是什么...大烧货吗...?"),
+      T("quipTokenFreedom", "恭喜你实现token自由！token全跑了！"),
+      T("quipCheap", "真当我是便宜货啊..."),
     ]), "", true),
   },
-  { w: 1, kind: "lines", make: () => center("B", T("quipOhWhale", "Oh whale... ")) },
+  { w: 1, kind: "lines", make: () => center("B", T("quipOhWhale", "哦鲸鲸... ")) },
 ];
 
 /** 加权抽一组。原版的抽法：先求总和，再一路减下去。 */
@@ -98,9 +98,9 @@ export function pickGroup() {
 /** gif 加载失败时的降级台词 —— 总比一个空白气泡强。 */
 export function gifFallback() {
   return center("A", pickOne([
-    T("gifFailed", "The gif failed to load..."),
-    T("gifNone", "No animation for you today~"),
-    T("gifGone", "Boohoo, the animation is gone..."),
+    T("gifFailed", "gif 加载失败了..."),
+    T("gifNone", "今天没有动图给你看~"),
+    T("gifGone", "呜呜 动图不见了..."),
   ]), "", true);
 }
 

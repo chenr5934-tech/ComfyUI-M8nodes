@@ -291,7 +291,7 @@ class TestNodeContract(unittest.TestCase):
         self.assertEqual(cls.RETURN_TYPES, ("STRING",))
         self.assertEqual(cls.RETURN_NAMES, ("text",))
         self.assertEqual(cls.FUNCTION, "execute")
-        self.assertEqual(cls.CATEGORY, "M8/LLM")
+        self.assertEqual(cls.CATEGORY, "M8/大模型")
 
     def test_skill_loader_signature(self):
         cls = self.module.NODE_CLASS_MAPPINGS["M8SkillLoader"]
@@ -300,7 +300,7 @@ class TestNodeContract(unittest.TestCase):
         self.assertEqual(cls.RETURN_TYPES, ("M8_SKILL",))
         self.assertEqual(cls.RETURN_NAMES, ("skill",))
         self.assertEqual(cls.FUNCTION, "load")
-        self.assertEqual(cls.CATEGORY, "M8/LLM")
+        self.assertEqual(cls.CATEGORY, "M8/大模型")
 
     def test_skill_types_line_up(self):
         """上游产 M8_SKILL、下游吃 M8_SKILL —— 对不上就连不上线，且界面不会报错。"""
@@ -3009,7 +3009,7 @@ class TestMultiCharacter(unittest.TestCase):
         self.assertIn("base_prompt", types["optional"])
         self.assertEqual(self.cls.RETURN_TYPES, ("STRING",))
         self.assertEqual(self.cls.FUNCTION, "execute")
-        self.assertEqual(self.cls.CATEGORY, "M8/Prompt")
+        self.assertEqual(self.cls.CATEGORY, "M8/提示词")
 
     def test_attn_format(self):
         out = self.run_it("attn", self.cfg([self.char("elf archer", w=0.25)]), base="forest")
@@ -3411,7 +3411,7 @@ class TestCameraContract(unittest.TestCase):
             self.assertIn(key, types["required"], "缺输入：" + key)
         self.assertEqual(self.cls.RETURN_TYPES, ("STRING",))
         self.assertEqual(self.cls.FUNCTION, "execute")
-        self.assertEqual(self.cls.CATEGORY, "M8/Camera")
+        self.assertEqual(self.cls.CATEGORY, "M8/相机")
 
     def test_origin_is_front_eye_medium(self):
         """原点 = 正前方、平视、中景。这是「什么都没调」的状态，必须稳定。"""

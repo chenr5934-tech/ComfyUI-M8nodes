@@ -74,7 +74,7 @@ m8/nodes/<货架>/<节点>.py       单个节点类
 | POST | `/m8/prompt/presets/load` | 取一套预设的正文 |
 | POST | `/m8/prompt/presets/delete` | 删掉一套预设 |
 | GET | `/m8/llm-local/models` | 列 `models/LLM` 里的 GGUF（前端「刷新模型」用） |
-| GET | `/m8/i18n/{lang}` | 这个插件某个语言的界面文案（读 `locales/<lang>/main.json`，含 `ui` / `web` 段）。**语言码先净化字符集、再确认最终路径落在 locales/ 内**，两道都过才读；取不到返回空对象，前端退回英文 |
+| GET | `/m8/i18n/{lang}` | 这个插件某个语言的界面文案（读 `locales/<lang>/main.json`，含 `ui` / `web` 段）。**语言码先净化字符集、再确认最终路径落在 locales/ 内**，两道都过才读；取不到返回空对象，前端退回代码里的中文 |
 | GET | `/m8/data/{kind}` | 读一整类工作台数据（kind = oc / prompts / groups / stickers）。**数据在 `<ComfyUI>/models/M8data/webapp/` 下，不在浏览器里** —— 独立服务也读同一份 |
 | POST | `/m8/data/{kind}/put` | 存一条（没带 id 就分配一个） |
 | POST | `/m8/data/{kind}/delete` | 删一条 |
@@ -222,39 +222,37 @@ HTTP 请求用 `urllib.request`（标准库），不用 requests。
 
 ## 八、界面语言
 
-**代码里的界面字符串一律英文**，中文放 `locales/zh/main.json`。
+**界面文案一律中文，直接写在代码里当默认值。**
 
-为什么：ComfyUI 的审核要求 *"write the node UI strings in English"*，并且给了
-[i18n 的约定](https://github.com/Comfy-Org/ComfyUI/pull/6558)：插件在
-`locales/<语言>/main.json` 下提供翻译，键用 `nodeDefs.<类名>`。
+新写界面文案时就这么写：`T("key", "中文")`。key 照旧给一个（不重复即可），
+fallback 直接写中文。
 
-`main.json` 下按用途分段，互不干扰：
+为什么不再走「代码英文 + 语言包中文」：那套是为过 ComfyUI-Manager 的审核做的
+（它要求 *"write the node UI strings in English"*）。0.5.x 为此把每个界面字符串
+都改成英文，中文退到 `locales/zh/` 里、靠插件自己的 `/m8/i18n` 路由拉回来。
+**2026-09 决定不再为审核让步** —— 这是个给中文用户的工具，为一个上架要求让每个
+用户每天看非母语界面，代价不对等。
 
-| 段 | 谁用 | 键的样子 |
+于是把译文搬回了代码：现在 `T()` 的 fallback 就是中文，`locales/` 里那份内容
+和它一样。
+
+`main.json` 今天还分三段，但内容都已经是中文：
+
+| 段 | 谁可能读 | 现状 |
 | --- | --- | --- |
-| `nodeDefs` | ComfyUI Desktop 的 `/i18n` 端点 | `nodeDefs.M8LLMInference.inputs.model.name` |
-| `ui` | 插件自己的前端（节点面板、小鲸鱼） | `ui.M8Whale.balanceLabel` |
-| `web` | M8web 工作台 | `web.toolCut` |
+| `nodeDefs` | ComfyUI Desktop 的 `/i18n` 端点 | Python 里的显示名已是中文，这段是重复的 |
+| `ui` | 插件自己的前端（节点面板、小鲸鱼） | 同上，fallback 已经是中文 |
+| `web` | M8web 工作台 | 同上 |
 
-两层落实：
-
-| 层 | 谁读 | 覆盖 |
-| --- | --- | --- |
-| `locales/` | ComfyUI Desktop 的 `/i18n` 端点 | 节点显示名、输入名、tooltip |
-| `GET /m8/i18n/{lang}` + 前端 `M8.t()` | 插件自己的前端 | 节点面板上前端画的按钮、状态行、通知 |
-| 同一个路由 + `M8web/assets/js/i18n.js` | M8web 工作台 | 外壳、七个功能页、各功能模块的状态与报错 |
-
-第二层是必要的：普通 ComfyUI（比如 0.35.1）没有那个 `/i18n` 端点，光靠 `locales/`
-中文不会生效。前端读 `Comfy.Locale`（读不到退回 `navigator.language`），中文环境才
-去取 `/m8/i18n/zh`，取不到就用代码里的英文原文。
+`locales/` 和 `T()` 这套机制**暂时留着**：拆掉要动 `m8_core.js`、`i18n.js`、
+`routes.py`、`m8-serve.py` 和一批测试，收益只是少一次无用请求。
+留着的代价是同一句话存在两份，改文案时两处都要改 —— 这一点由
+`tests/smoke_import.py` 的断言盯着。
 
 **M8web 那条路走的是同一个文件**：工作台在 ComfyUI 里打开时本来就与插件同源，
 直接用 `/m8/i18n/{lang}`；独立跑（ComfyUI 关着）时由 `M8web/m8-serve.py` 提供
-同名路由，读的是同一份 `locales/<lang>/main.json` 的 `web` 段。所以「同一份文件」
-是字面意义上的同一份，不是各自维护两套。
+同名路由，读的是同一份 `locales/<lang>/main.json` 的 `web` 段。
 
-工作台的语言判定顺序是 `?lang=` 参数 → `localStorage` → `navigator.language`。
-第一档是为了调试，也让「我就想固定用中文」有个说法。
+工作台的语言判定顺序仍是 `?lang=` 参数 → `localStorage` → `navigator.language`。
 
-**代码注释和内部日志不受此限** —— 审核管的是界面文案，注释是给维护者看的。
-`console.log` / `console.warn` 同理，它们只出现在开发者工具里。
+**代码注释和内部日志**一直是中文，不受这条约定影响。

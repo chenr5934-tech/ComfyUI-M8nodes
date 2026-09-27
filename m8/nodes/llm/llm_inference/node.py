@@ -52,26 +52,26 @@ class M8LLMInference:
             "required": {
                 "provider": (providers.PROVIDER_OPTIONS, {
                     "default": "deepseek",
-                    "tooltip": "Pick a provider. Changing it fills in that provider's default base_url and thinking options. For anything else choose Custom and enter the address yourself.",
+                    "tooltip": "选择供应商。改这个会自动带出对应的默认 base_url 和思考参数；换成别的服务商就选「自定义」自己填地址。",
                 }),
                 "base_url": ("STRING", {
                     "default": providers.default_base_url("deepseek"),
                     "multiline": False,
-                    "tooltip": "API address. Defaults to https://api.deepseek.com/v1; point it at any OpenAI-compatible endpoint.",
+                    "tooltip": "接口地址。默认 DeepSeek 的 https://api.deepseek.com/v1，改掉就能接任何 OpenAI 兼容端点。",
                 }),
                 "api_key": ("STRING", {
                     "default": "",
                     "multiline": False,
-                    "tooltip": "Leave empty to use the key stored on the server (recommended: Save key keeps it out of the workflow file). Anything typed here applies to this node only and is written into the workflow.",
+                    "tooltip": "留空就用服务端已保存的密钥（推荐：点「保存密钥」存到服务端，工作流文件里就不会带明文）。填在这里只对当前节点生效，并且会写进工作流。",
                 }),
                 "model": ([MODEL_PLACEHOLDER], {
-                    "tooltip": "Fill in the address and key, then click Refresh models. You can also type a model name directly.",
+                    "tooltip": "填好地址和密钥后点「刷新模型」拉取，或直接手输模型名。",
                 }),
                 "system_prompt": ("STRING", {
                     "multiline": True,
                     "default": "",
                     "dynamicPrompts": False,
-                    "tooltip": "System prompt: persona, tone, output format. Leave empty to send only the user prompt.",
+                    "tooltip": "系统提示词：定模型的人格、语气、输出格式。留空则只发对话提示词。",
                 }),
                 "user_prompt": ("STRING", {
                     "multiline": True,
@@ -79,48 +79,48 @@ class M8LLMInference:
                     # 关掉动态提示词：大模型的提示词里花括号太常见了（JSON、代码、模板变量），
                     # 开着会被 {a|b} 语法随机替换，破坏性大于那点便利。要随机就在上游接文本节点。
                     "dynamicPrompts": False,
-                    "tooltip": "What you want to ask. Can be wired from another node's text output (right-click the input and convert it to an input socket).",
+                    "tooltip": "这次要问的事。可以接别的节点的文本输出。",
                 }),
                 "thinking": (providers.THINKING_OPTIONS, {
                     "default": providers.THINKING_OFF,
-                    "tooltip": "Thinking effort. Off sends no extra request; higher asks the model to think more. If the provider rejects the parameter it is dropped and the request retried (the log says so).",
+                    "tooltip": "思考强度。关=不额外要求；越高越让模型多想。供应商不支持该参数时会自动去掉它重试。",
                 }),
                 "show_thinking": ("BOOLEAN", {
                     "default": False,
-                    "tooltip": "Show the model's thinking on the node panel (default off: it is usually long). Display only, the text output is unaffected.",
+                    "tooltip": "是否把模型的思考过程显示在节点面板上（默认关：思考内容通常很长）。只影响显示，不影响 text 输出。",
                 }),
                 "temperature": ("FLOAT", {
                     "default": 1.0, "min": 0.0, "max": 2.0, "step": 0.05,
-                    "tooltip": "Randomness. Lower for steady work like prompt writing, higher for creative ones.",
+                    "tooltip": "随机性。写提示词这类要稳的活儿调低，创意类的调高。",
                 }),
                 "max_tokens": ("INT", {
                     "default": DEFAULT_MAX_TOKENS, "min": 16, "max": 131072, "step": 16,
-                    "tooltip": "Upper bound on the reply length. It is a cap, not a target — normal answers do not fill it.",
+                    "tooltip": "回答长度上限。注意这是上限不是目标。",
                 }),
                 "timeout": ("INT", {
                     "default": DEFAULT_TIMEOUT, "min": 5, "max": 3600, "step": 5,
-                    "tooltip": "Request timeout in seconds. For slow thinking models give it 300 or more.",
+                    "tooltip": "单次请求超时秒数。长思考的模型建议给到 300 以上。",
                 }),
             },
             "optional": {
                 "skill": ("M8_SKILL", {
-                    "tooltip": "Wire this from M8 · Skill Loader. Its content is appended after the system prompt as reference material.",
+                    "tooltip": "从 M8 · Skill 装载 接进来。内容会附在系统提示词后面当参考资料。",
                 }),
                 "skill_auto": ("BOOLEAN", {
                     "default": False,
-                    "tooltip": "Inject every uploaded skill and let the model decide which applies. Off by default: once the library grows, each turn carries a few irrelevant ones and burns tokens. Referencing a specific skill with / in the prompt is more precise. Caps are configurable in settings.",
+                    "tooltip": "打开后把服务端已上传的 skill 一起注入，由模型自己判断该用哪个。默认关：库里内容一多，每轮都会带上几份用不上的，白烧 token。",
                 }),
                 "image": ("IMAGE", {
-                    "tooltip": "Feed images to a vision model. Multiple images are sent together; count and edge limits are configurable. Models without image support return 400.",
+                    "tooltip": "接图片给能看图的模型。多张会一起发。",
                 }),
                 "audio": ("AUDIO", {
-                    "tooltip": "Feed audio to a model that accepts it (converted to WAV). Models without audio support return 400.",
+                    "tooltip": "接音频给能听音频的模型（转成 WAV 发出去）。",
                 }),
                 "extra_params": ("STRING", {
                     "multiline": True,
                     "default": "",
                     "dynamicPrompts": False,
-                    "tooltip": "Extra request parameters as a JSON object, merged into the request body. Use it for provider-specific fields this pack does not cover, e.g. {\"top_p\": 0.9}.",
+                    "tooltip": "额外的请求参数，JSON 对象格式，会合并进请求体。",
                 }),
             },
         }
@@ -128,8 +128,8 @@ class M8LLMInference:
     RETURN_TYPES = ("STRING",)
     RETURN_NAMES = ("text",)
     FUNCTION = "execute"
-    CATEGORY = "M8/LLM"
-    DESCRIPTION = "Calls an external LLM over an OpenAI-compatible API: two prompt boxes, model dropdown, thinking effort. Accepts a skill, images and audio; outputs text."
+    CATEGORY = "M8/大模型"
+    DESCRIPTION = "靠 API 调用大模型：双提示词框 + 模型下拉 + 思考强度；可接 skill / 图片 / 音频，输出文本。"
     OUTPUT_NODE = False
 
     @classmethod
@@ -537,4 +537,4 @@ class M8LLMInference:
 
 
 NODE_CLASS_MAPPINGS = {"M8LLMInference": M8LLMInference}
-NODE_DISPLAY_NAME_MAPPINGS = {"M8LLMInference": "M8 · LLM Inference"}
+NODE_DISPLAY_NAME_MAPPINGS = {"M8LLMInference": "M8 · 大模型推理"}
