@@ -30,7 +30,7 @@ function makeButton() {
   b.href = webUrl();
   b.target = "_blank";
   b.rel = "noopener";
-  b.title = T("open", "Open the M8 workbench (new tab)");
+  b.title = T("open", "打开 M8 工作台（新标签页）");
   b.textContent = "M8";
   b.style.cssText = [
     "display:inline-flex",
@@ -121,7 +121,7 @@ function start() {
       /* 试了 20 秒还是找不到顶栏 —— 与其静默失败，不如把现场打出来。
          这种问题只能靠日志定位：类名随版本变，猜是猜不中的。 */
       console.warn(
-        T("noHost", "[M8] Could not find the top bar container; the workbench button was not mounted."),
+        T("noHost", "[M8] 没找到顶栏容器，工作台入口按钮没挂上。"),
         "\nselectors tried:", HOST_SELECTORS.join(" / "),
         "\ndirect children of #vue-app:",
         Array.from((document.getElementById("vue-app") || document.body).children)
@@ -138,7 +138,7 @@ app.registerExtension({
     try {
       start();
     } catch (exc) {
-      console.error(T("mountFailed", "[M8] Failed to mount the workbench button:"), exc);
+      console.error(T("mountFailed", "[M8] 工作台入口按钮挂载失败："), exc);
     }
   },
 });

@@ -125,7 +125,7 @@ const M8Paint = (() => {
     state.texts.push(t);
     state.selected = state.texts.length - 1;
     render();
-    setStatus(T("paintAdded", "Added. Edit it on the right, or drag it on the image to move it."));
+    setStatus(T("paintAdded", "加好了，在右边改内容，或者在图上拖它挪位置。"));
     return t;
   }
 
@@ -147,7 +147,7 @@ const M8Paint = (() => {
     if (!state.texts.length) state.selected = -1;
     else if (state.selected >= state.texts.length) state.selected = state.texts.length - 1;
     render();
-    setStatus(T("paintRemoved", "That text box was deleted."));
+    setStatus(T("paintRemoved", "那条文字删掉了。"));
   }
 
   /* ------------------------------------------------------------ 画笔 */
@@ -176,19 +176,19 @@ const M8Paint = (() => {
 
   function undoStroke() {
     if (!state.strokes.length) {
-      setStatus(T("paintNoUndo", "There is no stroke left to undo."));
+      setStatus(T("paintNoUndo", "没有可以撤销的笔画。"));
       return;
     }
     state.strokes.pop();
     renderStrokes();
-    setStatus(T("paintUndone", "Undid one stroke."));
+    setStatus(T("paintUndone", "撤了一笔。"));
   }
 
   function clearStrokes() {
     state.strokes = [];
     state.drawing = null;
     renderStrokes();
-    setStatus(T("paintStrokesCleared", "All strokes cleared."));
+    setStatus(T("paintStrokesCleared", "笔画全清了。"));
   }
 
   /* ------------------------------------------------------------ 渲染 */
@@ -225,7 +225,7 @@ const M8Paint = (() => {
       b.className = "swatch" + (c === state.color ? " on" : "");
       b.style.background = c;
       b.dataset.color = c;
-      b.setAttribute("aria-label", T("paintColorAria", "Colour {c}", { c: c }));
+      b.setAttribute("aria-label", T("paintColorAria", "颜色 {c}", { c: c }));
       b.setAttribute("aria-pressed", c === state.color ? "true" : "false");
       b.addEventListener("click", function () {
         state.color = c;
@@ -260,7 +260,7 @@ const M8Paint = (() => {
     state.texts.forEach(function (t, i) {
       const node = document.createElement("div");
       node.className = "paint-text" + (i === state.selected ? " on" : "") + (t.outline ? " outline" : "");
-      node.textContent = t.body || T("paintEmptyText", "(empty)");
+      node.textContent = t.body || T("paintEmptyText", "（空）");
       node.dataset.index = String(i);
       node.style.left = t.x + "%";
       node.style.top = t.y + "%";
@@ -425,20 +425,20 @@ const M8Paint = (() => {
   function generate() {
     if (!state.img) return;
     if (!state.strokes.length && !state.texts.length) {
-      setStatus(T("paintNothing", "Nothing written and nothing drawn, so there is nothing to generate."), true);
+      setStatus(T("paintNothing", "还没写也没画，没什么可生成的。"), true);
       return;
     }
     clearPreview();
-    setStatus(T("busyGenerating", "Generating..."));
+    setStatus(T("busyGenerating", "正在生成…"));
     const cv = document.createElement("canvas");
     drawTo(cv);
     const name = M8Studio.state.name + "-paint.png";
     if (typeof cv.toBlob !== "function") {
-      setStatus(T("browserNoExport", "This browser cannot export."), true);
+      setStatus(T("browserNoExport", "这个浏览器不支持导出。"), true);
       return;
     }
     cv.toBlob(function (blob) {
-      if (!blob) { setStatus(T("generateFailed", "Generation failed."), true); return; }
+      if (!blob) { setStatus(T("generateFailed", "生成失败。"), true); return; }
       state.shot = URL.createObjectURL(blob);
       showPreview(name, cv.width, cv.height);
     }, "image/png");
@@ -453,7 +453,7 @@ const M8Paint = (() => {
     shot.className = "pv-shot";
     const im = document.createElement("img");
     im.src = state.shot;
-    im.alt = T("paintPreviewAlt", "Preview of the text and brush layers");
+    im.alt = T("paintPreviewAlt", "文字与画笔预览");
     shot.appendChild(im);
     const meta = document.createElement("div");
     meta.className = "pv-meta";
@@ -465,17 +465,17 @@ const M8Paint = (() => {
     save.className = "pv-save";
     save.href = state.shot;
     save.download = name;
-    save.textContent = T("exportThisImage", "Export this image");
+    save.textContent = T("exportThisImage", "导出这张图");
     card.appendChild(shot);
     card.appendChild(meta);
     card.appendChild(save);
     box.appendChild(card);
     el.preview.classList.remove("is-hidden");
     if (el.previewNote) {
-      el.previewNote.textContent = T("paintPreviewNote", "{texts} text boxes - {strokes} strokes",
+      el.previewNote.textContent = T("paintPreviewNote", "{texts} 条文字 · {strokes} 笔",
         { texts: state.texts.length, strokes: state.strokes.length });
     }
-    setStatus(T("previewReadyExport", "Done. Export it once it looks right."));
+    setStatus(T("previewReadyExport", "生成好了，确认没问题就导出。"));
   }
 
   /* ------------------------------------------------------------ 入口 */
@@ -510,7 +510,7 @@ const M8Paint = (() => {
     el.base.src = st.url;
     el.frame.style.aspectRatio = (st.img.naturalWidth || 1) + " / " + (st.img.naturalHeight || 1);
     render();
-    setStatus(T("paintStatusHint", "In text mode, click to add a box; switch to brush mode and hold to draw."));
+    setStatus(T("paintStatusHint", "文字模式点一下加字；切到画笔按住直接画。"));
   }
 
   function init() {

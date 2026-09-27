@@ -66,7 +66,7 @@ const M8Studio = (() => {
   function loadFile(file) {
     if (!file) return;
     if (!/^image\//.test(file.type)) {
-      setStatus(T("studioNotImage", "That file is not an image."), true);
+      setStatus(T("studioNotImage", "这个文件不是图片。"), true);
       return;
     }
     if (state.url) {
@@ -85,7 +85,7 @@ const M8Studio = (() => {
       notify();
     };
     img.onerror = function () {
-      setStatus(T("studioImageBroken", "That image could not be read. Try another one."), true);
+      setStatus(T("studioImageBroken", "这张图读不出来，换一张试试。"), true);
       try { URL.revokeObjectURL(url); } catch (e) { /* 无所谓 */ }
     };
     img.src = url;
@@ -98,8 +98,7 @@ const M8Studio = (() => {
     state.img = null;
     state.url = "";
     el.fileInput.value = "";
-    el.fileMeta.textContent = T("studioFileMeta",
-      "JPG / PNG / WebP / GIF - processed entirely on this machine, never uploaded");
+    el.fileMeta.textContent = T("studioFileMeta", "支持 JPG / PNG / WebP / GIF · 全程在本机处理，不上传");
     el.body.classList.add("is-hidden");
     el.drop.classList.remove("is-hidden");
     setStatus("");

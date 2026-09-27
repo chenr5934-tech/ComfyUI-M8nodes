@@ -28,12 +28,12 @@ const FORMATS = ["attn", "regional", "plain"];
 const FORMAT_LABELS = {
   get attn() { return T("format.attn", "Attention Couple"); },
   get regional() { return T("format.regional", "Regional Prompts"); },
-  get plain() { return T("format.plain", "Plain text"); },
+  get plain() { return T("format.plain", "纯文本"); },
 };
 const FORMAT_HINTS = {
-  get attn() { return T("formatHint.attn", "Emits COUPLE(x1 x2, y1 y2, weight) syntax for comfyui-prompt-control"); },
-  get regional() { return T("formatHint.regional", "Emits prompt MASK(...) joined with AND, for Regional Prompts"); },
-  get plain() { return T("formatHint.plain", "Just joins the prompts with commas: no region syntax, no third-party nodes"); },
+  get attn() { return T("formatHint.attn", "输出 COUPLE(x1 x2, y1 y2, weight) 语法，给 comfyui-prompt-control 用"); },
+  get regional() { return T("formatHint.regional", "输出 prompt MASK(...) 并用 AND 相连，给 Regional Prompts 用"); },
+  get plain() { return T("formatHint.plain", "只把提示词按逗号拼起来，不带区域语法、不依赖任何第三方节点"); },
 };
 
 /* 和颜色一样，这些参数决定框怎么画。改这里等于改整套几何。 */
@@ -72,8 +72,8 @@ const clamp = (v, lo, hi) => Math.min(Math.max(lo, v), hi);
 /** 单个角色会长成什么样。和 renderPreview 用同一套规则，只是只算一条。 */
 function previewOne(cfg, char, index) {
   const prompt = String(char.prompt || "").trim();
-  if (char.enabled === false) return T("disabled", "(disabled, not in the output)");
-  if (!prompt) return T("emptyPrompt", "(no prompt yet)");
+  if (char.enabled === false) return T("disabled", "（已禁用，不进输出）");
+  if (!prompt) return T("emptyPrompt", "（还没填提示词）");
 
   const mode = FORMATS.includes(cfg.format) ? cfg.format : "regional";
   if (mode === "plain") return prompt;
@@ -147,7 +147,7 @@ function activeCharacters(cfg) {
       const r = regionOf(char);
       return {
         index,
-        name: char.name || T("character", "Character") + " " + (index + 1),
+        name: char.name || T("character", "角色") + " " + (index + 1),
         prompt: String(char.prompt || "").trim(),
         weight: clamp(num(char.weight, 1), WEIGHT_MIN, WEIGHT_MAX),
         feather: Math.round(clamp(num(char.feather, 0), 0, FEATHER_MAX)),
@@ -175,7 +175,7 @@ function renderPreview(cfg) {
   const mode = FORMATS.includes(cfg.format) ? cfg.format : "regional";
 
   if (mode !== "plain" && !chars.length) {
-    return { text: "", error: T("noneEnabled", "No character is enabled (each one needs a checkmark and a prompt)") };
+    return { text: "", error: T("noneEnabled", "还没有启用的角色（每个角色都要勾上并填提示词）") };
   }
 
   if (mode === "plain") {
@@ -310,7 +310,7 @@ function parsePromptText(text) {
 
     characters.push({
       enabled: true,
-      name: T("character", "Character") + " " + (characters.length + 1),
+      name: T("character", "角色") + " " + (characters.length + 1),
       prompt: body,
       x: x1,
       y: y1,
@@ -347,18 +347,18 @@ function inspectConfig(cfg, frame) {
   /* 启用了但没填提示词 —— 它们不会进输出，用户可能以为进了 */
   const blank = all.filter((c) => c && c.enabled !== false && !String(c.prompt || "").trim()).length;
   if (blank > 0) {
-    issues.push({ level: "info", text: T("blankInfo", "{n} enabled characters have no prompt and will not appear in the output", { n: blank }) });
+    issues.push({ level: "info", text: T("blankInfo", "{n} 个已启用的角色还没填提示词，它们不会出现在输出里", { n: blank }) });
   }
 
   /* FILL 重复。参考项目也报了这条 —— 多个 FILL 通常只有一个生效，
    * 剩下的是白写的，而且会让人误以为某个区域被填充了。 */
   const fillCount = chars.filter((c) => c.fill).length + (cfg.use_fill ? 1 : 0);
   if (fillCount > 1) {
-    issues.push({ level: "warn", text: T("fillWarn", "There are {n} FILL() blocks; one is usually enough", { n: fillCount }) });
+    issues.push({ level: "warn", text: T("fillWarn", "有 {n} 处 FILL()，通常只需要一个", { n: fillCount }) });
   }
 
   if (mode === "plain" && fillCount > 0) {
-    issues.push({ level: "warn", text: T("fillPlainWarn", "Plain text format carries no region syntax, so FILL() will not appear in the output") });
+    issues.push({ level: "warn", text: T("fillPlainWarn", "纯文本格式不带区域语法，FILL() 不会出现在输出里") });
   }
 
   /* 区域重叠。两个角色压在同一块上，各自的标签会互相干扰 ——
@@ -372,7 +372,7 @@ function inspectConfig(cfg, frame) {
       if (ox > 0.02 && oy > 0.02) {
         issues.push({
           level: "info",
-          text: T("overlap", "\"{a}\" and \"{b}\" overlap by about {p}% of the frame; their tags will interfere with each other",
+          text: T("overlap", "「{a}」与「{b}」的区域重叠约 {p}% 的画面，两边的标签会互相干扰",
           { a: a.name, b: b.name, p: Math.round(ox * oy * 100) }),
         });
       }
@@ -385,7 +385,7 @@ function inspectConfig(cfg, frame) {
   if (heavy.length) {
     issues.push({
       level: "warn",
-      text: T("featherWarn", "Feather is large relative to the frame for {names} (over 12% of the short side); edges will smear",
+      text: T("featherWarn", "{names} 的羽化相对画面偏大（超过短边的 12%），边缘会糊成一片",
           { names: heavy.map((c) => "\"" + c.name + "\"").join(", ") }),
     });
   }
@@ -504,7 +504,7 @@ function drawRegions(ctx, W, H, chars, selected, drawing, view) {
     ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
     ctx.setLineDash([]);
     ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
-    const tip = T("canvasTip", "release to create a character");
+    const tip = T("canvasTip", "松手即新建角色");
     ctx.font = "600 11px ui-monospace, Consolas, monospace";
     const tw = ctx.measureText(tip).width;
     ctx.fillRect(x + 3, y + 3, tw + 10, 17);
@@ -519,7 +519,7 @@ function drawRegions(ctx, W, H, chars, selected, drawing, view) {
   ctx.font = "10px ui-monospace, Consolas, monospace";
   ctx.textAlign = "right";
   ctx.textBaseline = "bottom";
-  ctx.fillText(T("wholeFrame", "whole frame: left to right = x, top to bottom = y"), W - 7, H - 5);
+  ctx.fillText(T("wholeFrame", "整幅画面 · 左→右 = x，上→下 = y"), W - 7, H - 5);
 }
 
 /* ---------------------------------------------------------------------------
@@ -600,7 +600,7 @@ function setup(node) {
 
   /* ---------------- 预览 ---------------- */
   const previewLabel = el("div", "font-size:12px;color:rgba(255,255,255,0.55);");
-  previewLabel.textContent = T("previewLabel", "Output preview");
+  previewLabel.textContent = T("previewLabel", "输出预览");
   rightCol.appendChild(previewLabel);
 
   const preview = el("textarea", "width:100%;min-height:56px;resize:vertical;box-sizing:border-box;font-family:ui-monospace,Consolas,monospace;font-size:12px;line-height:1.5;background:rgb(0 0 0 / 23%);border:1px solid #333;color:#3ba99c;border-radius:6px;padding:6px;");
@@ -615,7 +615,7 @@ function setup(node) {
   /* ---------------- 格式与开关 ---------------- */
   const formatRow = el("div", "display:flex;align-items:center;gap:6px;flex-wrap:wrap;box-sizing:border-box;width:100%;");
   const formatLabel = el("span", "font-size:12px;color:rgba(255,255,255,0.62);flex-shrink:0;");
-  formatLabel.textContent = T("formatLabel", "Output format");
+  formatLabel.textContent = T("formatLabel", "输出格式");
   formatRow.appendChild(formatLabel);
 
   const formatSelect = el("select", SMALL_INPUT + "flex:1 1 130px;min-width:130px;max-width:100%;");
@@ -631,9 +631,9 @@ function setup(node) {
   fillBox.checked = state.cfg.use_fill;
   fillRow.appendChild(fillBox);
   const fillLabel = el("span", "font-size:12px;color:rgba(255,255,255,0.62);");
-  fillLabel.textContent = T("fillLabel", "Let the base prompt fill areas no character covers (FILL, attn format only)");
+  fillLabel.textContent = T("fillLabel", "基础提示词自动填充未被角色占据的区域（FILL，仅 attn 格式生效）");
   fillRow.appendChild(fillLabel);
-  fillRow.title = T("fillLabel", "Let the base prompt fill areas no character covers (FILL, attn format only)");
+  fillRow.title = T("fillLabel", "基础提示词自动填充未被角色占据的区域（FILL，仅 attn 格式生效）");
   toolbar.appendChild(fillRow);
 
   /* ---------------- 区域画布 ---------------- */
@@ -641,12 +641,12 @@ function setup(node) {
      尺寸和缩放挂在画布头上，一眼看得出当前在按多大的画面排布。 */
   const canvasHead = el("div", "display:flex;align-items:center;gap:8px;flex-wrap:wrap;box-sizing:border-box;width:100%;");
   const canvasLabel = el("div", "font-size:12px;color:rgba(255,255,255,0.55);");
-  canvasLabel.textContent = T("canvasLabel", "Frame regions");
-  canvasLabel.title = T("canvasTitle", "Drag empty space to create a character; drag a box to move it, drag its bottom-right corner to resize");
+  canvasLabel.textContent = T("canvasLabel", "画面区域");
+  canvasLabel.title = T("canvasTitle", "空白处按住拖 = 新建角色；拖框移动，拖右下角缩放");
   /* 缩放 = 画布显示宽度 / 画面实际宽度。参考图上那句「缩放: 52%」就是它 ——
      有这个数才知道画布上 1 像素对应画面里多少。 */
   const zoomLabel = el("div", "font-family:ui-monospace,Consolas,monospace;font-size:11px;color:rgba(255,255,255,0.35);margin-left:auto;");
-  zoomLabel.textContent = T("zoomLabel", "Zoom —");
+  zoomLabel.textContent = T("zoomLabel", "缩放 —");
   canvasHead.appendChild(canvasLabel);
   canvasHead.appendChild(zoomLabel);
   rightCol.appendChild(canvasHead);
@@ -663,7 +663,7 @@ function setup(node) {
   canvasWrap.appendChild(canvas);
 
   const frameLabel = el("div", "position:absolute;right:8px;top:6px;font-family:ui-monospace,Consolas,monospace;font-size:11px;line-height:1.6;color:rgba(255,255,255,0.5);background:rgba(0,0,0,0.5);padding:0 6px;border-radius:4px;pointer-events:none;box-sizing:border-box;");
-  frameLabel.title = T("frameTitle", "Frame size, decided by the width / height inputs; the canvas is shown at this ratio");
+  frameLabel.title = T("frameTitle", "画面尺寸，由 width / height 输入决定；画布按这个比例显示");
   frameLabel.textContent = "1024 × 1024";
   canvasWrap.appendChild(frameLabel);
   rightCol.appendChild(canvasWrap);
@@ -675,7 +675,7 @@ function setup(node) {
 
   /* ---------------- 角色卡片列表 ---------------- */
   const listLabel = el("div", "font-size:12px;color:rgba(255,255,255,0.55);margin-top:2px;");
-  listLabel.textContent = T("listLabel", "Character editor");
+  listLabel.textContent = T("listLabel", "角色编辑器");
   leftCol.appendChild(listLabel);
 
   const list = el("div", "display:flex;flex-direction:column;gap:7px;width:100%;box-sizing:border-box;");
@@ -687,19 +687,19 @@ function setup(node) {
   /* ---------------- 基础与全局提示词 ---------------- */
   const baseFold = el("details", "border:1px solid #00000061;border-radius:6px;background:rgb(0 0 0 / 12%);box-sizing:border-box;width:100%;");
   const baseSum = el("summary", "cursor:pointer;padding:5px 10px;font-size:12px;color:rgba(255,255,255,0.72);");
-  baseSum.textContent = T("baseSum", "Base + global prompt");
+  baseSum.textContent = T("baseSum", "基础词与全局词");
   baseFold.appendChild(baseSum);
   const baseBody = el("div", "padding:6px 10px 10px;display:flex;flex-direction:column;gap:6px;box-sizing:border-box;width:100%;");
   baseFold.appendChild(baseBody);
 
   const BASE_FIELD = SMALL_INPUT + "width:100%;min-height:44px;resize:vertical;font-family:inherit;";
   const baseTa = el("textarea", BASE_FIELD);
-  baseTa.placeholder = T("basePlaceholder", "Base prompt: the backdrop of the whole frame (forest, indoors, colour tone...)");
+  baseTa.placeholder = T("basePlaceholder", "基础词：整幅画面的底子（森林、室内、色调…）");
   baseTa.value = String(state.cfg.base || "");
   baseBody.appendChild(baseTa);
 
   const globalTa = el("textarea", BASE_FIELD);
-  globalTa.placeholder = T("globalPlaceholder", "Global prompt: appended after the base prompt, applies to every region");
+  globalTa.placeholder = T("globalPlaceholder", "全局词：追加在基础词后面，对所有区域都生效");
   globalTa.value = String(state.cfg.global || "");
   baseBody.appendChild(globalTa);
   leftCol.appendChild(baseFold);
@@ -744,7 +744,7 @@ function setup(node) {
     const width = Math.max(64, num(w.width?.value, DEFAULT_W));
     const shown = canvas.clientWidth || 0;
     const pct = shown > 0 ? Math.round((shown / width) * state.view.scale * 100) : 0;
-    zoomLabel.textContent = pct > 0 ? T("zoom", "Zoom") + " " + pct + "%" : T("zoomLabel", "Zoom —");
+    zoomLabel.textContent = pct > 0 ? T("zoom", "缩放") + " " + pct + "%" : T("zoomLabel", "缩放 —");
   }
 
   /** 让画布的宽高比跟画面一致。不这么做的话，「占左三分之一」在宽画面上会看着不对。 */
@@ -824,7 +824,7 @@ function setup(node) {
     const cb = el("input", "flex-shrink:0;");
     cb.type = "checkbox";
     cb.checked = char.enabled !== false;
-    cb.title = T("disableTip", "Disabled means this character stays out of the output, but its config is kept");
+    cb.title = T("disableTip", "禁用后这个角色不参与输出，但配置留着");
     cb.addEventListener("change", () => {
       char.enabled = cb.checked;
       commit();
@@ -834,20 +834,20 @@ function setup(node) {
 
     const nameInput = el("input", SMALL_INPUT + "flex:1;min-width:0;");
     nameInput.type = "text";
-    nameInput.value = String(char.name || T("character", "Character") + " " + (index + 1));
-    nameInput.title = T("nameTip", "Only used to tell them apart on the panel; it never goes into the prompt");
+    nameInput.value = String(char.name || T("character", "角色") + " " + (index + 1));
+    nameInput.title = T("nameTip", "只用于面板上区分，不进提示词");
     nameInput.addEventListener("input", () => {
       char.name = nameInput.value;
       commit();
     });
     head.appendChild(nameInput);
 
-    head.appendChild(makeButton(T("remove", "Remove"), () => {
+    head.appendChild(makeButton(T("remove", "删除"), () => {
       state.cfg.characters.splice(index, 1);
       if (state.selected >= state.cfg.characters.length) state.selected = state.cfg.characters.length - 1;
       renderCards();
       commit();
-    }, T("removeTip", "Remove this character from the list")));
+    }, T("removeTip", "把这个角色从列表里去掉")));
     card.appendChild(head);
 
     /* 提示词 */
@@ -863,7 +863,7 @@ function setup(node) {
 
     /* 位置 */
     const posRow = el("div", "display:flex;flex-wrap:wrap;gap:8px;align-items:center;");
-    for (const [key, label] of [["x", "x"], ["y", "y"], ["w", T("w", "w")], ["h", T("h", "h")]]) {
+    for (const [key, label] of [["x", "x"], ["y", "y"], ["w", T("w", "宽")], ["h", T("h", "高")]]) {
       const field = makeNumber(label, num(char[key], key === "w" || key === "h" ? 0.5 : 0), 0.01, null, null, (v) => {
         char[key] = clamp(v, 0, 1);
         commit();
@@ -875,18 +875,18 @@ function setup(node) {
 
     /* 权重与羽化 */
     const tuneRow = el("div", "display:flex;flex-wrap:wrap;gap:8px;align-items:center;");
-    const wField = makeNumber(T("blendWeight", "Blend weight"), num(char.weight, 1), 0.05, null, null, (v) => {
+    const wField = makeNumber(T("blendWeight", "混合权重"), num(char.weight, 1), 0.05, null, null, (v) => {
       char.weight = clamp(v, WEIGHT_MIN, WEIGHT_MAX);
       commit();
     });
-    wField.wrap.title = T("blendWeightTip", "This is the mask blend weight, not the prompt weight - it controls how strongly this region affects the image");
+    wField.wrap.title = T("blendWeightTip", "这是遮罩混合权重，不是提示词权重 —— 控制这块区域对画面的影响强度");
     tuneRow.appendChild(wField.wrap);
 
-    const fField = makeNumber(T("feather", "Feather"), num(char.feather, 0), 1, 0, FEATHER_MAX, (v) => {
+    const fField = makeNumber(T("feather", "羽化"), num(char.feather, 0), 1, 0, FEATHER_MAX, (v) => {
       char.feather = Math.round(clamp(v, 0, FEATHER_MAX));
       commit();
     });
-    fField.wrap.title = T("featherTip", "How soft the region edge is, in pixels. Raise it if characters show visible seams; 5-15 is usually enough");
+    fField.wrap.title = T("featherTip", "区域边缘的柔和程度（像素）。角色之间有明显接缝就调大一点，5-15 通常够了");
     tuneRow.appendChild(fField.wrap);
 
     const fillCb = el("input", "flex-shrink:0;");
@@ -907,7 +907,7 @@ function setup(node) {
        参考图里每条右侧那个「COUPLE」角标就是同一件事。 */
     const syntaxTag = el("div", "font-family:ui-monospace,Consolas,monospace;font-size:10px;line-height:1.5;color:rgba(255,255,255,0.38);word-break:break-all;border-top:1px dashed rgba(255,255,255,0.09);padding-top:5px;");
     syntaxTag.textContent = previewOne(state.cfg, char, index);
-    syntaxTag.title = T("syntaxTip", "What this character produces in the current format");
+    syntaxTag.title = T("syntaxTip", "这个角色在当前格式下会生成的内容");
     card.appendChild(syntaxTag);
 
     /* 点卡片 = 选中它，画布上对应的框会加粗。
@@ -924,7 +924,7 @@ function setup(node) {
     const chars = Array.isArray(state.cfg.characters) ? state.cfg.characters : [];
     if (!chars.length) {
       const tip = el("div", "font-size:12px;color:rgba(255,255,255,0.45);padding:4px 2px;");
-      tip.textContent = T("noCharacters", "No characters yet. Click Add character below to start.");
+      tip.textContent = T("noCharacters", "还没有角色。点下面的「添加角色」开始。");
       list.appendChild(tip);
       return;
     }
@@ -1109,7 +1109,7 @@ function setup(node) {
     const chars = state.cfg.characters;
     chars.push({
       enabled: true,
-      name: T("character", "Character") + " " + (chars.length + 1),
+      name: T("character", "角色") + " " + (chars.length + 1),
       prompt: "",
       x: region.x1,
       y: region.y1,
@@ -1126,7 +1126,7 @@ function setup(node) {
     fitNode();
   }
 
-  addRow.appendChild(makeButton(T("addCharacter", "Add character"), () => {
+  addRow.appendChild(makeButton(T("addCharacter", "添加角色"), () => {
     const chars = state.cfg.characters;
     // 按钮这条路没有鼠标位置可用，就按已有的块数均分摆一排，尽量不叠在一起
     const n = Math.min(chars.length + 1, 6);
@@ -1137,10 +1137,10 @@ function setup(node) {
       x2: (slot + 1) / n,
       y2: 1,
     });
-  }, T("addCharacterTip", "Adds a character (a mask box is created for it automatically)")));
+  }, T("addCharacterTip", "加一个角色（会自动配一个遮罩框）")));
 
-  addRow.appendChild(makeButton(T("reset", "Reset"), () => {
-    if (!window.confirm(T("confirmReset", "Reset the character config back to the built-in two equal regions? Current content will be lost."))) return;
+  addRow.appendChild(makeButton(T("reset", "重置"), () => {
+    if (!window.confirm(T("confirmReset", "把角色配置恢复成出厂的两块等分区域？当前内容会丢。"))) return;
     state.cfg = cloneDefault();
     state.selected = -1;
     baseTa.value = "";
@@ -1150,7 +1150,7 @@ function setup(node) {
     fillBox.checked = state.cfg.use_fill;
     renderCards();
     commit();
-  }, T("resetTip", "Go back to the default two equal regions")));
+  }, T("resetTip", "恢复成默认的两块等分区域")));
 
 
   /* ------------------------------------------------------------ 预设 */
@@ -1159,14 +1159,14 @@ function setup(node) {
    * 不落 localStorage：那个东西会随清缓存、换浏览器 profile 一起消失，
    * 而且写失败时不给原因（这个坑小鲸鱼已经栽过一次）。 */
   const presetSelect = el("select", SMALL_INPUT + "flex:1 1 108px;min-width:108px;max-width:100%;");
-  presetSelect.title = T("presetTip", "Load a saved character config preset");
+  presetSelect.title = T("presetTip", "加载已保存的角色配置预设");
 
   async function refreshPresets(select) {
     try {
       const data = await M8.apiGet("/prompt/presets");
       const files = data.files || [];
       presetSelect.innerHTML = "";
-      const head = new Option(files.length ? T("loadPreset", "Load preset...") : T("noPresets", "(no presets yet)"), "", true, true);
+      const head = new Option(files.length ? T("loadPreset", "加载预设…") : T("noPresets", "（还没有预设）"), "", true, true);
       head.disabled = true;
       presetSelect.appendChild(head);
       for (const name of files) presetSelect.appendChild(new Option(name, name));
@@ -1178,30 +1178,30 @@ function setup(node) {
 
   async function saveCurrentAsPreset() {
     const suggested = "roles_" + Date.now().toString().slice(-6);
-    const input = window.prompt(T("promptPresetName", "Preset name (stored in m8/data/prompt-presets/)"), suggested);
+    const input = window.prompt(T("promptPresetName", "预设名（存在 m8/data/prompt-presets/）"), suggested);
     if (input == null) return;
     const name = String(input).trim();
     if (!name) {
-      M8.notify(T("nameRequired", "The name cannot be empty"), { kind: "warn" });
+      M8.notify(T("nameRequired", "名字不能空着"), { kind: "warn" });
       return;
     }
     try {
       await M8.apiPost("/prompt/presets/save", { name, config: state.cfg });
-      M8.notify(T("presetSaved", "Preset saved: {name}", { name }), { kind: "ok", timeout: 3200 });
+      M8.notify(T("presetSaved", "预设已保存：{name}", { name }), { kind: "ok", timeout: 3200 });
       await refreshPresets(name);
     } catch (exc) {
-      M8.notifyError(exc, T("savingPreset", "saving the preset"));
+      M8.notifyError(exc, T("savingPreset", "保存预设"));
     }
   }
 
-  toolbar.appendChild(makeButton(T("parsePrompt", "Parse prompt"), () => {
-    const text = window.prompt(T("parsePromptInput", "Paste a prompt with region syntax (COUPLE / MASK / FEATHER / FILL are supported)"), "");
+  toolbar.appendChild(makeButton(T("parsePrompt", "解析提示词"), () => {
+    const text = window.prompt(T("parsePromptInput", "把一段带区域语法的提示词粘进来（支持 COUPLE / MASK / FEATHER / FILL）"), "");
     if (text == null || !text.trim()) return;
     const parsed = parsePromptText(text);
     if (!parsed) {
-      M8.notify(T("noRegionSyntax", "No recognizable region syntax in that text"), {
+      M8.notify(T("noRegionSyntax", "这段里没找到可识别的区域语法"), {
         kind: "warn",
-        hint: T("noRegionSyntaxHint", "It needs at least COUPLE(...) or MASK(...); plain text has nothing to parse"),
+        hint: T("noRegionSyntaxHint", "至少要有 COUPLE(...) 或 MASK(...)，纯文本用不着解析"),
       });
       return;
     }
@@ -1213,27 +1213,27 @@ function setup(node) {
     renderCards();
     commit();
     paintSelection();
-    M8.notify(T("parsed", "Parsed {n} characters", { n: parsed.characters.length }), { kind: "ok", timeout: 3200 });
-  }, T("parsePromptTip", "Turns a region-style prompt you already wrote back into character blocks")));
+    M8.notify(T("parsed", "已解析出 {n} 个角色", { n: parsed.characters.length }), { kind: "ok", timeout: 3200 });
+  }, T("parsePromptTip", "把已经写好的一段区域提示词反向解析成角色块")));
 
-  toolbar.appendChild(makeButton(T("savePreset", "Save preset"), saveCurrentAsPreset,
-      T("savePresetTip", "Store the current character config on the server")));
+  toolbar.appendChild(makeButton(T("savePreset", "保存预设"), saveCurrentAsPreset,
+      T("savePresetTip", "把当前这套角色配置存到服务端")));
   toolbar.appendChild(presetSelect);
-  toolbar.appendChild(makeButton(T("delete", "Delete"), async () => {
+  toolbar.appendChild(makeButton(T("delete", "删除"), async () => {
     const name = presetSelect.value;
     if (!name || presetSelect.selectedIndex <= 0) {
-      M8.notify(T("pickPreset", "Pick a preset from the dropdown first"), { kind: "warn" });
+      M8.notify(T("pickPreset", "先从下拉里选一个预设"), { kind: "warn" });
       return;
     }
-    if (!window.confirm(T("confirmDelete", "Delete the preset \"{name}\"? This cannot be undone.", { name }))) return;
+    if (!window.confirm(T("confirmDelete", "删掉预设「{name}」？这个动作不能撤销。", { name }))) return;
     try {
       await M8.apiPost("/prompt/presets/delete", { name });
-      M8.notify(T("presetDeleted", "Preset deleted: {name}", { name }), { kind: "ok", timeout: 3000 });
+      M8.notify(T("presetDeleted", "已删除预设：{name}", { name }), { kind: "ok", timeout: 3000 });
       await refreshPresets();
     } catch (exc) {
-      M8.notifyError(exc, T("deletingPreset", "deleting the preset"));
+      M8.notifyError(exc, T("deletingPreset", "删除预设"));
     }
-  }, T("deleteTip", "Deletes the preset selected in the dropdown")));
+  }, T("deleteTip", "删掉下拉里选中的那个预设")));
 
   presetSelect.addEventListener("change", async () => {
     const name = presetSelect.value;
@@ -1242,8 +1242,8 @@ function setup(node) {
       const data = await M8.apiPost("/prompt/presets/load", { name });
       const cfg = data.config;
       if (!cfg || typeof cfg !== "object" || Array.isArray(cfg)) {
-        M8.notify(T("presetNotObject", "That preset does not hold a config object"),
-      { kind: "err", hint: T("presetNotObjectHint", "Look at the file under m8/data/prompt-presets/") });
+        M8.notify(T("presetNotObject", "这个预设的内容不是一个配置对象"),
+      { kind: "err", hint: T("presetNotObjectHint", "去 m8/data/prompt-presets/ 看那个文件") });
         return;
       }
       state.cfg = loadConfig(JSON.stringify(cfg));
@@ -1258,9 +1258,9 @@ function setup(node) {
       commit();
       paintSelection();
       fitNode();
-      M8.notify(T("presetLoaded", "Preset loaded: {name}", { name }), { kind: "ok", timeout: 2600 });
+      M8.notify(T("presetLoaded", "已载入预设：{name}", { name }), { kind: "ok", timeout: 2600 });
     } catch (exc) {
-      M8.notifyError(exc, T("loadingPreset", "loading the preset"));
+      M8.notifyError(exc, T("loadingPreset", "载入预设"));
     }
   });
 

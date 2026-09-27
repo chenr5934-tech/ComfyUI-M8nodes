@@ -63,13 +63,13 @@ export function buildSettingsPanel(root, ctx) {
   const head = document.createElement("h3");
   const avatar = el("img", { src: assetUrl("whale.png"), alt: "" });
   head.appendChild(avatar);
-  head.appendChild(document.createTextNode(T("title", "Little Whale")));
+  head.appendChild(document.createTextNode(T("title", "小鲸鱼")));
   root.appendChild(head);
 
   const statusLine = el("div", { className: "m8-whale-hint" });
   statusLine.textContent = ctx.state?.hasKey
-    ? T("keyConfigured", "Key configured {masked}", { masked: ctx.state.masked })
-    : T("noKey", "No API key yet - balance and chat will not work");
+    ? T("keyConfigured", "已配置密钥 {masked}", { masked: ctx.state.masked })
+    : T("noKey", "还没配密钥 —— 余额和对话都用不了");
   root.appendChild(statusLine);
 
   root.appendChild(el("hr", { className: "m8-whale-sep" }));
@@ -79,11 +79,11 @@ export function buildSettingsPanel(root, ctx) {
   const enabledLabel = document.createElement("label");
   enabledLabel.className = "m8-whale-switch";
   enabledLabel.appendChild(enabled);
-  enabledLabel.appendChild(document.createTextNode(T("showWidget", "Show the widget")));
+  enabledLabel.appendChild(document.createTextNode(T("showWidget", "显示挂件")));
   root.appendChild(field(
-    T("widgetLabel", "Widget"),
+    T("widgetLabel", "挂件"),
     enabledLabel,
-    T("widgetHint", "Turning this off hides the widget in the bottom-right corner. This sidebar page stays, so you can bring it back any time."),
+    T("widgetHint", "关掉之后右下角的挂件就收起来。侧边栏这一页始终留着，随时能开回来。"),
   ));
 
   enabled.addEventListener("change", async () => {
@@ -102,7 +102,7 @@ export function buildSettingsPanel(root, ctx) {
   scaleRow.className = "m8-whale-row";
   scaleRow.appendChild(scale);
   scaleRow.appendChild(scaleLabel);
-  root.appendChild(field(T("sizeLabel", "Size"), scaleRow, T("sizeHint", "Multiplier against the widget's original size.")));
+  root.appendChild(field(T("sizeLabel", "大小"), scaleRow, T("sizeHint", "Multiplier against the widget's original size.")));
   scale.addEventListener("input", () => {
     scaleLabel.textContent = `${Number(scale.value).toFixed(1)}×`;
     ctx.settings.scale = Number(scale.value);
@@ -112,9 +112,9 @@ export function buildSettingsPanel(root, ctx) {
 
   const bubble = el("input", { type: "checkbox", checked: settings.bubble !== false });
   root.appendChild(switchField(
-    T("bubbleLabel", "Bubble"),
+    T("bubbleLabel", "气泡"),
     bubble,
-    T("bubbleHint", "Turning this off stops the widget from showing bubbles, error notices included."),
+    T("bubbleHint", "关掉之后挂件不再弹气泡（包括报错提示）。"),
   ));
   bubble.addEventListener("change", () => ctx.save({ bubble: bubble.checked }));
 
@@ -128,13 +128,13 @@ export function buildSettingsPanel(root, ctx) {
   const avoidLabel = document.createElement("label");
   avoidLabel.className = "m8-whale-switch";
   avoidLabel.appendChild(avoid);
-  avoidLabel.appendChild(document.createTextNode(T("avoid", "Avoid")));
+  avoidLabel.appendChild(document.createTextNode(T("avoid", "避开")));
   avoidRow.appendChild(avoidLabel);
   avoidRow.appendChild(avoidWidth);
   root.appendChild(field(
-    T("avoidScrollbarLabel", "Avoid the scrollbar"),
+    T("avoidScrollbarLabel", "避让滚动条"),
     avoidRow,
-    T("avoidScrollbarHint", "Gap kept on the right edge, in pixels. Browsers and zoom levels pack scrollbars differently, so this is yours to set."),
+    T("avoidScrollbarHint", "贴右边时留出的宽度（px）。不同浏览器、不同缩放下滚动条不一样宽，所以让人自己填。"),
   ));
   const pushAvoid = () => {
     ctx.settings.avoidScrollbar = avoid.checked;
@@ -148,21 +148,21 @@ export function buildSettingsPanel(root, ctx) {
   /* ---- 音效 ---- */
   const soundOn = el("input", { type: "checkbox", checked: settings.sound !== false });
   root.appendChild(switchField(
-    T("soundLabel", "Sound"),
+    T("soundLabel", "音效"),
     soundOn,
-    T("soundHint", "Plays on press and release."),
+    T("soundHint", "按下和松开挂件时出声。"),
   ));
   soundOn.addEventListener("change", () => ctx.save({ sound: soundOn.checked }));
 
   const soundSet = el("select");
   for (const [value, label] of [
-    ["duck", T("soundDuck", "Duck")],
-    ["fx1", T("soundFx1", "Effect 1")],
+    ["duck", T("soundDuck", "小黄鸭")],
+    ["fx1", T("soundFx1", "音效1")],
   ]) {
     soundSet.appendChild(el("option", { value, textContent: label }));
   }
   soundSet.value = settings.soundSet === "fx1" ? "fx1" : "duck";
-  root.appendChild(field(T("soundSetLabel", "Sound set"), soundSet, ""));
+  root.appendChild(field(T("soundSetLabel", "音效集"), soundSet, ""));
   soundSet.addEventListener("change", () => {
     ctx.save({ soundSet: soundSet.value });
     ctx.widget?.playSound("press");
@@ -177,7 +177,7 @@ export function buildSettingsPanel(root, ctx) {
   volumeRow.className = "m8-whale-row";
   volumeRow.appendChild(volume);
   volumeRow.appendChild(volumeLabel);
-  root.appendChild(field(T("volumeLabel", "Volume"), volumeRow, ""));
+  root.appendChild(field(T("volumeLabel", "音量"), volumeRow, ""));
   volume.addEventListener("input", () => {
     volumeLabel.textContent = `${Math.round(Number(volume.value) * 100)}%`;
     ctx.settings.volume = Number(volume.value);
@@ -188,10 +188,10 @@ export function buildSettingsPanel(root, ctx) {
   const keyInput = el("input", {
     type: "password",
     placeholder: ctx.state?.hasKey
-      ? T("keyPlaceholderSet", "One is already stored; a new one replaces it")
+      ? T("keyPlaceholderSet", "已存了一份，填新的会覆盖")
       : "sk-...",
   });
-  const keySave = el("button", { textContent: T("save", "Save"), className: "-primary" });
+  const keySave = el("button", { textContent: T("save", "保存"), className: "-primary" });
   const keyRow = document.createElement("div");
   keyRow.className = "m8-whale-row";
   keyRow.appendChild(keyInput);
@@ -200,13 +200,13 @@ export function buildSettingsPanel(root, ctx) {
   root.appendChild(field(
     "DeepSeek API Key",
     keyRow,
-    T("keyHint", "Stored server-side in m8/data/credentials.json and never sent back to the browser. Press Save when done."),
+    T("keyHint", "存在服务端的 m8/data/credentials.json，不回传给浏览器。填完点保存。"),
   ));
 
   keySave.addEventListener("click", async () => {
     const value = keyInput.value.trim();
     if (!value) {
-      M8.notify(T("keyEmpty", "The input is empty"), { kind: "warn" });
+      M8.notify(T("keyEmpty", "输入框是空的"), { kind: "warn" });
       return;
     }
     try {
@@ -218,30 +218,30 @@ export function buildSettingsPanel(root, ctx) {
       });
       keyInput.value = "";
       const state = await ctx.loadState();
-      statusLine.textContent = T("keyConfigured", "Key configured {masked}", { masked: state.masked });
-      M8.notify(T("keySaved", "Key saved ({masked})", { masked: state.masked }), { kind: "ok" });
+      statusLine.textContent = T("keyConfigured", "已配置密钥 {masked}", { masked: state.masked });
+      M8.notify(T("keySaved", "密钥已保存（{masked}）", { masked: state.masked }), { kind: "ok" });
     } catch (exc) {
-      M8.notifyError(exc, T("actionSaveKey", "Save key"));
+      M8.notifyError(exc, T("actionSaveKey", "保存密钥"));
     }
   });
 
   /* ---- 模型 ---- */
   const modelSelect = el("select");
-  const refreshModels = el("button", { textContent: T("refresh", "Refresh") });
+  const refreshModels = el("button", { textContent: T("refresh", "刷新") });
   const modelRow = document.createElement("div");
   modelRow.className = "m8-whale-row";
   modelRow.appendChild(modelSelect);
   modelRow.appendChild(refreshModels);
 
   root.appendChild(field(
-    T("modelLabel", "Model"),
+    T("modelLabel", "模型"),
     modelRow,
-    T("modelHint", "Leave it blank and chat uses the first model in the list."),
+    T("modelHint", "留空的话，对话时自动用列表里的第一个。"),
   ));
 
   const fillModels = (models, current) => {
     modelSelect.innerHTML = "";
-    modelSelect.appendChild(el("option", { value: "", textContent: T("modelAuto", "(auto: first in the list)") }));
+    modelSelect.appendChild(el("option", { value: "", textContent: T("modelAuto", "（自动，用列表第一个）") }));
     for (const name of models) {
       modelSelect.appendChild(el("option", { value: name, textContent: name }));
     }
@@ -250,7 +250,7 @@ export function buildSettingsPanel(root, ctx) {
       // 存的模型现在拉不到了（下架了？），仍然列出来，别悄悄把人的选择抹掉
       modelSelect.appendChild(el("option", {
         value: current,
-        textContent: T("modelMissing", "{name} (not in the list)", { name: current }),
+        textContent: T("modelMissing", "{name}（列表里没有）", { name: current }),
       }));
       modelSelect.value = current;
     }
@@ -259,16 +259,16 @@ export function buildSettingsPanel(root, ctx) {
 
   refreshModels.addEventListener("click", async () => {
     refreshModels.disabled = true;
-    refreshModels.textContent = T("fetching", "Fetching...");
+    refreshModels.textContent = T("fetching", "拉取中…");
     try {
       const data = await M8.apiPost("/llm/models", { provider: "deepseek" });
       fillModels(data.models, modelSelect.value || settings.model);
-      M8.notify(T("gotModels", "Got {n} models", { n: data.count }), { kind: "ok", timeout: 2400 });
+      M8.notify(T("gotModels", "拿到 {n} 个模型", { n: data.count }), { kind: "ok", timeout: 2400 });
     } catch (exc) {
-      M8.notifyError(exc, T("actionFetchModels", "Fetch model list"));
+      M8.notifyError(exc, T("actionFetchModels", "拉模型列表"));
     } finally {
       refreshModels.disabled = false;
-      refreshModels.textContent = T("refresh", "Refresh");
+      refreshModels.textContent = T("refresh", "刷新");
     }
   });
 
@@ -280,9 +280,9 @@ export function buildSettingsPanel(root, ctx) {
     placeholder: T("promptPlaceholder", "Sets the whale's persona and output style. Leave it blank for a plain assistant."),
   });
   root.appendChild(field(
-    T("promptLabel", "System prompt"),
+    T("promptLabel", "系统提示词"),
     prompt,
-    T("promptHint", "Sent with every turn in the dialog."),
+    T("promptHint", "对话框里每一轮都会带上它。"),
   ));
   prompt.addEventListener("change", () => ctx.save({ systemPrompt: prompt.value }));
 
@@ -294,9 +294,9 @@ export function buildSettingsPanel(root, ctx) {
   }
   thinking.value = settings.thinking || options[0];
   root.appendChild(field(
-    T("thinkingLabel", "Thinking effort"),
+    T("thinkingLabel", "思考强度"),
     thinking,
-    T("thinkingHint", "If the provider rejects this parameter it is dropped and the request retried once; the log says so."),
+    T("thinkingHint", "供应商不支持该参数时会自动去掉重试一次，日志里会说明。"),
   ));
   thinking.addEventListener("change", () => ctx.save({ thinking: thinking.value }));
 
@@ -306,51 +306,51 @@ export function buildSettingsPanel(root, ctx) {
 
   const temperature = number(settings.temperature ?? 1, 0, 2, 0.05);
   root.appendChild(field(
-    T("temperatureLabel", "Temperature"),
+    T("temperatureLabel", "温度"),
     temperature,
-    T("temperatureHint", "Lower for steady work like writing prompts, higher for casual chat."),
+    T("temperatureHint", "写提示词这类要稳的活儿调低，闲聊调高。"),
   ));
   temperature.addEventListener("change", () => ctx.save({ temperature: Number(temperature.value) }));
 
   const maxTokens = number(settings.maxTokens ?? 4096, 16, 131072, 16);
   root.appendChild(field(
-    T("maxTokensLabel", "Max answer length"),
+    T("maxTokensLabel", "回答长度上限"),
     maxTokens,
-    T("maxTokensHint", "This is a ceiling, not a target; normal answers do not fill it."),
+    T("maxTokensHint", "上限不是目标，正常回答不会一直写满。"),
   ));
   maxTokens.addEventListener("change", () => ctx.save({ maxTokens: Number(maxTokens.value) }));
 
   const timeout = number(settings.timeout ?? 120, 5, 3600, 5);
   root.appendChild(field(
-    T("timeoutLabel", "Timeout (seconds)"),
+    T("timeoutLabel", "超时（秒）"),
     timeout,
-    T("timeoutHint", "Give slower models a larger value."),
+    T("timeoutHint", "想得久的模型给大一点。"),
   ));
   timeout.addEventListener("change", () => ctx.save({ timeout: Number(timeout.value) }));
 
   /* ---- 余额 ---- */
   const refresh = number(settings.refreshSeconds ?? 60, 0, 3600, 10);
   root.appendChild(field(
-    T("refreshLabel", "Balance refresh interval (seconds)"),
+    T("refreshLabel", "余额刷新间隔（秒）"),
     refresh,
-    T("refreshHint", "Set 0 to stop refreshing automatically and only check when you click."),
+    T("refreshHint", "填 0 就不自动刷新，只在你点左右键的时候查。"),
   ));
   refresh.addEventListener("change", () => ctx.save({ refreshSeconds: Number(refresh.value) }).then(() => ctx.widget?.startTimer()));
 
   const historyLimit = number(settings.historyLimit ?? 20, 2, 60, 2);
   root.appendChild(field(
-    T("historyLabel", "Chat history length"),
+    T("historyLabel", "对话历史条数"),
     historyLimit,
-    T("historyHint", "How many turns of context the dialog carries. More than you need just burns tokens."),
+    T("historyHint", "对话框每次带上多少条上下文。太多只是白烧 token。"),
   ));
   historyLimit.addEventListener("change", () => ctx.save({ historyLimit: Number(historyLimit.value) }));
 
   /* ---- 用量 ---- */
   const usageLine = el("div", { className: "m8-whale-hint" });
   root.appendChild(field(
-    T("usageLabel", "Used today"),
+    T("usageLabel", "今日已用"),
     usageLine,
-    T("usageHint", "Accounted from balance deltas: every balance check compares against the last one and adds any decrease."),
+    T("usageHint", "靠余额差值记账：每次查余额时和上一次比，变少了就累加。"),
   ));
 
   const refreshUsage = async () => {
@@ -358,21 +358,21 @@ export function buildSettingsPanel(root, ctx) {
       const data = await M8.apiGet(`${API_BASE}/usage`);
       const money = `${data.usage.currency === "CNY" ? "¥" : ""}${Number(data.usage.spent || 0).toFixed(4)}`;
       const peak = data.pricing?.peak
-        ? T("peakOn", " · peak hours now (2x the off-peak rate)")
-        : T("peakOff", " · off-peak now");
-      usageLine.textContent = T("usageLine", "{date}: {money} (from {n} samples){peak}", {
+        ? T("peakOn", " · 当前高峰时段（单价是空闲时段的 2 倍）")
+        : T("peakOff", " · 当前空闲时段");
+      usageLine.textContent = T("usageLine", "{date}：{money}（观测 {n} 次）{peak}", {
         date: data.date,
         money,
         n: data.usage.samples,
         peak,
       });
     } catch (exc) {
-      usageLine.textContent = T("usageError", "Cannot read: {message}", { message: exc.message });
+      usageLine.textContent = T("usageError", "读不到：{message}", { message: exc.message });
     }
   };
   refreshUsage();
 
-  const resetUsage = el("button", { textContent: T("resetUsage", "Reset accounting") });
+  const resetUsage = el("button", { textContent: T("resetUsage", "重置记账") });
   root.appendChild(field("", resetUsage, ""));
   resetUsage.addEventListener("click", async () => {
     try {
@@ -380,24 +380,24 @@ export function buildSettingsPanel(root, ctx) {
       await refreshUsage();
       M8.notify(T("usageReset", "Today's usage has been reset"), { kind: "ok", timeout: 2000 });
     } catch (exc) {
-      M8.notifyError(exc, T("actionResetUsage", "Reset accounting"));
+      M8.notifyError(exc, T("actionResetUsage", "重置记账"));
     }
   });
 
   /* ---- 每轮消耗 ---- */
   const turnCost = el("input", { type: "checkbox", checked: settings.turnCost !== false });
   root.appendChild(switchField(
-    T("turnCostLabel", "Per-turn cost"),
+    T("turnCostLabel", "每轮消耗提示"),
     turnCost,
-    T("turnCostHint", "After every turn, the widget bubble shows what that turn cost."),
+    T("turnCostHint", "对话框里每回一轮，就在挂件气泡上显示这轮花了多少钱。"),
   ));
   turnCost.addEventListener("change", () => ctx.save({ turnCost: turnCost.checked }));
 
   const turnCostClose = number(settings.turnCostCloseMs ?? 4000, 0, 60000, 500);
   root.appendChild(field(
-    T("turnCostCloseLabel", "Auto-close the cost bubble (ms)"),
+    T("turnCostCloseLabel", "消耗气泡自动关闭（毫秒）"),
     turnCostClose,
-    T("turnCostCloseHint", "Set 0 to keep it open until you click it."),
+    T("turnCostCloseHint", "填 0 就不自动关，点一下才消失。"),
   ));
   turnCostClose.addEventListener("change", () => ctx.save({ turnCostCloseMs: Number(turnCostClose.value) }));
 
@@ -405,8 +405,8 @@ export function buildSettingsPanel(root, ctx) {
   const actions = document.createElement("div");
   actions.className = "m8-whale-row";
 
-  const checkBalance = el("button", { textContent: T("checkBalance", "Check balance") });
-  const resetPos = el("button", { textContent: T("resetPos", "Reset widget position") });
+  const checkBalance = el("button", { textContent: T("checkBalance", "查一次余额") });
+  const resetPos = el("button", { textContent: T("resetPos", "挂件归位") });
   actions.appendChild(checkBalance);
   actions.appendChild(resetPos);
   root.appendChild(actions);
@@ -418,14 +418,14 @@ export function buildSettingsPanel(root, ctx) {
       M8.notify(
         primary
           ? `${primary.currency} ${primary.total}`
-          : T("noBalance", "No balance data"),
+          : T("noBalance", "没有余额数据"),
         {
           kind: primary ? "ok" : "warn",
-          hint: T("fetchedAt", "Checked at {time}", { time: data.balance?.fetchedAt || "" }),
+          hint: T("fetchedAt", "查询时间 {time}", { time: data.balance?.fetchedAt || "" }),
         },
       );
     } catch (exc) {
-      M8.notifyError(exc, T("actionCheckBalance", "Check balance"));
+      M8.notifyError(exc, T("actionCheckBalance", "查余额"));
     }
   });
 
@@ -435,10 +435,10 @@ export function buildSettingsPanel(root, ctx) {
       window.innerWidth - 140,
       window.innerHeight - 200,
     );
-    M8.notify(T("posReset", "Widget moved back"), { kind: "ok", timeout: 2000 });
+    M8.notify(T("posReset", "挂件已归位"), { kind: "ok", timeout: 2000 });
   });
 
-  root.appendChild(field(T("actionsLabel", "Actions"), actions, ""));
+  root.appendChild(field(T("actionsLabel", "操作"), actions, ""));
 }
 
 export default { buildSettingsPanel };

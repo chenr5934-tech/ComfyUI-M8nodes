@@ -102,13 +102,13 @@ function hookNode(node) {
 
   /* 刷新按钮用 m8_core 里那个 addButton —— 它自带防重入和错误弹窗，
      还知道按钮不该写进工作流。自己调 addWidget 这些都得手写一遍。 */
-  M8.addButton(node, T("refreshModels", "Refresh models"), async () => {
+  M8.addButton(node, T("refreshModels", "刷新模型列表"), async () => {
     const data = await fetchList(true);
-    if (!data) throw new Error(T("noResponse", "No response from the backend; is ComfyUI running?"));
+    if (!data) throw new Error(T("noResponse", "后端没回应，确认 ComfyUI 在跑"));
     setOptions(modelW, data.models || [], true);
     setOptions(mmW, [NO_MMPROJ].concat(data.mmproj || []), true);
     if (data.gpu === false && gpuW) {
-      M8.warn(T("noGpu", "This llama-cpp-python has no GPU support, so "
+      M8.warn(T("noGpu", "这个 llama-cpp-python 没有 GPU 支持，本地推理会在 CPU 上跑。想用显卡就装 CUDA 版的 wheel。"
         + "inference will run on the CPU. Install a CUDA build of the wheel to use the GPU."));
     }
     app.graph.setDirtyCanvas(true, true);

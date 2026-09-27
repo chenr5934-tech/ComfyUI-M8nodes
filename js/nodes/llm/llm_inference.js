@@ -49,7 +49,7 @@ function widgetValue(node, name) {
 }
 
 async function refreshModels(node) {
-  M8.setStatus(node, "busy", T("fetching", "Fetching models..."));
+  M8.setStatus(node, "busy", T("fetching", "拉取模型…"));
   const result = await M8.apiPost("/llm/models", {
     provider: widgetValue(node, "provider"),
     baseUrl: widgetValue(node, "base_url"),
@@ -59,8 +59,8 @@ async function refreshModels(node) {
 
   const modelWidget = M8.findWidget(node, "model");
   M8.setComboOptions(modelWidget, result.models);
-  M8.setStatus(node, "ok", T("modelCount", "{n} models", { n: result.count }));
-  M8.notify(T("gotModels", "Got {n} models, filled into the dropdown", { n: result.count }),
+  M8.setStatus(node, "ok", T("modelCount", "{n} 个模型", { n: result.count }));
+  M8.notify(T("gotModels", "拿到 {n} 个模型，已填进下拉", { n: result.count }),
     { kind: "ok", timeout: 2600 });
   app.graph?.setDirtyCanvas(true, true);
 }
@@ -71,7 +71,7 @@ async function saveKey(node) {
   const value = (keyWidget?.value || "").trim();
 
   if (!value) {
-    M8.notify(T("keyBoxEmpty", "The key box is empty, nothing to save"), { kind: "warn" });
+    M8.notify(T("keyBoxEmpty", "输入框是空的，没什么可存的"), { kind: "warn" });
     return;
   }
 
@@ -80,11 +80,11 @@ async function saveKey(node) {
   const result = await M8.apiPost("/keys/set", { provider, apiKey: value, baseUrl });
   // 存完就清空：留在框里会被写进工作流文件，分享出去就泄了
   keyWidget.value = "";
-  M8.setStatus(node, "ok", T("keySaved", "Key saved {masked}", { masked: result.masked }));
-  M8.notify(T("keySavedOnServer", "Key saved on the server ({masked}), the box was cleared",
+  M8.setStatus(node, "ok", T("keySaved", "密钥已存 {masked}", { masked: result.masked }));
+  M8.notify(T("keySavedOnServer", "密钥已存到服务端（{masked}），输入框已清空",
       { masked: result.masked }), {
     kind: "ok",
-    hint: T("keySavedHint", "Leave this node empty from now on and it uses the server copy; the workflow file never carries the plaintext key"),
+    hint: T("keySavedHint", "以后这个节点留空就会自动用服务端这份，工作流文件里不会带明文"),
     timeout: 5000,
   });
   app.graph?.setDirtyCanvas(true, true);
@@ -93,13 +93,13 @@ async function saveKey(node) {
 async function clearKey(node) {
   const provider = widgetValue(node, "provider");
   await M8.apiPost("/keys/set", { provider, apiKey: "" });
-  M8.setStatus(node, "idle", T("keyCleared", "key cleared"));
-  M8.notify(T("keyClearedMsg", "The server-stored key was cleared"), { kind: "warn" });
+  M8.setStatus(node, "idle", T("keyCleared", "密钥已清除"));
+  M8.notify(T("keyClearedMsg", "服务端已存的密钥已清除"), { kind: "warn" });
 }
 
 function setup(node) {
   M8.brand(node);
-  M8.setStatus(node, "idle", T("notConfigured", "not configured"));
+  M8.setStatus(node, "idle", T("notConfigured", "未配置"));
 
   // ---- 思考过程显示框 ----------------------------------------------------
   const thinkingBox = ComfyWidgets["STRING"](node, "m8_thinking", ["STRING", { multiline: true }], app).widget;
@@ -110,19 +110,19 @@ function setup(node) {
   M8.hideWidget(thinkingBox);
 
   // ---- 按钮 --------------------------------------------------------------
-  const refreshWidget = M8.addButton(node, T("refreshModels", "Refresh models"), async () => {
+  const refreshWidget = M8.addButton(node, T("refreshModels", "刷新模型"), async () => {
     await refreshModels(node);
-  }, { tooltip: T("refreshModelsTip", "Ask the backend for the model list using the current address and key, then fill it into the dropdown below.") });
+  }, { tooltip: T("refreshModelsTip", "用当前的地址和密钥向后端要一份模型列表，填进下面的下拉") });
 
-  const saveKeyWidget = M8.addButton(node, T("saveKey", "Save key to server"), async () => {
+  const saveKeyWidget = M8.addButton(node, T("saveKey", "保存密钥到服务端"), async () => {
     await saveKey(node);
-  }, { tooltip: T("saveKeyTip", "Stores it in m8/data/credentials.json and clears the box, so sharing the workflow does not leak the key.") });
+  }, { tooltip: T("saveKeyTip", "存到 m8/data/credentials.json 并清空输入框 —— 这样分享工作流不会泄漏密钥") });
 
-  const clearKeyWidget = M8.addButton(node, T("clearKey", "Clear server key"), async () => {
+  const clearKeyWidget = M8.addButton(node, T("clearKey", "清除服务端密钥"), async () => {
     await clearKey(node);
-  }, { tooltip: T("clearKeyTip", "Deletes the key stored on the server.") });
+  }, { tooltip: T("clearKeyTip", "删掉服务端存的那份密钥") });
 
-  const thinkingToggle = M8.addButton(node, T("thinking", "Thinking"), async () => {
+  const thinkingToggle = M8.addButton(node, T("thinking", "思考过程"), async () => {
     const hidden = !!thinkingBox.m8Hidden;
     if (hidden) {
       M8.showWidget(thinkingBox);
@@ -168,17 +168,17 @@ function setup(node) {
   // ---- 初始化：看看服务端有没有存过密钥 -----------------------------------
   loadProviders().then((map) => {
     const provider = widgetValue(node, "provider");
-    const label = map[provider]?.label || provider || T("noProvider", "no provider selected");
+    const label = map[provider]?.label || provider || T("noProvider", "未选供应商");
     M8.apiGet("/keys/list")
       .then((result) => {
         const masked = result.keys?.[provider];
         if (masked) {
           M8.setStatus(node, "ok", `${label} · ${masked}`);
         } else {
-          M8.setStatus(node, "idle", label + " · " + T("needsKey", "key required"));
+          M8.setStatus(node, "idle", label + " · " + T("needsKey", "待填密钥"));
         }
       })
-      .catch(() => M8.setStatus(node, "warn", T("noEndpoint", "endpoint not responding")));
+      .catch(() => M8.setStatus(node, "warn", T("noEndpoint", "接口没响应")));
   });
 }
 
@@ -194,15 +194,15 @@ function applyResult(node, payload) {
         M8.relayout(node);
       }
     } else if (!thinkingBox.value) {
-      thinkingBox.value = T("noThinking", "(no thinking this run: the model produced none, or the switch is off)");
+      thinkingBox.value = T("noThinking", "（这次没有思考内容 —— 模型没输出，或开关关着）");
     }
   }
 
   const usage = payload.usage || {};
   const parts = [];
   if (usage.total_tokens) parts.push(`${usage.total_tokens} tok`);
-  else if (payload.chars) parts.push(T("chars", "{n} chars", { n: payload.chars }));
-  M8.setStatus(node, "ok", parts.join(" · ") || payload.model || T("done", "done"));
+  else if (payload.chars) parts.push(T("chars", "{n} 字", { n: payload.chars }));
+  M8.setStatus(node, "ok", parts.join(" · ") || payload.model || T("done", "完成"));
   M8.log("执行完成：", payload.model, usage);
 }
 

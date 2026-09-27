@@ -40,19 +40,19 @@ class M8SkillLoader:
         return {
             "required": {
                 "skill": ([NO_SKILL], {
-                    "tooltip": "Pick an uploaded skill file. Use the Upload button on the node to add one.",
+                    "tooltip": "选择已上传的 skill 文件。点节点上的「上传 Skill」按钮可以新增。",
                 }),
             },
             "optional": {
                 "enabled": ("BOOLEAN", {
                     "default": True,
-                    "tooltip": "Turn off to output an empty skill, as if unplugging the wire without editing the workflow.",
+                    "tooltip": "关掉之后输出空 skill，等于临时断开这条线，不用改工作流。",
                 }),
                 "extra_text": ("STRING", {
                     "multiline": True,
                     "default": "",
                     "dynamicPrompts": False,
-                    "tooltip": "Extra text appended after this skill. Handy for one-off tweaks you do not want to write into the file.",
+                    "tooltip": "附加在这份 skill 后面的补充说明。临时调整不用去改文件。",
                 }),
             },
         }
@@ -60,8 +60,8 @@ class M8SkillLoader:
     RETURN_TYPES = ("M8_SKILL",)
     RETURN_NAMES = ("skill",)
     FUNCTION = "load"
-    CATEGORY = "M8/LLM"
-    DESCRIPTION = "Loads a skill file (prompt text) and outputs it as a knowledge pack for M8 · LLM Inference."
+    CATEGORY = "M8/大模型"
+    DESCRIPTION = "装载一份 skill 文件（提示词文本），输出给 M8 · 大模型推理 当知识包。"
     OUTPUT_NODE = False
 
     @classmethod
@@ -106,4 +106,4 @@ class M8SkillLoader:
 
 
 NODE_CLASS_MAPPINGS = {"M8SkillLoader": M8SkillLoader}
-NODE_DISPLAY_NAME_MAPPINGS = {"M8SkillLoader": "M8 · Skill Loader"}
+NODE_DISPLAY_NAME_MAPPINGS = {"M8SkillLoader": "M8 · Skill 装载"}

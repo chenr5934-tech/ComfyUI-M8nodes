@@ -68,7 +68,7 @@ export function injectTheme() {
 /** M8 接口的错误对象。前端拿到 code 就能去 docs/ERROR-PLAYBOOK.md 查。 */
 export class M8ApiError extends Error {
   constructor(payload, status) {
-    super(payload?.error || coreT("apiStatus", "The endpoint returned {status}", { status }));
+    super(payload?.error || coreT("apiStatus", "接口返回 {status}", { status }));
     this.name = "M8ApiError";
     this.code = payload?.code || "M8-SRV-000";
     this.hint = payload?.hint || "";
@@ -85,8 +85,8 @@ async function request(path, options = {}) {
   } catch (exc) {
     throw new M8ApiError({
       code: "M8-SRV-001",
-      error: coreT("unreachable", "Cannot reach the plugin backend"),
-      hint: coreT("unreachableHint", "Check that ComfyUI is still running, then reload the page"),
+      error: coreT("unreachable", "连不上插件后端"),
+      hint: coreT("unreachableHint", "确认 ComfyUI 还在运行，然后刷新页面"),
     });
   }
 
@@ -97,7 +97,7 @@ async function request(path, options = {}) {
   } catch {
     throw new M8ApiError({
       code: "M8-SRV-001",
-      error: coreT("notJson", "The backend did not return JSON"),
+      error: coreT("notJson", "后端返回的不是 JSON"),
       detail: text.slice(0, 300),
     }, response.status);
   }
@@ -202,7 +202,7 @@ export function notifyError(exc, context = "") {
     });
   }
   error(context, exc);
-  return notify(context || coreT("genericError", "Something went wrong"),
+  return notify(context || coreT("genericError", "出错了"),
     { kind: "err", hint: String(exc?.message || exc), timeout: 9000 });
 }
 
@@ -500,7 +500,7 @@ export function attachMention(input, {
   getItems = async () => [],
   trigger = "/",
   maxItems = 8,
-  emptyHint = coreT("emptyHint", "Nothing to reference yet."),
+  emptyHint = coreT("emptyHint", "还没有可引用的内容。"),
 } = {}) {
   if (!input) return null;
 
@@ -557,7 +557,7 @@ export function attachMention(input, {
     if (!items.length) {
       panel.innerHTML = `<div class="m8-mention-empty">${escapeHtml(emptyHint)}</div>`;
     } else if (!filtered.length) {
-      panel.innerHTML = `<div class="m8-mention-empty">' + coreT("noMatch", "No skill matches \"{q}\"", { q: escapeHtml(mention.query) }) + '</div>`;
+      panel.innerHTML = `<div class="m8-mention-empty">' + coreT("noMatch", "没有匹配「{q}」的 skill", { q: escapeHtml(mention.query) }) + '</div>`;
     } else {
       filtered.slice(0, maxItems).forEach((item, index) => {
         const row = document.createElement("div");
@@ -587,7 +587,7 @@ export function attachMention(input, {
 
     const hint = document.createElement("div");
     hint.className = "m8-mention-hint";
-    hint.textContent = coreT("mentionKeys", "up/down to choose, Enter to confirm, Esc to cancel");
+    hint.textContent = coreT("mentionKeys", "↑↓ 选择 · Enter 确认 · Esc 取消");
     panel.appendChild(hint);
 
     panel.classList.add("-show");
@@ -658,7 +658,7 @@ export function attachMention(input, {
       });
       if (!panel) buildPanel();
       panel.innerHTML = '<div class="m8-mention-empty">'
-        + coreT("readingSkills", "Reading the skill list...") + '</div>';
+        + coreT("readingSkills", "正在读取 skill 列表…") + '</div>';
       panel.classList.add("-show");
       place();
       return;

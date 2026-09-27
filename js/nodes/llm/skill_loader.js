@@ -82,12 +82,12 @@ function applyList(node, items, select) {
   const current = (items || []).find((item) => item.name === widget.value);
   if (current) {
     const parts = [current.sizeText];
-    if (current.resourceCount) parts.push(T("resources", "{n} resources", { n: current.resourceCount }));
+    if (current.resourceCount) parts.push(T("resources", "{n} 个资源", { n: current.resourceCount }));
     M8.setStatus(node, "ok", parts.join(" · "));
   } else {
     M8.setStatus(node, "idle", names.length
-      ? T("available", "{n} available", { n: names.length })
-      : T("noSkills", "no skills yet"));
+      ? T("available", "{n} 个可选", { n: names.length })
+      : T("noSkills", "还没有 skill"));
   }
 
   app.graph?.setDirtyCanvas(true, true);
@@ -95,14 +95,14 @@ function applyList(node, items, select) {
 
 async function doUpload(node, files) {
   if (!files.length) return;
-  M8.setStatus(node, "busy", T("uploading", "Uploading {n} files...", { n: files.length }));
+  M8.setStatus(node, "busy", T("uploading", "上传 {n} 个文件…", { n: files.length }));
   const result = await M8.apiUpload("/skills/upload", files);
   const saved = result.skill;
   M8.notify(
-    T("saved", "Saved {name}", { name: saved.name }),
+    T("saved", "已保存 {name}", { name: saved.name }),
     {
       kind: "ok",
-      hint: T("savedHint", "{files} files / {size}, stored in m8/data/skills/{name}/",
+      hint: T("savedHint", "{files} 个文件 / {size}，存在 m8/data/skills/{name}/",
         { files: saved.fileCount, size: saved.sizeText, name: saved.name }),
       timeout: 5000,
     },
@@ -115,56 +115,56 @@ async function showResources(node) {
   const widget = M8.findWidget(node, "skill");
   const name = widget?.value;
   if (!name || name === NO_SKILL) {
-    M8.notify(T("pickFirst", "Pick a skill first"), { kind: "warn" });
+    M8.notify(T("pickFirst", "还没选 skill"), { kind: "warn" });
     return;
   }
 
   const tree = await M8.apiGet("/skills/tree", { name });
   const resources = tree.resources || [];
   if (!resources.length) {
-    M8.notify(T("textOnly", "{name} is a plain text pack with no attachments", { name }),
+    M8.notify(T("textOnly", "{name} 是个纯文本包，没有附属文件", { name }),
       { kind: "ok", timeout: 3000 });
     return;
   }
 
   const lines = [];
   if (tree.inlined?.length) {
-    lines.push(T("inlined", "{n} will be inlined this run: {list}",
+    lines.push(T("inlined", "本次会内联 {n} 个：{list}",
       { n: tree.inlined.length, list: tree.inlined.slice(0, 5).join(", ") }));
   }
   if (tree.skipped?.length) {
-    lines.push(T("skipped", "{n} not expanded: {list}",
+    lines.push(T("skipped", "{n} 个未展开：{list}",
       { n: tree.skipped.length, list: tree.skipped.slice(0, 3).join(", ") }));
   }
-  lines.push(T("totalFiles", "{n} attachments in total", { n: resources.length }));
+  lines.push(T("totalFiles", "共 {n} 个附属文件", { n: resources.length }));
 
-  M8.notify(T("resourcesOf", "Contents of {name}", { name }),
+  M8.notify(T("resourcesOf", "{name} 的资源", { name }),
     { kind: "info", hint: lines.join("; "), timeout: 9000 });
 }
 
 function setup(node) {
   M8.brand(node);
-  M8.setStatus(node, "idle", T("loading", "Loading..."));
+  M8.setStatus(node, "idle", T("loading", "加载中…"));
 
-  const uploadFileWidget = M8.addButton(node, T("uploadSkill", "Upload skill"), async () => {
+  const uploadFileWidget = M8.addButton(node, T("uploadSkill", "上传 Skill"), async () => {
     await doUpload(node, await pickFiles());
-  }, { tooltip: T("uploadSkillTip", "Pick a markdown file. It is wrapped into the folder layout automatically (main file named SKILL.md); add resources later any time.") });
+  }, { tooltip: T("uploadSkillTip", "选一个 md 文件。会自动包成目录式（主文件叫 SKILL.md），以后要加资源随时补") });
 
-  const uploadDirWidget = M8.addButton(node, T("uploadPack", "Upload whole pack"), async () => {
+  const uploadDirWidget = M8.addButton(node, T("uploadPack", "上传整个包"), async () => {
     await doUpload(node, await pickFiles({ directory: true }));
-  }, { tooltip: T("uploadPackTip", "Pick a folder and references/ and scripts/ come along. The folder name becomes the skill name; it must contain SKILL.md.") });
+  }, { tooltip: T("uploadPackTip", "选一个目录，连带 references/ scripts/ 一起搬过来。目录名就是 skill 名，里面要有 SKILL.md") });
 
-  const refreshWidget = M8.addButton(node, T("refresh", "Refresh list"), async () => {
-    M8.setStatus(node, "busy", T("refreshing", "Refreshing..."));
+  const refreshWidget = M8.addButton(node, T("refresh", "刷新列表"), async () => {
+    M8.setStatus(node, "busy", T("refreshing", "刷新中…"));
     const result = await M8.apiGet("/skills/list");
     applyList(node, result.skills);
-    M8.notify(T("refreshed", "Skill list updated: {n}", { n: result.skills.length }),
+    M8.notify(T("refreshed", "skill 列表已更新：{n} 个", { n: result.skills.length }),
       { kind: "ok", timeout: 2200 });
-  }, { tooltip: T("refreshTip", "Re-read the list of uploaded skills.") });
+  }, { tooltip: T("refreshTip", "重新读一遍已上传的 skill 列表") });
 
-  const infoWidget = M8.addButton(node, T("inventory", "Contents"), async () => {
+  const infoWidget = M8.addButton(node, T("inventory", "资源清单"), async () => {
     await showResources(node);
-  }, { tooltip: T("inventoryTip", "See which attachments this pack carries and how many get inlined this run (shown in a notification, it does not take up node space).") });
+  }, { tooltip: T("inventoryTip", "看这个包带了哪些附属文件、本次会内联几个（显示在通知里，不占节点的地方）") });
 
   // **不重排 widget**（理由见 llm_inference.js 里那段注释）：
   // widgets_values 按索引存取，且存的跳过 serialize:false、读的不跳，
@@ -185,7 +185,7 @@ function setup(node) {
     })
     .catch((exc) => {
       M8.warn("首次拉 skill 列表失败：", exc.message);
-      M8.setStatus(node, "warn", T("noEndpoint", "endpoint not responding"));
+      M8.setStatus(node, "warn", T("noEndpoint", "接口没响应"));
     });
 }
 

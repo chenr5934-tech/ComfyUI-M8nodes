@@ -158,7 +158,7 @@ const M8Cut = (() => {
       knob.className = "cut-knob";
       knob.setAttribute("role", "slider");
       knob.setAttribute("tabindex", "0");
-      knob.setAttribute("aria-label", T("cutSplitLineAria", "Split line {n}", { n: i + 1 }));
+      knob.setAttribute("aria-label", T("cutSplitLineAria", "第 {n} 条分割线", { n: i + 1 }));
       knob.setAttribute("aria-valuemin", "0");
       knob.setAttribute("aria-valuemax", "100");
       knob.setAttribute("aria-valuenow", String(Math.round(pos)));
@@ -212,8 +212,8 @@ const M8Cut = (() => {
       btn.style.flex = share + " 1 0";
       btn.dataset.index = String(i);
       btn.setAttribute("aria-pressed", state.muted[i] ? "true" : "false");
-      btn.setAttribute("aria-label", T("cutPieceAria", "Piece {n}", { n: i + 1 })
-        + (state.muted[i] ? T("cutPieceMuted", ", muted") : T("cutPieceNormal", ", exported as is")));
+      btn.setAttribute("aria-label", T("cutPieceAria", "第 {n} 段", { n: i + 1 })
+        + (state.muted[i] ? T("cutPieceMuted", "已屏蔽") : T("cutPieceNormal", "正常导出")));
       const dot = document.createElement("span");
       dot.textContent = state.muted[i] ? "⊘" : "○";
       btn.appendChild(dot);
@@ -255,8 +255,8 @@ const M8Cut = (() => {
     const left = activeIndexes().length;
     el.generate.disabled = !state.img || left === 0;
     el.generate.textContent = left === 0
-      ? T("cutAllMuted", "Everything is muted")
-      : T("cutGenerateCount", "Generate preview ({n} pieces)", { n: left });
+      ? T("cutAllMuted", "全部已屏蔽")
+      : T("cutGenerateCount", "生成预览（{n} 段）", { n: left });
   }
 
   /* ------------------------------------------------------------ 拖拽 */
@@ -342,7 +342,7 @@ const M8Cut = (() => {
     }
     el.source.src = st.url;
     setCount(parseInt(el.count.value, 10) || 3);
-    setStatus(T("cutStatusHint", "Drag the dot on a dashed line to move the split; click the circle beside a piece to mute it."));
+    setStatus(T("cutStatusHint", "拖动虚线中间的圆点调整位置；点每段旁边的圆钮屏蔽这一段。"));
   }
 
   /* ------------------------------------------------------------ 生成 */
@@ -361,11 +361,11 @@ const M8Cut = (() => {
     if (!state.img) return;
     const idx = activeIndexes();
     if (!idx.length) {
-      setStatus(T("cutNoExportable", "Every piece is muted, so there is nothing to export."), true);
+      setStatus(T("cutNoExportable", "所有段都被屏蔽了，没有可以导出的内容。"), true);
       return;
     }
     clearPreview();
-    setStatus(T("busyGenerating", "Generating..."));
+    setStatus(T("busyGenerating", "正在生成…"));
 
     const total = idx.length;
     let done = 0;
@@ -404,12 +404,12 @@ const M8Cut = (() => {
     state.shots.sort(function (a, b) { return a.no - b.no; });
     renderPreview();
     if (!state.shots.length) {
-      setStatus(T("cutTooSmall", "Every piece is too small to cut anything usable."), true);
+      setStatus(T("cutTooSmall", "每段都太小了，切不出有效内容。"), true);
       return;
     }
     el.preview.classList.remove("is-hidden");
-    el.previewNote.textContent = T("cutPreviewNote", "{n} images - muted pieces never show up here", { n: state.shots.length });
-    setStatus(T("cutPreviewReady", "All done. Download them one by one, or export the lot."));
+    el.previewNote.textContent = T("cutPreviewNote", "{n} 张 · 被屏蔽的段不会出现在这里", { n: state.shots.length });
+    setStatus(T("cutPreviewReady", "生成完毕，可以逐个下载，也可以一次全导。"));
   }
 
   function renderPreview() {
@@ -424,7 +424,7 @@ const M8Cut = (() => {
       shot.className = "pv-shot";
       const im = document.createElement("img");
       im.src = s.url;
-      im.alt = T("cutPiecePreviewAlt", "Preview of piece {n}", { n: s.no });
+      im.alt = T("cutPiecePreviewAlt", "第 {n} 段预览", { n: s.no });
       shot.appendChild(im);
 
       const meta = document.createElement("div");
@@ -442,7 +442,7 @@ const M8Cut = (() => {
       save.className = "pv-save";
       save.href = s.url;
       save.download = s.name;
-      save.textContent = T("cutDownloadOne", "Download this piece");
+      save.textContent = T("cutDownloadOne", "下载这一段");
 
       card.appendChild(shot);
       card.appendChild(meta);
@@ -493,7 +493,7 @@ const M8Cut = (() => {
 
     el.count.addEventListener("input", function () {
       const n = Math.min(10, Math.max(2, parseInt(el.count.value, 10) || 2));
-      el.countOut.textContent = T("cutPieceCount", "{n} pieces", { n: n });
+      el.countOut.textContent = T("cutPieceCount", "{n} 段", { n: n });
       setCount(n);
     });
 
@@ -511,7 +511,7 @@ const M8Cut = (() => {
     document.addEventListener("pointerup", endDrag);
     document.addEventListener("pointercancel", endDrag);
 
-    el.countOut.textContent = T("cutPieceCount", "{n} pieces", { n: state.count });
+    el.countOut.textContent = T("cutPieceCount", "{n} 段", { n: state.count });
     /* 先按段数把分割线建出来，再切方向 —— 不先建的话 cuts 是空数组，
        而 count 已经是 3，两份状态对不上，会渲染出一个横跨整图的「第 1 段」。 */
     setCount(state.count);

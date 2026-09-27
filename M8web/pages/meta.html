@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en" data-i18n-title="feat.meta.pageTitle">
+<html lang="zh" data-i18n-title="feat.meta.pageTitle">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Image Metadata - M8 Workbench</title>
+  <title>图片元数据 · M8 工作台</title>
   <link rel="icon" type="image/svg+xml" href="../assets/img/favicon.svg">
   <link rel="stylesheet" href="../assets/css/base.css">
   <link rel="stylesheet" href="../assets/css/shell.css">
@@ -29,17 +29,17 @@
 
           <header class="meta-head">
             <div>
-              <h1 data-i18n="feat.meta.name">Image Metadata</h1>
-              <p data-i18n="metaLede">Drop in an image and it is parsed automatically: generation parameters, embedded workflow, EXIF, file info. Everything is read on this machine and the image is never uploaded.</p>
+              <h1 data-i18n="feat.meta.name">图片元数据</h1>
+              <p data-i18n="metaLede">拖一张图进来就自动解析：生成参数、内嵌工作流、EXIF、文件信息。全程在本机读，图片不会被上传。</p>
             </div>
-            <button class="ghost-btn is-hidden" id="metaAgain" type="button" data-i18n="metaAgain">Pick another</button>
+            <button class="ghost-btn is-hidden" id="metaAgain" type="button" data-i18n="metaAgain">换一张</button>
           </header>
 
           <div class="drop" id="metaDrop">
             <input id="metaFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif">
             <span class="drop-ico" aria-hidden="true">＋</span>
-            <strong data-i18n="dropPrompt">Click to choose, drag it in, or paste with Ctrl+V</strong>
-            <small id="metaHint" data-i18n="metaHint">PNG / JPEG / WebP / GIF</small>
+            <strong data-i18n="dropPrompt">点击选择、拖进来，或者 Ctrl+V 粘贴</strong>
+            <small id="metaHint" data-i18n="metaHint">支持 PNG / JPEG / WebP / GIF</small>
           </div>
 
           <div class="meta-body is-hidden" id="metaBody">

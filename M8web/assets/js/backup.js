@@ -56,9 +56,9 @@ const M8Backup = (() => {
      执行，当场取 window.M8I18n 只会拿到 undefined。getter 等到真正读它的那几处
      （拼「这份备份是 XX 的」那句报错）才查表，那时语言包早就绪了。 */
   const KINDS = {
-    oc: { get title() { return T("feat.oc.name", "OC Workshop"); }, file: "m8-oc" },
-    prompts: { get title() { return T("feat.prompts.name", "Prompt Collection"); }, file: "m8-prompts" },
-    stickers: { get title() { return T("stickerLib", "Sticker library"); }, file: "m8-stickers" },
+    oc: { get title() { return T("feat.oc.name", "OC 工坊"); }, file: "m8-oc" },
+    prompts: { get title() { return T("feat.prompts.name", "提示词归纳"); }, file: "m8-prompts" },
+    stickers: { get title() { return T("stickerLib", "贴纸库"); }, file: "m8-stickers" },
   };
 
   function pad(n) { return (n < 10 ? "0" : "") + n; }
@@ -96,22 +96,22 @@ const M8Backup = (() => {
     try {
       obj = JSON.parse(text);
     } catch (e) {
-      throw new Error(T("backupNotJson", "This is not an M8 backup file (the JSON could not be read)."));
+      throw new Error(T("backupNotJson", "这不是 M8 的备份文件（读不出 JSON）。"));
     }
     if (!obj || obj.app !== APP) {
-      throw new Error(T("backupNotOurs", "This file was not exported by the M8 Workbench."));
+      throw new Error(T("backupNotOurs", "这不是 M8 工作台导出的文件。"));
     }
     if (typeof obj.v !== "number") {
-      throw new Error(T("backupNoVersion", "The backup file carries no version number, so it cannot be trusted."));
+      throw new Error(T("backupNoVersion", "备份文件里没有版本号，不敢认。"));
     }
     if (obj.v > V) {
-      throw new Error(T("backupNewerVersion", "This backup was exported by a newer version (v{v}), which this version cannot read.", { v: obj.v }));
+      throw new Error(T("backupNewerVersion", "这份备份是更新版本导出的（v{v}），当前版本读不了。", { v: obj.v }));
     }
     if (!obj.kind || !KINDS[obj.kind]) {
-      throw new Error(T("backupUnknownKind", "Unrecognised kind in the backup: ") + (obj.kind || T("backupKindEmpty", "(empty)")));
+      throw new Error(T("backupUnknownKind", "备份里的类型不认：") + (obj.kind || T("backupKindEmpty", "(空)")));
     }
     if (!Array.isArray(obj.data)) {
-      throw new Error(T("backupNoData", "The backup holds no data."));
+      throw new Error(T("backupNoData", "备份里没有数据。"));
     }
     return obj;
   }
@@ -162,7 +162,7 @@ const M8Backup = (() => {
   function readText(file) {
     return new Promise(function (resolve, reject) {
       const fr = new FileReader();
-      fr.onerror = function () { reject(new Error(T("fileUnreadable", "This file could not be read."))); };
+      fr.onerror = function () { reject(new Error(T("fileUnreadable", "这个文件读不出来。"))); };
       fr.onload = function () { resolve(String(fr.result || "")); };
       fr.readAsText(file);
     });
@@ -208,7 +208,7 @@ const M8Backup = (() => {
       if (name && byName[name] !== undefined) {
         map[g.id] = byName[name];
       } else {
-        toCreate.push({ name: name || T("backupNewGroup", "New group"), oldId: g.id });
+        toCreate.push({ name: name || T("backupNewGroup", "新分类"), oldId: g.id });
       }
     });
     return { map: map, toCreate: toCreate };
@@ -292,11 +292,11 @@ const M8Backup = (() => {
       const head = document.createElement("header");
       head.className = "modal-head";
       const h2 = document.createElement("h2");
-      h2.textContent = T("importTitle", "Import this backup?");
+      h2.textContent = T("importTitle", "导入这份备份？");
       const x = document.createElement("button");
       x.type = "button";
       x.className = "modal-x";
-      x.setAttribute("aria-label", T("closeLabel", "Close"));
+      x.setAttribute("aria-label", T("closeLabel", "关闭"));
       x.textContent = "×";
       x.addEventListener("click", function () { finish(null); });
       head.appendChild(h2);
@@ -306,13 +306,11 @@ const M8Backup = (() => {
       body.className = "modal-body";
       const main = document.createElement("p");
       main.className = "modal-text";
-      main.textContent = T("importBody",
-        "This is a backup of {title} with {n} entries; this page currently holds {m}.",
+      main.textContent = T("importBody", "这是「{title}」的备份，里面有 {n} 条；当前页面上已有 {m} 条。",
         { title: title, n: incoming, m: existing });
       const sub = document.createElement("p");
       sub.className = "modal-text sub";
-      sub.textContent = T("importBodySub",
-        "Merge: entries with the same name are skipped, the rest come in as new ones, and nothing already here is touched."
+      sub.textContent = T("importBodySub", "合并：同名的跳过，其余作为新条目加进来，现有的一个都不动。替换：先把现有的全清掉，再把这 {n} 条灌进去。"
         + " Replace: everything here is cleared out first, then these {n} entries are written in.",
         { n: incoming });
       body.appendChild(main);
@@ -323,17 +321,17 @@ const M8Backup = (() => {
       const cancel = document.createElement("button");
       cancel.type = "button";
       cancel.className = "ghost-btn";
-      cancel.textContent = T("cancel", "Cancel");
+      cancel.textContent = T("cancel", "取消");
       cancel.addEventListener("click", function () { finish(null); });
       const merge = document.createElement("button");
       merge.type = "button";
       merge.className = "ghost-btn";
-      merge.textContent = T("importMerge", "Merge them in");
+      merge.textContent = T("importMerge", "合并导入");
       merge.addEventListener("click", function () { finish("merge"); });
       const replace = document.createElement("button");
       replace.type = "button";
       replace.className = "gen-btn danger";
-      replace.textContent = T("importReplace", "Clear and import");
+      replace.textContent = T("importReplace", "清空后导入");
       replace.addEventListener("click", function () { finish("replace"); });
       foot.appendChild(cancel);
       foot.appendChild(merge);

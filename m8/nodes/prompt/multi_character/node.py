@@ -299,8 +299,8 @@ class M8MultiCharacter:
     RETURN_TYPES = ("STRING",)
     RETURN_NAMES = ("prompt",)
     FUNCTION = "execute"
-    CATEGORY = "M8/Prompt"
-    DESCRIPTION = "Edit several characters' prompts and on-canvas regions, assembled into one ready-to-use prompt"
+    CATEGORY = "M8/提示词"
+    DESCRIPTION = "分块编辑多个角色的提示词与画面区域，组装成一段可直接使用的提示词。"
 
     def execute(
         self,
@@ -360,5 +360,5 @@ NODE_CLASS_MAPPINGS = {
     "M8MultiCharacter": M8MultiCharacter,
 }
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "M8MultiCharacter": "M8 · Multi-Character Editor",
+    "M8MultiCharacter": "M8 · 多角色编辑",
 }
