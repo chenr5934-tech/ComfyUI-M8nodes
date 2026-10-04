@@ -65,11 +65,15 @@ var M8Apng = (function () {
      一个对不上的数字。 */
   var DELAY_QUANTUM_MS = 1000 / DELAY_DEN;
 
-  /* 每帧时长的上下限（毫秒）。
-     下限取 20ms：很多解码器把 delay=0 当成「用默认值」或者直接跳过那一帧，
-     用户拖到最快会看到「有几帧不见了」。20ms = 50fps，比这更快人眼也分不出。 */
-  var MIN_DELAY_MS = 20;
+  /* 每帧停留时长的上下限（毫秒）：**1 秒 ~ 10 秒，默认 2 秒**。
+     这个范围是给「幻灯片式」的动图用的 —— 几张图轮播，每张停一会儿让人看清。
+     100ms 那一档（10fps）属于动画片的速度，放到这种图集上快得根本看不清。
+
+     上限 10 秒是产品决定，不是格式限制：delay_num 是 16 位、分母 100，
+     最大能到 655 秒。下限同理。 */
+  var MIN_DELAY_MS = 1000;
   var MAX_DELAY_MS = 10000;
+  var DEFAULT_DELAY_MS = 2000;
 
   /* ---------------------------------------------------------------- CRC32 */
 
@@ -219,7 +223,7 @@ var M8Apng = (function () {
 
     var settings = opts || {};
     var delayMs = Math.round(Number(settings.delayMs));
-    if (!isFinite(delayMs) || delayMs <= 0) delayMs = 100;
+    if (!isFinite(delayMs) || delayMs <= 0) delayMs = DEFAULT_DELAY_MS;
     delayMs = Math.max(MIN_DELAY_MS, Math.min(MAX_DELAY_MS, delayMs));
     delayMs = Math.round(delayMs / DELAY_QUANTUM_MS) * DELAY_QUANTUM_MS;
     var delayNum = delayMs / DELAY_QUANTUM_MS;        // 百分之一秒
@@ -322,18 +326,19 @@ var M8Apng = (function () {
   }
 
   /**
-   * 把速度倍率换算成每帧时长（毫秒）。
+   * 把「每帧停留几秒」换算成毫秒。
    *
-   * 界面上给的是「倍率」（0.25× ~ 4×），因为它比毫秒直观：拖到 2× 就是快一倍，
-   * 不用去想「100ms 和 200ms 哪个快」。基准 100ms ≈ 10fps。
+   * **界面上的滑块直接就是秒，不做倍率换算。** 一开始那个版本给的是「倍率」
+   * （0.25× ~ 4×，基准 100ms），实际用起来发现想的是「这张停两秒」，
+   * 而不是「1.5 倍速是多少毫秒」—— 而且 100ms 那个量级对图集来说太快了。
+   *
+   * 结果和 build() 走同一套 10ms 对齐，界面上显示的就是文件里的。
    */
-  function delayFromSpeed(speed, baseMs) {
-    var s = Number(speed);
-    if (!isFinite(s) || s <= 0) s = 1;
-    var base = Number(baseMs);
-    if (!isFinite(base) || base <= 0) base = 100;
-    var ms = Math.max(MIN_DELAY_MS, Math.min(MAX_DELAY_MS, Math.round(base / s)));
-    // 和 build() 用同一套对齐 —— 界面上显示的就是文件里的
+  function delayFromSeconds(seconds) {
+    var s = Number(seconds);
+    if (!isFinite(s) || s <= 0) s = DEFAULT_DELAY_MS / 1000;
+    var ms = Math.round(s * 1000);
+    ms = Math.max(MIN_DELAY_MS, Math.min(MAX_DELAY_MS, ms));
     return Math.round(ms / DELAY_QUANTUM_MS) * DELAY_QUANTUM_MS;
   }
 
@@ -464,7 +469,13 @@ var M8Apng = (function () {
   }
 
   function currentDelay() {
-    return M8Apng.delayFromSpeed(Number(el.speed.value) || 1);
+    return M8Apng.delayFromSeconds(Number(el.delay.value));
+  }
+
+  /** 滑块上现在是几秒。 */
+  function currentSeconds() {
+    var s = Number(el.delay.value);
+    return isFinite(s) && s > 0 ? s : M8Apng.DEFAULT_DELAY_MS / 1000;
   }
 
   function releaseUrl(url) {
@@ -730,9 +741,9 @@ var M8Apng = (function () {
       restFile: byId("apngRestFile"),
       restCount: byId("apngRestCount"),
       strip: byId("apngStrip"),
-      speed: byId("apngSpeed"),
-      speedOut: byId("apngSpeedOut"),
+      delay: byId("apngDelay"),
       delayOut: byId("apngDelayOut"),
+      delayMsOut: byId("apngDelayMsOut"),
       fit: byId("apngFit"),
       scale: byId("apngScale"),
       sizeOut: byId("apngSizeOut"),
@@ -751,7 +762,7 @@ var M8Apng = (function () {
     bindDrop(el.firstDrop, el.firstFile, function (files) { setFirst(files[0]); });
     bindDrop(el.restDrop, el.restFile, addRest);
 
-    el.speed.addEventListener("input", updateSpeed);
+    el.delay.addEventListener("input", updateDelay);
     el.scale.addEventListener("change", updateSizeOut);
     el.go.addEventListener("click", run);
     el.save.addEventListener("click", save);
@@ -762,15 +773,17 @@ var M8Apng = (function () {
     el.fit.addEventListener("change", invalidate);
     el.loops.addEventListener("change", invalidate);
 
-    updateSpeed();
+    updateDelay();
     updateSizeOut();
     renderStrip();
   }
 
-  function updateSpeed() {
-    var speed = Number(el.speed.value) || 1;
-    el.speedOut.textContent = speed.toFixed(2) + "×";
-    el.delayOut.textContent = String(currentDelay());
+  /* 滑块一动就更新两处显示：左边是秒（用户调的就是它），右边是换算出来的毫秒。
+     毫秒那一项不是装饰 —— 它和写进文件的 delay 一模一样，出问题时能直接对上。 */
+  function updateDelay() {
+    var seconds = currentSeconds();
+    el.delayOut.textContent = seconds.toFixed(1) + " s";
+    el.delayMsOut.textContent = String(currentDelay());
     invalidate();
   }
 
@@ -793,7 +806,8 @@ var M8Apng = (function () {
     parsePng: parsePng,
     frameShape: frameShape,
     build: build,
-    delayFromSpeed: delayFromSpeed,
+    delayFromSeconds: delayFromSeconds,
+    DEFAULT_DELAY_MS: DEFAULT_DELAY_MS,
     countFrames: countFrames,
     readDelays: readDelays,
     fitRect: fitRect,
