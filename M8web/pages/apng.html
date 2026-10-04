@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="zh" data-i18n-title="feat.apng.pageTitle">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>APNG 动图合成 · M8 工作台</title>
+  <link rel="icon" type="image/svg+xml" href="../assets/img/favicon.svg">
+  <link rel="stylesheet" href="../assets/css/base.css">
+  <link rel="stylesheet" href="../assets/css/shell.css">
+  <link rel="stylesheet" href="../assets/css/apng.css">
+  <script>
+    /* 与首页同一段：主题要在 head 里就定下来，否则黑夜主题会先闪白底 */
+    try {
+      var t = localStorage.getItem("m8web.theme");
+      document.documentElement.dataset.theme = t || "night";
+    } catch (e) {
+      document.documentElement.dataset.theme = "night";
+    }
+  </script>
+</head>
+<body>
+  <div id="fx" aria-hidden="true"></div>
+  <div class="shell">
+    <div id="sidebar"></div>
+    <div class="main">
+      <div id="topbar" class="topbar"></div>
+      <div class="content">
+        <section class="apng">
+
+          <header class="apng-head">
+            <div>
+              <h1 data-i18n="feat.apng.name">APNG 动图合成</h1>
+              <p data-i18n="apngLede">把几张图拼成一张会动的 PNG。首图是第一帧，也决定尺寸；后面那些帧会自动缩放到和它一样大。整张动图在本机算完，图片不会上传。</p>
+            </div>
+          </header>
+
+          <p class="apng-note">
+            <b data-i18n="apngNoteLead">首图为什么要单独导入？</b>
+            <span data-i18n="apngNoteBody">APNG 只有一份尺寸信息，所有帧必须同尺寸同格式。所以第一帧单独选，由它定下尺寸；后面的帧不管多大都会缩放到这个尺寸。这样也顺带说明白了「哪张是第一帧」——不用去猜文件名的排序。</span>
+          </p>
+
+          <div class="apng-grid">
+            <div class="apng-col">
+
+              <div class="apng-zone">
+                <div class="apng-zone-head">
+                  <span data-i18n="apngFirstTitle">首图 · 第一帧</span>
+                  <span class="apng-tag" data-i18n="apngFirstTag">定尺寸</span>
+                </div>
+                <div class="drop apng-drop" id="apngFirstDrop">
+                  <input id="apngFirstFile" type="file" accept="image/png,image/jpeg,image/webp">
+                  <img class="drop-thumb is-hidden" id="apngFirstThumb" alt="" data-i18n-attr="alt:apngFirstAlt">
+                  <span class="drop-ico" id="apngFirstIco" aria-hidden="true">＋</span>
+                  <strong data-i18n="apngPickFirst">点击选一张，或者拖进来</strong>
+                  <small data-i18n="apngPickFirstHint">PNG / JPEG / WebP</small>
+                </div>
+              </div>
+
+              <div class="apng-zone">
+                <div class="apng-zone-head">
+                  <span data-i18n="apngRestTitle">后续帧</span>
+                  <span class="apng-count" id="apngRestCount">0</span>
+                </div>
+                <div class="drop apng-drop" id="apngRestDrop">
+                  <input id="apngRestFile" type="file" accept="image/png,image/jpeg,image/webp" multiple>
+                  <span class="drop-ico" id="apngRestIco" aria-hidden="true">＋</span>
+                  <strong data-i18n="apngPickRest">点这里多选，或者一次拖一批进来</strong>
+                  <small data-i18n="apngPickRestHint">缩略图可以拖着换顺序</small>
+                </div>
+                <div class="apng-strip" id="apngStrip"></div>
+              </div>
+
+            </div>
+
+            <aside class="apng-side">
+
+              <div class="apng-card">
+                <span data-i18n="apngSpeedLabel">播放速度</span>
+                <div class="apng-row">
+                  <input id="apngSpeed" type="range" min="0.25" max="4" step="0.05" value="1">
+                  <b class="apng-speed" id="apngSpeedOut">1.00×</b>
+                </div>
+                <div class="apng-sub"><span data-i18n="apngDelayLabel">每帧停留</span> <b id="apngDelayOut">100</b> ms</div>
+              </div>
+
+              <div class="apng-card">
+                <span data-i18n="apngFitLabel">缩放方式</span>
+                <select id="apngFit">
+                  <option value="contain" selected data-i18n="apngFitContain">完整放下（留透明边）</option>
+                  <option value="cover" data-i18n="apngFitCover">填满（裁掉多出来的）</option>
+                  <option value="stretch" data-i18n="apngFitStretch">拉伸（不保比例）</option>
+                </select>
+              </div>
+
+              <div class="apng-card">
+                <span data-i18n="apngSizeLabel">输出尺寸</span>
+                <select id="apngScale">
+                  <option value="1" selected data-i18n="apngScale1">按首图原样</option>
+                  <option value="0.75">0.75×</option>
+                  <option value="0.5">0.5×</option>
+                  <option value="0.25">0.25×</option>
+                </select>
+                <div class="apng-sub" id="apngSizeOut">—</div>
+              </div>
+
+              <div class="apng-card">
+                <span data-i18n="apngLoopLabel">循环次数</span>
+                <input id="apngLoops" type="number" min="0" max="9999" step="1" value="0">
+                <div class="apng-sub" data-i18n="apngLoopHint">0 = 一直循环</div>
+              </div>
+
+            </aside>
+          </div>
+
+          <div class="apng-actions">
+            <button class="gen-btn" id="apngGo" type="button" data-i18n="apngGo">合成 APNG</button>
+            <button class="ghost-btn is-hidden" id="apngSave" type="button" data-i18n="apngSave">保存动图</button>
+            <button class="ghost-btn" id="apngClear" type="button" data-i18n="apngClear">清空</button>
+          </div>
+
+          <div class="apng-body is-hidden" id="apngBody">
+            <div class="apng-shot">
+              <img id="apngOut" alt="" data-i18n-attr="alt:apngOutAlt">
+            </div>
+            <div class="info-card">
+              <div class="kv" id="apngMeta"></div>
+            </div>
+          </div>
+
+          <p class="status" id="apngStatus" role="status"></p>
+        </section>
+      </div>
+    </div>
+  </div>
+  <script src="../assets/js/app.js"></script>
+  <script src="../assets/js/migrate.js"></script>
+  <script src="../assets/js/apng.js"></script>
+  <script type="module">
+    import { bootI18n } from "../assets/js/i18n.js";
+    await bootI18n();
+    boot({ activeId: "apng", title: M8I18n.t("feat.apng.name", "APNG 动图合成"), base: "../" });
+    M8Apng.init();
+  </script>
+</body>
+</html>

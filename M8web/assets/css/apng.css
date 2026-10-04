@@ -1,0 +1,290 @@
+/* ============================================================================
+ * M8web · APNG 动图合成
+ * 上传区、按钮、状态行、卡片那些通用零件都在 shell.css，这里只放本页特有的。
+ * ==========================================================================*/
+
+.apng {
+  width: min(1120px, calc(100% - 40px));
+  margin: 0 auto;
+}
+
+.apng-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 18px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.apng-head h1 {
+  margin: 0 0 4px;
+  font-size: 22px;
+}
+
+.apng-head p {
+  margin: 0;
+  color: var(--text-sub);
+  font-size: 13px;
+  line-height: 1.6;
+  max-width: 62ch;
+}
+
+.apng-note {
+  margin: 0 0 16px;
+  padding: 10px 14px;
+  border-left: 3px solid var(--accent, #26c8bd);
+  background: var(--panel-bg);
+  border-radius: var(--r-ctl, 8px);
+  font-size: 12.5px;
+  line-height: 1.65;
+  color: var(--text-sub);
+}
+
+.apng-note b {
+  color: var(--text);
+}
+
+/* 左列两个导入区，右列参数栈。窄屏时右列落到下面。 */
+.apng-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 296px;
+  gap: 18px;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .apng-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.apng-col {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
+.apng-zone {
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-card, 18px);
+  background: var(--card);
+  box-shadow: var(--soft-shadow);
+}
+
+.apng-zone-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.apng-tag {
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent, #26c8bd) 18%, transparent);
+  color: var(--accent, #26c8bd);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.apng-count {
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: var(--panel-bg);
+  color: var(--text-sub);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 两个上传区都比默认矮一些 —— 页面上有两个，占满高度会把参数挤下去 */
+.apng-drop {
+  min-height: 132px;
+}
+
+/* 后续帧的缩略图条。可以拖拽排序，拖动中的那张会半透明。 */
+.apng-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.apng-strip:empty {
+  margin-top: 0;
+}
+
+.apng-item {
+  position: relative;
+  width: 68px;
+  height: 68px;
+  border-radius: var(--r-ctl, 8px);
+  border: 1px solid var(--border);
+  background: var(--panel-bg);
+  overflow: hidden;
+  cursor: grab;
+}
+
+.apng-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  pointer-events: none;
+}
+
+/* 序号压在左下角 —— 拖动之后用户得能一眼确认顺序对不对 */
+.apng-item i {
+  position: absolute;
+  left: 3px;
+  bottom: 2px;
+  padding: 0 4px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  font-size: 10px;
+  font-style: normal;
+  font-variant-numeric: tabular-nums;
+}
+
+.apng-item button {
+  position: absolute;
+  right: 2px;
+  top: 2px;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.62);
+  color: #fff;
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity .15s var(--ease, ease);
+}
+
+.apng-item:hover button,
+.apng-item:focus-within button {
+  opacity: 1;
+}
+
+.apng-item.is-dragging {
+  opacity: .4;
+}
+
+.apng-item.is-over {
+  outline: 2px solid var(--accent, #26c8bd);
+  outline-offset: -2px;
+}
+
+.apng-side {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  position: sticky;
+  top: 14px;
+}
+
+.apng-card {
+  padding: 13px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-card, 18px);
+  background: var(--card);
+  box-shadow: var(--soft-shadow);
+}
+
+.apng-card > span {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.apng-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.apng-row input[type="range"] {
+  flex: 1;
+  min-width: 0;
+}
+
+.apng-speed {
+  min-width: 46px;
+  text-align: right;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent, #26c8bd);
+}
+
+.apng-sub {
+  margin-top: 6px;
+  color: var(--text-sub);
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.apng-card select,
+.apng-card input[type="number"] {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-ctl, 8px);
+  background: var(--panel-bg);
+  color: var(--text);
+  font: inherit;
+  font-size: 12.5px;
+}
+
+.apng-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin: 18px 0 0;
+}
+
+.apng-body {
+  margin-top: 16px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 280px;
+  gap: 16px;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .apng-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.apng-shot {
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-card, 18px);
+  background: var(--card);
+  text-align: center;
+}
+
+.apng-shot img {
+  max-width: 100%;
+  display: block;
+  margin: 0 auto;
+  border-radius: var(--r-ctl, 8px);
+  /* 棋盘底 —— 有透明边的帧一眼看得出来，不用去猜是不是黑的 */
+  background-image:
+    linear-gradient(45deg, rgba(128,128,128,.16) 25%, transparent 25%),
+    linear-gradient(-45deg, rgba(128,128,128,.16) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, rgba(128,128,128,.16) 75%),
+    linear-gradient(-45deg, transparent 75%, rgba(128,128,128,.16) 75%);
+  background-size: 16px 16px;
+  background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+}
