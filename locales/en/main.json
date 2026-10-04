@@ -1388,7 +1388,6 @@
     "apngRestTitle": "后续帧",
     "apngPickRest": "点这里多选，或者一次拖一批进来",
     "apngPickRestHint": "缩略图可以拖着换顺序",
-    "apngSpeedLabel": "播放速度",
     "apngDelayLabel": "每帧停留",
     "apngFitLabel": "缩放方式",
     "apngFitContain": "完整放下（留透明边）",

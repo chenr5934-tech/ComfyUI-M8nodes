@@ -280,56 +280,64 @@ test('build：多块 IDAT 的帧，fdAT 也是多块', () => {
 test('build：延迟写进每个 fcTL，读回来一致', () => {
   const apng = A.build([
     { png: makePng() }, { png: makePng() }, { png: makePng() },
-  ], { delayMs: 250 });
-  eq(A.readDelays(apng), [250, 250, 250], '三帧的延迟都要一样');
+  ], { delayMs: 2500 });
+  eq(A.readDelays(apng), [2500, 2500, 2500], '三帧的延迟都要一样');
 
   const fctl = chunksOf(apng).filter((c) => c.type === 'fcTL')[0];
   const num = (fctl.data[20] << 8) | fctl.data[21];
   const den = (fctl.data[22] << 8) | fctl.data[23];
-  eq([num, den], [25, 100], '250ms = 25/100 秒');
+  eq([num, den], [250, 100], '2500ms = 250/100 秒（延迟是分数，分母固定 100）');
 });
 
-test('delayFromSpeed：倍率换算成毫秒，并对齐到 10ms 刻度', () => {
-  eq(A.delayFromSpeed(1), 100, '1× 是 100ms');
-  eq(A.delayFromSpeed(2), 50, '2× 快一倍');
-  eq(A.delayFromSpeed(0.5), 200, '0.5× 慢一倍');
-  /* 100/4 = 25，但 APNG 的延迟单位是百分之一秒，落到文件里只能是 10ms 的倍数。
-     与其「界面写 25、解码器读出 30」，不如现在就对齐 —— 显示的和文件里的永远相等。
-     这个精度损失是格式固有的，不是实现问题。 */
-  eq(A.delayFromSpeed(4), 30, '4× 被对齐到 10ms 刻度');
-  eq(A.delayFromSpeed(3), 30, '3× 同样对齐');
-  for (const s of [0.25, 0.5, 1, 1.5, 2, 3, 4]) {
-    eq(A.delayFromSpeed(s) % 10, 0, s + '× 的结果必须是 10 的倍数');
+test('delayFromSeconds：秒换算成毫秒', () => {
+  eq(A.delayFromSeconds(1), 1000, '1 秒');
+  eq(A.delayFromSeconds(2), 2000, '2 秒（默认档）');
+  eq(A.delayFromSeconds(2.5), 2500, '2.5 秒');
+  eq(A.delayFromSeconds(7), 7000, '7 秒');
+  eq(A.delayFromSeconds(10), 10000, '10 秒');
+});
+
+test('delayFromSeconds：夹在 [1 秒, 10 秒] 之间，非法输入退回默认', () => {
+  /* 这个区间是给「幻灯片式」动图用的：几张图轮播，每张停一会儿让人看清。
+     100ms 那一档（10fps）属于动画片的速度，放到图集上快得看不清 ——
+     第一版就是拿倍率算的（基准 100ms），实机用下来反馈「太快」。 */
+  eq(A.MIN_DELAY_MS, 1000, '下限 1 秒');
+  eq(A.MAX_DELAY_MS, 10000, '上限 10 秒');
+  eq(A.DEFAULT_DELAY_MS, 2000, '默认 2 秒');
+
+  eq(A.delayFromSeconds(0.1), 1000, '比 1 秒还快就停在 1 秒');
+  eq(A.delayFromSeconds(99), 10000, '比 10 秒还慢就停在 10 秒');
+  eq(A.delayFromSeconds(0), 2000, '0 退回默认');
+  eq(A.delayFromSeconds(-3), 2000, '负数退回默认');
+  eq(A.delayFromSeconds(NaN), 2000, 'NaN 退回默认');
+  eq(A.delayFromSeconds(undefined), 2000, 'undefined 退回默认');
+});
+
+test('delayFromSeconds：结果落在 10ms 刻度上', () => {
+  // APNG 的延迟单位是百分之一秒，任何值落到文件里都只能是 10ms 的倍数
+  for (const s of [1, 1.5, 2, 2.5, 3.4, 7.7, 10]) {
+    eq(A.delayFromSeconds(s) % 10, 0, s + ' 秒的结果必须是 10 的倍数');
   }
+  eq(A.delayFromSeconds(3.4), 3400, '3.4 秒');
+  eq(A.delayFromSeconds(7.7), 7700, '7.7 秒');
 });
 
-test('build：写进去的时长和解码器读出来的一致（量化误差不会外泄）', () => {
-  /* 这条是补的：原来界面显示 25ms、文件里却是 30ms，两边对不上。
-     现在 build 和 delayFromSpeed 共用同一套对齐。 */
-  for (const speed of [1, 2, 4, 0.5, 0.25]) {
-    const want = A.delayFromSpeed(speed);
+test('build：写进去的时长和解码器读出来的一致', () => {
+  /* 界面上的秒数和文件里的 delay 必须是同一个值 —— 显示归显示、文件归文件的话，
+     用户按显示的秒数去数，会发现对不上。 */
+  for (const sec of [1, 2, 2.5, 5, 10]) {
+    const want = A.delayFromSeconds(sec);
     const apng = A.build([{ png: makePng() }], { delayMs: want });
-    eq(A.readDelays(apng), [want], speed + '× 时写进去和读回来要一样');
+    eq(A.readDelays(apng), [want], sec + ' 秒时写进去和读回来要一样');
   }
-  // 不是 10 的倍数的输入也要被对齐，而不是原样写进去
-  eq(A.readDelays(A.build([{ png: makePng() }], { delayMs: 23 })), [20], '23ms 对齐到 20ms');
-  eq(A.readDelays(A.build([{ png: makePng() }], { delayMs: 26 })), [30], '26ms 对齐到 30ms');
 });
 
-test('delayFromSpeed：夹在 [20, 10000] 之间', () => {
-  /* 下限这条是实的：很多解码器把 delay=0 当成「用默认值」或者干脆跳过那一帧，
-     用户拖到最快会看到「有几帧不见了」。 */
-  eq(A.delayFromSpeed(999), A.MIN_DELAY_MS, '再快也不低于下限');
-  eq(A.delayFromSpeed(0.001), A.MAX_DELAY_MS, '再慢也不高于上限');
-  eq(A.delayFromSpeed(0), 100, '0 当作 1×');
-  eq(A.delayFromSpeed(-3), 100, '负数当作 1×');
-  eq(A.delayFromSpeed(NaN), 100, 'NaN 当作 1×');
-});
-
-test('build：delayMs 也走同一套夹取', () => {
-  eq(A.readDelays(A.build([{ png: makePng() }], { delayMs: 0 })), [100], '0 退回 100ms');
-  eq(A.readDelays(A.build([{ png: makePng() }], { delayMs: 1 })), [A.MIN_DELAY_MS], '1ms 被抬到下限');
-  eq(A.readDelays(A.build([{ png: makePng() }], { delayMs: 999999 })), [A.MAX_DELAY_MS], '过大被压到上限');
+test('build：不传时长就用默认的 2 秒', () => {
+  eq(A.readDelays(A.build([{ png: makePng() }], {})), [2000], '不传');
+  eq(A.readDelays(A.build([{ png: makePng() }], { delayMs: 0 })), [2000], '传 0');
+  eq(A.readDelays(A.build([{ png: makePng() }], { delayMs: NaN })), [2000], '传 NaN');
+  eq(A.readDelays(A.build([{ png: makePng() }], { delayMs: 500 })), [A.MIN_DELAY_MS], '500ms 被抬到 1 秒下限');
+  eq(A.readDelays(A.build([{ png: makePng() }], { delayMs: 999999 })), [A.MAX_DELAY_MS], '过大被压到 10 秒上限');
 });
 
 /* ================================================================ 校验与拒绝 */
@@ -413,7 +421,7 @@ test('端到端：三帧合成后的整体结构自洽', () => {
     { png: makePng({ width: 6, height: 4 }) },
     { png: makePng({ width: 6, height: 4 }) },
     { png: makePng({ width: 6, height: 4 }) },
-  ], { delayMs: 120, loops: 0 });
+  ], { delayMs: 1500, loops: 0 });
 
   // 签名
   eq(Array.from(apng.subarray(0, 8)), A.SIGNATURE, 'PNG 签名');
@@ -427,14 +435,14 @@ test('端到端：三帧合成后的整体结构自洽', () => {
   for (const c of chunksOf(apng)) sum += 12 + c.len;
   eq(sum, apng.length, '块长度之和 = 文件长度');
   eq(A.countFrames(apng), 3, '帧数');
-  eq(A.readDelays(apng), [120, 120, 120], '每帧延迟');
+  eq(A.readDelays(apng), [1500, 1500, 1500], '每帧延迟');
 });
 
 test('端到端：帧数从 1 到 8 都能合成', () => {
   for (let n = 1; n <= 8; n++) {
     const frames = [];
     for (let i = 0; i < n; i++) frames.push({ png: makePng({ idatBytes: [i, i + 1, i + 2] }) });
-    const apng = A.build(frames, { delayMs: 80 });
+    const apng = A.build(frames, { delayMs: 2000 });
     eq(A.countFrames(apng), n, n + ' 帧的帧数');
     eq(A.readDelays(apng).length, n, n + ' 帧的延迟条数');
   }

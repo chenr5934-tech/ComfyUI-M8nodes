@@ -140,14 +140,14 @@ def read_apng(path: Path):
 
 
 print()
-print("=== 1. 三帧 64x48，每帧 120ms ===")
+print("=== 1. 三帧 64x48，每帧 2 秒（默认档）===")
 
 with tempfile.TemporaryDirectory(prefix="m8-apng-") as tmp:
     tmpdir = Path(tmp)
     size = (64, 48)
     frames = make_frames(tmpdir, 3, size)
     out = tmpdir / "anim.png"
-    nbytes = encode(frames, out, {"delayMs": 120, "loops": 0})
+    nbytes = encode(frames, out, {"delayMs": 2000, "loops": 0})
     ok("编码器产出 %d 字节" % nbytes)
 
     got = read_apng(out)
@@ -159,18 +159,18 @@ want(got["size"] == size, "尺寸 = %dx%d" % size, "实际 %s" % (got["size"],))
 # 这一项同时证明「帧数据没串」和「色彩格式声明得对」
 want(got["colors"] == COLORS[:3], "每帧的像素和源图一一对应（红 / 绿 / 蓝）",
      "期望 %s，实际 %s" % (COLORS[:3], got["colors"]))
-want(all(d is not None and abs(float(d) - 120) < 0.01 for d in got["durations"]),
-     "每帧时长 = 120ms", str(got["durations"]))
+want(all(d is not None and abs(float(d) - 2000) < 0.01 for d in got["durations"]),
+     "每帧时长 = 2000ms", str(got["durations"]))
 
 print()
-print("=== 2. 四帧，每帧 40ms，尺寸换成 37x21（奇数边）===")
+print("=== 2. 四帧，每帧 3 秒，尺寸换成 37x21（奇数边）===")
 
 with tempfile.TemporaryDirectory(prefix="m8-apng-") as tmp:
     tmpdir = Path(tmp)
     size = (37, 21)
     frames = make_frames(tmpdir, 4, size)
     out = tmpdir / "anim.png"
-    encode(frames, out, {"delayMs": 40, "loops": 2})
+    encode(frames, out, {"delayMs": 3000, "loops": 2})
     got = read_apng(out)
 
 want(got["frames"] == 4 and got["size"] == size,
@@ -185,7 +185,7 @@ with tempfile.TemporaryDirectory(prefix="m8-apng-") as tmp:
     tmpdir = Path(tmp)
     frames = make_frames(tmpdir, 1, (24, 24))
     out = tmpdir / "anim.png"
-    encode(frames, out, {"delayMs": 100, "loops": 0})
+    encode(frames, out, {"delayMs": 2000, "loops": 0})
     got = read_apng(out)
 
 # 单帧的 APNG 应该退化成一个能正常打开的普通 PNG
@@ -193,22 +193,38 @@ want(got["size"] == (24, 24), "单帧也能被 Pillow 打开，尺寸正确",
      "实际 %s" % (got["size"],))
 
 print()
-print("=== 4. 速度档换算出来的时长，Pillow 读回来一致 ===")
+print("=== 4. 界面上那几个秒数档，Pillow 读回来一致 ===")
 
 with tempfile.TemporaryDirectory(prefix="m8-apng-") as tmp:
     tmpdir = Path(tmp)
     frames = make_frames(tmpdir, 2, (16, 16))
-    # 页面里走的是 delayFromSpeed（基准 100ms / 倍率），这里照它算。
-    # 期望值要**跟编码器用同一套对齐**：4× 算出来是 25ms，但 APNG 的延迟
-    # 单位是百分之一秒，落到文件里只能是 10ms 的倍数，所以是 30ms。
-    # 这不是误差被容忍掉了，是两边都对齐到了格式允许的刻度上。
-    for speed, expected in ((2.0, 50), (0.5, 200), (4.0, 30)):
-        out = tmpdir / ("s%s.png" % speed)
-        encode(frames, out, {"delayMs": round(100 / speed), "loops": 0})
+    # 界面上的滑块直接就是秒（1 ~ 10），这里照它算
+    for seconds, expected in ((1, 1000), (2, 2000), (2.5, 2500), (10, 10000)):
+        out = tmpdir / ("s%s.png" % seconds)
+        encode(frames, out, {"delayMs": round(seconds * 1000), "loops": 0})
         got = read_apng(out)
         d = got["durations"][0]
         want(d is not None and abs(float(d) - expected) < 0.01,
-             "%s× -> 每帧 %dms" % (speed, expected), "实际 %s" % d)
+             "%s 秒 -> 每帧 %dms" % (seconds, expected), "实际 %s" % d)
+
+print()
+print("=== 5. 越界的时长被夹到 [1 秒, 10 秒] ===")
+
+with tempfile.TemporaryDirectory(prefix="m8-apng-") as tmp:
+    tmpdir = Path(tmp)
+    frames = make_frames(tmpdir, 2, (16, 16))
+    # 第一版是拿倍率算的（基准 100ms），实机反馈「太快」，所以下限抬到了 1 秒。
+    # 老记录里那些几十毫秒的值现在都会被抬到 1 秒。
+    for given, expected, label in (
+        (120, 1000, "120ms 被抬到 1 秒下限"),
+        (40, 1000, "40ms 同样被抬"),
+        (999999, 10000, "过大被压到 10 秒上限"),
+    ):
+        out = tmpdir / ("c%d.png" % given)
+        encode(frames, out, {"delayMs": given, "loops": 0})
+        got = read_apng(out)
+        d = got["durations"][0]
+        want(d is not None and abs(float(d) - expected) < 0.01, label, "实际 %s" % d)
 
 print()
 print("=" * 58)

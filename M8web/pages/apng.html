@@ -75,12 +75,12 @@
             <aside class="apng-side">
 
               <div class="apng-card">
-                <span data-i18n="apngSpeedLabel">播放速度</span>
+                <span data-i18n="apngDelayLabel">每帧停留</span>
                 <div class="apng-row">
-                  <input id="apngSpeed" type="range" min="0.25" max="4" step="0.05" value="1">
-                  <b class="apng-speed" id="apngSpeedOut">1.00×</b>
+                  <input id="apngDelay" type="range" min="1" max="10" step="0.5" value="2">
+                  <b class="apng-speed" id="apngDelayOut">2.0 s</b>
                 </div>
-                <div class="apng-sub"><span data-i18n="apngDelayLabel">每帧停留</span> <b id="apngDelayOut">100</b> ms</div>
+                <div class="apng-sub"><b id="apngDelayMsOut">2000</b> ms</div>
               </div>
 
               <div class="apng-card">
