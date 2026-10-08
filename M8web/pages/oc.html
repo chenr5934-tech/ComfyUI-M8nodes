@@ -36,9 +36,9 @@
               <span class="oc-count" id="ocCount"></span>
               <div class="backup-bar">
                 <button class="ghost-btn" id="ocBackupOut" type="button"
-                  data-i18n="backupOut" data-i18n-attr="title:backupOutTip">导出备份</button>
+                  data-i18n="backupOut" title="把这里的内容存成一个 json 文件" data-i18n-attr="title:backupOutTip">导出备份</button>
                 <button class="ghost-btn" id="ocBackupIn" type="button"
-                  data-i18n="backupIn" data-i18n-attr="title:backupInTip">导入备份</button>
+                  data-i18n="backupIn" title="从备份文件里读回来" data-i18n-attr="title:backupInTip">导入备份</button>
               </div>
               <button class="gen-btn" id="ocAdd" type="button" data-i18n="ocAdd">＋ 新建一个 OC</button>
             </div>
@@ -64,7 +64,7 @@
     <div class="modal-box sm">
       <header class="modal-head">
         <h2 id="ocDelTitle" data-i18n="ocDelTitle">删掉这个 OC？</h2>
-        <button class="modal-x" id="ocDelX" type="button" data-i18n-attr="aria-label:closeLabel">×</button>
+        <button class="modal-x" id="ocDelX" type="button" aria-label="关闭" data-i18n-attr="aria-label:closeLabel">×</button>
       </header>
       <div class="modal-body">
         <p class="modal-text" id="ocDelText"></p>
@@ -83,7 +83,7 @@
   <script type="module">
     import { bootI18n } from "../assets/js/i18n.js";
     await bootI18n();
-    boot({ activeId: "oc", title: M8I18n.t("feat.oc.name", "OC Workshop"), base: "../" });
+    boot({ activeId: "oc", title: M8I18n.t("feat.oc.name", "OC 工坊"), base: "../" });
     M8OC.init();
   </script>
 </body>

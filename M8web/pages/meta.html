@@ -44,7 +44,7 @@
 
           <div class="meta-body is-hidden" id="metaBody">
             <div class="meta-preview">
-              <img id="metaThumb" alt="" data-i18n-attr="alt:imagePreviewAlt">
+              <img id="metaThumb" alt="图片预览" data-i18n-attr="alt:imagePreviewAlt">
               <p class="meta-name" id="metaName"></p>
             </div>
             <div class="info-panels" id="metaPanels"></div>
@@ -61,7 +61,7 @@
   <script type="module">
     import { bootI18n } from "../assets/js/i18n.js";
     await bootI18n();
-    boot({ activeId: "meta", title: M8I18n.t("feat.meta.name", "Image Metadata"), base: "../" });
+    boot({ activeId: "meta", title: M8I18n.t("feat.meta.name", "图片元数据"), base: "../" });
     M8Meta.init();
   </script>
 </body>

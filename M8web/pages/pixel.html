@@ -100,7 +100,7 @@
 
           <div class="drop" id="pxDrop">
             <input id="pxFile" type="file" accept="image/png,image/jpeg,image/webp">
-            <img class="drop-thumb is-hidden" id="pxThumb" alt="" data-i18n-attr="alt:sourceImageAlt">
+            <img class="drop-thumb is-hidden" id="pxThumb" alt="要转化的图" data-i18n-attr="alt:sourceImageAlt">
             <span class="drop-ico" id="pxIco" aria-hidden="true">＋</span>
             <strong data-i18n="dropPrompt">点击选择、拖进来，或者 Ctrl+V 粘贴</strong>
             <small id="pxHint">PNG / JPEG / WebP</small>
@@ -113,7 +113,7 @@
 
           <div class="px-body is-hidden" id="pxBody">
             <div class="px-preview">
-              <img id="pxOut" alt="" data-i18n-attr="alt:pixelPreviewAlt">
+              <img id="pxOut" alt="像素图预览" data-i18n-attr="alt:pixelPreviewAlt">
               <p class="px-meta" id="pxMeta"></p>
             </div>
             <div class="info-panels" id="pxPanels"></div>
@@ -130,7 +130,7 @@
   <script type="module">
     import { bootI18n } from "../assets/js/i18n.js";
     await bootI18n();
-    boot({ activeId: "pixel", title: M8I18n.t("feat.pixel.name", "Pixel Art Conversion"), base: "../" });
+    boot({ activeId: "pixel", title: M8I18n.t("feat.pixel.name", "像素风转化"), base: "../" });
     M8Pixel.init();
   </script>
 </body>

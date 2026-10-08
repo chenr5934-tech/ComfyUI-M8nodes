@@ -67,6 +67,29 @@ def load_data_dir() -> Path:
     return paths.USER_DATA_DIR
 
 
+def read_i18n_payload(lang: str) -> dict:
+    """读整份 locales/<lang>/main.json，形状和 ComfyUI 的 /m8/i18n 一致。
+
+    净化规则和 read_web_strings 一样：先按字符集过一遍，再确认路径落在 locales/ 里。
+    """
+    clean = re.sub(r"[^A-Za-z0-9_-]", "", str(lang or ""))[:8].lower()
+    if not clean:
+        return {}
+
+    root = (PLUGIN_DIR / "locales").resolve()
+    path = (root / clean / "main.json").resolve()
+    if root != path and root not in path.parents:
+        return {}
+    if not path.is_file():
+        return {}
+
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
 def read_web_strings(lang: str) -> dict:
     """读插件的 locales/<lang>/main.json，取出其中的 web 段。
 
@@ -154,7 +177,11 @@ class Handler(BaseHTTPRequestHandler):
 
         if path.startswith("/m8/i18n/"):
             lang = path[len("/m8/i18n/"):]
-            self._ok(strings=read_web_strings(lang), lang=lang)
+            # 和 ComfyUI 的 handle_i18n 返回**同一个结构**：整份 main.json。
+            # 只给 web 段的话，前端取 data.strings.web 会拿到 undefined，
+            # 于是整张表作废、退回代码里的默认值 —— 换语言时看不出问题，
+            # 但默认值一旦有漏网的英文，离线版就会露出来。踩过。
+            self._ok(strings=read_i18n_payload(lang), lang=lang)
             return
 
         if path.startswith(DATA_PREFIX + "/"):

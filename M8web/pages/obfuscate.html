@@ -57,7 +57,7 @@
               <span data-i18n="obfKey">密钥</span>
               <input id="obfKey" type="text" autocomplete="off" spellcheck="false"
                 data-i18n-attr="placeholder:obfKeyPlaceholder"
-                placeholder="Any few characters; reversing needs exactly the same ones">
+                placeholder="随手几个字，解的时候要一模一样">
             </label>
 
             <label class="obf-field" id="obfBlockField">
@@ -88,7 +88,7 @@
               <p class="obf-drop-label" id="obfDropLabel" data-i18n="obfDropLabel">要混淆的图</p>
               <div class="drop" id="obfDrop">
                 <input id="obfFile" type="file" accept="image/png,image/jpeg,image/webp">
-                <img class="drop-thumb is-hidden" id="obfThumb1" alt="" data-i18n-attr="alt:fileToProcessAlt">
+                <img class="drop-thumb is-hidden" id="obfThumb1" alt="待处理的图" data-i18n-attr="alt:fileToProcessAlt">
                 <span class="drop-ico" id="obfIco1" aria-hidden="true">＋</span>
                 <strong data-i18n="dropPrompt">点击选择、拖进来，或者 Ctrl+V 粘贴</strong>
                 <small id="obfHint">PNG / JPEG / WebP</small>
@@ -98,7 +98,7 @@
               <p class="obf-drop-label" data-i18n="obfDropLabel2">要藏进去的秘密图</p>
               <div class="drop" id="obfDrop2">
                 <input id="obfFile2" type="file" accept="image/png,image/jpeg,image/webp">
-                <img class="drop-thumb is-hidden" id="obfThumb2" alt="" data-i18n-attr="alt:fileToHideAlt">
+                <img class="drop-thumb is-hidden" id="obfThumb2" alt="要藏进去的图" data-i18n-attr="alt:fileToHideAlt">
                 <span class="drop-ico" id="obfIco2" aria-hidden="true">＋</span>
                 <strong data-i18n="dropPrompt">点击选择、拖进来，或者 Ctrl+V 粘贴</strong>
                 <small id="obfHint2" data-i18n="obfHint2">会按容量自动缩放</small>
@@ -111,7 +111,7 @@
               <span data-i18n="obfTicket">密钥串</span>
               <textarea id="obfTicket" rows="3" spellcheck="false"
                 data-i18n-attr="placeholder:obfTicketPlaceholder"
-                placeholder="Paste the string you were given when obfuscating; leave it blank to use the parameters you filled in above"></textarea>
+                placeholder="把上次混淆时给的那串粘在这里；留空的话就按你手填的参数来"></textarea>
             </label>
           </div>
 
@@ -122,7 +122,7 @@
 
           <div class="obf-body is-hidden" id="obfBody">
             <div class="obf-preview">
-              <img id="obfOut" alt="" data-i18n-attr="alt:resultPreviewAlt">
+              <img id="obfOut" alt="结果预览" data-i18n-attr="alt:resultPreviewAlt">
               <p class="obf-meta" id="obfMeta"></p>
             </div>
             <div class="info-panels" id="obfPanels"></div>
@@ -139,7 +139,7 @@
   <script type="module">
     import { bootI18n } from "../assets/js/i18n.js";
     await bootI18n();
-    boot({ activeId: "obfuscate", title: M8I18n.t("feat.obfuscate.name", "Image Obfuscation"), base: "../" });
+    boot({ activeId: "obfuscate", title: M8I18n.t("feat.obfuscate.name", "混淆图"), base: "../" });
     M8Obfuscate.init();
   </script>
 </body>

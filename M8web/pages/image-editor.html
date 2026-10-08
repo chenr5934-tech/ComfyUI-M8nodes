@@ -29,7 +29,7 @@
 
           <!-- 功能标签：工坊下面挂好几个功能，一排只放得下一个。
                点哪个下面就换哪个面板；灰的是还没做的。 -->
-          <nav class="shop-tabs" id="shopTabs" data-i18n-attr="aria-label:studioTabsLabel" aria-label="Image Workshop tools">
+          <nav class="shop-tabs" id="shopTabs" data-i18n-attr="aria-label:studioTabsLabel" aria-label="图片工坊的功能">
             <button type="button" class="on" data-tool="cut" aria-pressed="true" data-i18n="toolCut">分段裁剪</button>
             <button type="button" data-tool="mask" aria-pressed="false" data-i18n="toolMask">分段遮挡</button>
             <button type="button" data-tool="grid" aria-pressed="false" data-i18n="toolGrid">宫格拼图</button>
@@ -53,7 +53,7 @@
               <div class="studio-grid" id="cutStage">
                 <div class="cut-panel" id="cutPanel" data-dir="h">
                   <div class="cut-frame" id="cutFrame">
-                    <img id="cutSource" alt="" data-i18n-attr="alt:cutSourceAlt">
+                    <img id="cutSource" alt="待裁剪的图片" data-i18n-attr="alt:cutSourceAlt">
                     <div class="cut-tints" id="cutTints" aria-hidden="true"></div>
                     <div class="cut-lines" id="cutLines"></div>
                   </div>
@@ -63,7 +63,7 @@
                 <aside class="studio-side">
                   <div class="tool-card">
                     <h3 data-i18n="cutDirection">裁剪方向</h3>
-                    <div class="seg" id="cutDir" role="group" data-i18n-attr="aria-label:cutDirection" aria-label="Split direction">
+                    <div class="seg" id="cutDir" role="group" data-i18n-attr="aria-label:cutDirection" aria-label="裁剪方向">
                       <button type="button" data-dir="h" class="on" aria-pressed="true" data-i18n="cutHorizontal">横切</button>
                       <button type="button" data-dir="v" aria-pressed="false" data-i18n="cutVertical">竖切</button>
                     </div>
@@ -105,7 +105,7 @@
               <div class="studio-grid">
                 <div class="cut-panel" id="maskPanel" data-dir="h">
                   <div class="cut-frame" id="maskFrame">
-                    <img id="maskSource" alt="" data-i18n-attr="alt:maskSourceAlt">
+                    <img id="maskSource" alt="待遮挡的图片" data-i18n-attr="alt:maskSourceAlt">
                     <div class="mask-strips" id="maskStrips"></div>
                   </div>
                 </div>
@@ -113,7 +113,7 @@
                 <aside class="studio-side">
                   <div class="tool-card">
                     <h3 data-i18n="maskDirection">遮挡方向</h3>
-                    <div class="seg" id="maskDir" role="group" data-i18n-attr="aria-label:maskDirection" aria-label="Band direction">
+                    <div class="seg" id="maskDir" role="group" data-i18n-attr="aria-label:maskDirection" aria-label="遮挡方向">
                       <button type="button" data-dir="h" class="on" aria-pressed="true" data-i18n="maskHorizontal">横遮</button>
                       <button type="button" data-dir="v" aria-pressed="false" data-i18n="maskVertical">竖遮</button>
                     </div>
@@ -161,7 +161,7 @@
               <div class="studio-grid">
                 <div class="cut-panel" id="stickerPanel">
                   <div class="cut-frame" id="stickerFrame">
-                    <img id="stickerBase" alt="" data-i18n-attr="alt:baseImageAlt">
+                    <img id="stickerBase" alt="底图" data-i18n-attr="alt:baseImageAlt">
                     <div class="sticker-layer" id="stickerLayer"></div>
                   </div>
                 </div>
@@ -176,9 +176,9 @@
                     <h3 data-i18n="stickerLib">贴纸库</h3>
                     <div class="backup-bar">
                       <button class="ghost-btn" id="stickerBackupOut" type="button"
-                        data-i18n="backupOut" data-i18n-attr="title:stickerBackupOutTip">导出备份</button>
+                        data-i18n="backupOut" title="把贴纸库存成一个 json 文件" data-i18n-attr="title:stickerBackupOutTip">导出备份</button>
                       <button class="ghost-btn" id="stickerBackupIn" type="button"
-                        data-i18n="backupIn" data-i18n-attr="title:backupInTip">导入备份</button>
+                        data-i18n="backupIn" title="从备份文件里读回来" data-i18n-attr="title:backupInTip">导入备份</button>
                     </div>
                     <div class="sticker-lib" id="stickerLib"></div>
                     <p class="tool-note" id="stickerLibNote" data-i18n="stickerLibNote">点一张就能贴到图上。</p>
@@ -230,7 +230,7 @@
                 <aside class="studio-side">
                   <div class="tool-card">
                     <h3 data-i18n="gridLayout">拼图方式</h3>
-                    <div class="grid-picker" id="gridPicker" role="group" data-i18n-attr="aria-label:gridLayout" aria-label="Layout">
+                    <div class="grid-picker" id="gridPicker" role="group" data-i18n-attr="aria-label:gridLayout" aria-label="拼图方式">
                       <button type="button" data-n="1" aria-pressed="false">1 x 1</button>
                       <button type="button" data-n="2" aria-pressed="false">2 x 2</button>
                       <button type="button" data-n="3" class="on" aria-pressed="true">3 x 3</button>
@@ -274,7 +274,7 @@
               <div class="studio-grid">
                 <div class="cut-panel" id="paintPanel">
                   <div class="cut-frame" id="paintFrame">
-                    <img id="paintBase" alt="" data-i18n-attr="alt:baseImageAlt">
+                    <img id="paintBase" alt="底图" data-i18n-attr="alt:baseImageAlt">
                     <canvas class="paint-layer" id="paintCanvas"></canvas>
                     <div class="text-layer" id="textLayer"></div>
                   </div>
@@ -283,7 +283,7 @@
                 <aside class="studio-side">
                   <div class="tool-card">
                     <h3 data-i18n="paintTool">工具</h3>
-                    <div class="seg" id="paintMode" role="group" data-i18n-attr="aria-label:paintTool" aria-label="Tool">
+                    <div class="seg" id="paintMode" role="group" data-i18n-attr="aria-label:paintTool" aria-label="工具">
                       <button type="button" data-mode="text" class="on" aria-pressed="true" data-i18n="paintText">文字</button>
                       <button type="button" data-mode="brush" aria-pressed="false" data-i18n="paintBrush">画笔</button>
                     </div>
@@ -294,7 +294,7 @@
                     <button class="gen-btn" id="textAdd" type="button" data-i18n="textAdd">加一条文字</button>
                     <textarea id="textBody" rows="2" spellcheck="false"
                       data-i18n-attr="placeholder:textBodyPlaceholder"
-                      placeholder="Add one, then edit the content here"></textarea>
+                      placeholder="加一条之后在这里改内容"></textarea>
                     <div class="range-row">
                       <label data-i18n="textSize">字号</label>
                       <input id="textSize" type="range" min="2" max="20" step="1" value="7">
@@ -357,7 +357,7 @@
     <div class="modal-box">
       <header class="modal-head">
         <h2 id="stickerModalTitle" data-i18n="stickerModalTitle">导入贴纸</h2>
-        <button class="modal-x" id="stickerModalX" type="button" data-i18n-attr="aria-label:closeLabel" aria-label="Close">x</button>
+        <button class="modal-x" id="stickerModalX" type="button" data-i18n-attr="aria-label:closeLabel" aria-label="关闭">x</button>
       </header>
       <div class="modal-body">
         <label class="drop" id="stickerDrop">
@@ -402,7 +402,7 @@
   <script type="module">
     import { bootI18n } from "../assets/js/i18n.js";
     await bootI18n();
-    boot({ activeId: "image-editor", title: M8I18n.t("feat.image-editor.name", "Image Workshop"), base: "../" });
+    boot({ activeId: "image-editor", title: M8I18n.t("feat.image-editor.name", "图片工坊"), base: "../" });
     M8Studio.init();
     M8Cut.init();
     M8Mask.init();
