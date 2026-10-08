@@ -488,7 +488,7 @@ const M8Obfuscate = (() => {
     const sh = head[6] | (head[7] << 8);
     if (sw < 1 || sh < 1) throw new Error(T("obfBadHeaderSize", "头部里的尺寸不合法"));
     const need = HEAD_BYTES + sw * sh * 3;
-    if (need * 8 > W * H * 3) throw new Error(T("obfHeaderOverflow", "The size declared in the header exceeds this image's capacity"));
+    if (need * 8 > W * H * 3) throw new Error(T("obfHeaderOverflow", "头部声明的尺寸超出了这张图的容量"));
 
     const payload = readLowBits(hidden.data, 0, need);
     xorKeystream(payload, key);
@@ -831,7 +831,7 @@ const M8Obfuscate = (() => {
     const out = tomato(src);
     const image = { data: out, width: src.width, height: src.height };
 
-    const card = resultCard(T("obfTomatoCard", "小番茄混淆"), T("obfTagScrambled", "已打乱（同键也覆盖「打乱完成」）"),
+    const card = resultCard(T("obfTomatoCard", "小番茄混淆"), T("obfTagScrambled", "已打乱"),
       T("obfTomatoSave", "存成 PNG。解回来不用密钥也不用参数 —— 把这张图传回来点「解回来」就行。"),
       [
         [T("size", "尺寸"), src.width + " × " + src.height],
@@ -843,8 +843,7 @@ const M8Obfuscate = (() => {
     const card2 = infoCard(T("obfCompatTitle", "和原版工具互通"));
     const p = document.createElement("p");
     p.className = "info-note";
-    p.textContent = T("obfCompatBody", "这一种就是照梦羽小番茄那版算法搬过来的，参数一个字没改。所以它混淆出来的图，这里能解；这里混淆出来的，它那边也能解。"
-      + " So an image obfuscated there can be reversed here, and one obfuscated here can be reversed there.");
+    p.textContent = T("obfCompatBody", "这一种就是照梦羽小番茄那版算法搬过来的，参数一个字没改。所以它混淆出来的图，这里能解；这里混淆出来的，它那边也能解。");
     card2.appendChild(p);
     const p2 = document.createElement("p");
     p2.className = "info-note";
@@ -888,7 +887,7 @@ const M8Obfuscate = (() => {
       sum: fingerprint(out),
     });
 
-    const card = resultCard(T("obfScrambleCard", "置乱结果"), T("obfTagScrambled", "已打乱（同键也覆盖「打乱完成」）"),
+    const card = resultCard(T("obfScrambleCard", "置乱结果"), T("obfTagScrambled", "已打乱"),
       T("obfScrambleSave", "存成 PNG。要解回来，得用同一个密钥、同一个块大小，再把这串密钥串粘回去。"),
       [
         [T("size", "尺寸"), src.width + " × " + src.height],
@@ -902,8 +901,7 @@ const M8Obfuscate = (() => {
     const card2 = infoCard(T("obfTicket", "密钥串"), T("obfTicketTag", "解混淆时要用"));
     const p = document.createElement("p");
     p.className = "info-note";
-    p.textContent = T("obfTicketBody", "这串里打包了尺寸、块大小和指纹。解混淆时粘进去，就不用去记当时选了什么。它不含密钥本身，所以可以和解混淆的密钥分开保存。"
-      + " have to remember what you picked. It does not contain the key itself, so you can keep it apart from the key you reverse with.");
+    p.textContent = T("obfTicketBody", "这串里打包了尺寸、块大小和指纹。解混淆时粘进去，就不用去记当时选了什么。它不含密钥本身，所以可以和解混淆的密钥分开保存。");
     card2.appendChild(p);
     const box = document.createElement("textarea");
     box.className = "obf-ticket-out";
@@ -989,8 +987,7 @@ const M8Obfuscate = (() => {
         : T("obfKeyEmptyExtractable", "没填 —— 谁拿到都能取出来")],
     ];
     const note = r.report.scaled
-      ? T("obfNestScaled", "秘密图原来是 {sw} × {sh}，按容量等比缩到了 {dw} × {dh} —— 取回来的是缩过之后那个尺寸。想要原尺寸，换一张更大的掩护图。"
-        + " - that is the size you get back. For the original size, use a larger cover image.",
+      ? T("obfNestScaled", "秘密图原来是 {sw} × {sh}，按容量等比缩到了 {dw} × {dh} —— 取回来的是缩过之后那个尺寸。想要原尺寸，换一张更大的掩护图。",
         { sw: r.report.srcW, sh: r.report.srcH, dw: r.report.secretW, dh: r.report.secretH })
       : T("obfNestExact", "秘密图原样藏了进去，取回来逐像素一致。");
 
@@ -999,8 +996,7 @@ const M8Obfuscate = (() => {
     const card2 = infoCard(T("obfHowToExtract", "怎么取回来"));
     const p = document.createElement("p");
     p.className = "info-note";
-    p.textContent = T("obfNestHowTo", "换到「嵌套 · 解混淆」，把上面这张图传进去，填同一个密钥，就能取回秘密图。这张图看着和掩护图一模一样 —— 只有每个像素的最低位被动过，肉眼分不出来。"
-      + " This image looks exactly like the cover - only the lowest bit of every pixel was touched, which the eye cannot pick out.");
+    p.textContent = T("obfNestHowTo", "换到「嵌套 · 解混淆」，把上面这张图传进去，填同一个密钥，就能取回秘密图。这张图看着和掩护图一模一样 —— 只有每个像素的最低位被动过，肉眼分不出来。");
     card2.appendChild(p);
 
     showResult(r, card);

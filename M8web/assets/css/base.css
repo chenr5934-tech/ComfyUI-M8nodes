@@ -42,8 +42,9 @@
   --noise: 0.035;
   --noise-ink: 255, 255, 255;
 
-  /* 侧栏宽度：参考站就是靠这个变量在 58 / 184 之间切换 */
-  --site-sidebar-width: 58px;
+  /* 侧栏宽度参考站叫 --site-sidebar-width，这里改叫 --side-w（见 shell.css 顶部）。
+     色板那几个（--pink / --purple / --blue / --bg-sub）看着没人取，但它们是这一套
+     主题的原料，四套都给全了，留着 —— 删掉只会让以后加界面时没色可用。 */
 
   --r-card: 18px;
   --r-item: 12px;
