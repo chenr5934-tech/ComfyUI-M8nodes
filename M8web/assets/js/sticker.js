@@ -51,7 +51,7 @@ const M8Sticker = (() => {
 
   /* 内置贴纸。是文件不是 dataURL —— 走静态资源加载，不占存储空间，也删不掉。 */
   const BUILTIN = [
-    { id: "builtin-default", name: "Default sticker", url: "../assets/stickers/default-sticker.png", builtin: true },
+    { id: "builtin-default", name: T("stickerDefaultName", "默认贴纸"), url: "../assets/stickers/default-sticker.png", builtin: true },
   ];
 
   const state = {

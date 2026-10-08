@@ -274,5 +274,48 @@ class TestDefaultsMatchLocale(unittest.TestCase):
         self.assertEqual(bad, [], "页面默认文字和 locales/zh 对不上：\n  " + "\n  ".join(bad[:12]))
 
 
+    def test_html_attr_defaults_match_zh(self):
+        """data-i18n-attr 指的那些属性，写在 HTML 上的默认值也要和语言包一致。
+
+        这一条是补的。属性上的默认值（aria-label / placeholder / title / alt）
+        不在元素内容里，上面那条只查内容，于是漏了一整批，一直没被发现 ——
+        因为**在 ComfyUI 里看不出来**：那边能拉到语言包，一切都被覆盖成中文。
+        离线版（桌面快捷方式那个）拉不到，退回默认值，英文就露出来了。
+        同一个页面两种表现，根因就在这里。
+
+        顺带提醒：这些默认值不是装饰。读屏软件念的是 aria-label，
+        输入框空了显示的是 placeholder，图片没加载出来显示的是 alt。
+        """
+        TAG = re.compile(r'<[a-zA-Z][a-zA-Z0-9]*\b[^>]*?\bdata-i18n-attr="[^"]*"[^>]*?>')
+        SPEC = re.compile(r'data-i18n-attr="([^"]*)"')
+        bad = []
+        for rel in PAGES:
+            src = (WEB / rel).read_text(encoding="utf-8")
+            for tag in TAG.findall(src):
+                spec_m = SPEC.search(tag)
+                if not spec_m:
+                    continue
+                for pair in spec_m.group(1).split(","):
+                    if ":" not in pair:
+                        continue
+                    attr, key = (s.strip() for s in pair.split(":", 1))
+                    if not attr or not key:
+                        continue
+                    want = self.zh["web"].get(key)
+                    if want is None:
+                        bad.append(f"{rel}: {key} 不在 web 段里")
+                        continue
+                    got = re.search(r'\b' + re.escape(attr) + r'="([^"]*)"', tag)
+                    if not got:
+                        bad.append(f"{rel}: 标了 data-i18n-attr={attr}:{key}，"
+                                   f"但标签上没有 {attr} 属性")
+                        continue
+                    if got.group(1) != want:
+                        bad.append(f"{rel}: {attr}（{key}）\n"
+                                   f"      页面: {got.group(1)[:70]}\n"
+                                   f"      语言包: {want[:70]}")
+        self.assertEqual(bad, [], "属性上的默认值和 locales/zh 对不上：\n  " + "\n  ".join(bad[:10]))
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

@@ -78,6 +78,17 @@
 /* 竖切：屏蔽行在上，图在下 */
 .cut-panel[data-dir="v"] { flex-direction: column; }
 
+/* 竖排时图片框**不能再参与 flex 分配**。
+ *
+ * .cut-frame 身上有 JS 按图片比例设的 aspect-ratio。横排时父级是 row，
+ * flex: 1 1 0 管的是**宽度**，高度由比例自由撑开（900 高的竖图 → 1185px）。
+ * 一旦父级变成 column，同一句 flex 就改管**高度**了：flex-basis 归零之后，
+ * 图片高度被父容器的可用高度吃掉 —— 而那个高度是右侧工具栈撑出来的
+ * （实测 538），于是图被压掉一半多，看着就像「竖向遮挡被限制了尺寸」。
+ *
+ * 这里退出分配，把高度交回 aspect-ratio，横竖两种方向下图片一样大。 */
+.cut-panel[data-dir="v"] .cut-frame { flex: 0 0 auto; }
+
 .cut-frame {
   position: relative;
   /* 必须是 flex: 1 1 0，不能是 1 1 auto。

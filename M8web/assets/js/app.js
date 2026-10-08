@@ -121,10 +121,10 @@ const FEATURES = [
 
 /* 四套主题。id 必须和 base.css 里的 :root[data-theme=...] 对上 */
 const THEMES = [
-  { id: "day", name: "Day" },
-  { id: "night", name: "Night" },
-  { id: "sakura", name: "Sakura pink" },
-  { id: "ocean", name: "Ocean blue" },
+  { id: "day", name: "白天" },
+  { id: "night", name: "黑夜" },
+  { id: "sakura", name: "樱花粉" },
+  { id: "ocean", name: "海蓝" },
 ];
 
 const THEME_KEY = "m8web.theme";

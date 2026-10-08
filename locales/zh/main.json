@@ -1404,6 +1404,7 @@
     "feat.apng.kicker": "动图",
     "feat.apng.desc": "把几张图拼成一张会动的 PNG：首图定尺寸和第一帧，其余自动缩放到同一尺寸，播放速度可调。全程在本机算，图片不会上传。",
     "apngFirstAlt": "首图预览",
-    "apngOutAlt": "合成出来的动图预览"
+    "apngOutAlt": "合成出来的动图预览",
+    "stickerDefaultName": "默认贴纸"
   }
 }
