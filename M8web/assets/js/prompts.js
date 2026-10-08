@@ -291,7 +291,7 @@ const M8Prompts = (() => {
 
     el.groups.appendChild(chip(T("pgFilterAll", "全部"), FILTER_ALL, state.cards.length, false));
     state.groups.forEach(function (g) {
-      const c = chip(g.name || T("pgUntitled", "未命名（同键也覆盖「这张没名字」）"), g.id, countIn(state.cards, g.id), true);
+      const c = chip(g.name || T("pgUntitled", "未命名"), g.id, countIn(state.cards, g.id), true);
       /* 双击分类名就地改名 */
       const btn = c.querySelector(".pg-chip-btn");
       if (btn) {
@@ -413,7 +413,7 @@ const M8Prompts = (() => {
     name.className = "pg-name";
     name.type = "text";
     name.value = rec.name || "";
-    name.placeholder = T("pgCardNamePlaceholder", 'Name this card, for example "low-angle framing"');
+    name.placeholder = T("pgCardNamePlaceholder", '给这张卡起个名字，比如「仰拍构图」');
     name.addEventListener("input", function () { touch(rec.id, { name: name.value }); });
     head.appendChild(name);
 
@@ -426,7 +426,7 @@ const M8Prompts = (() => {
     state.groups.forEach(function (g) {
       const o = document.createElement("option");
       o.value = String(g.id);
-      o.textContent = g.name || T("pgUntitled", "未命名（同键也覆盖「这张没名字」）");
+      o.textContent = g.name || T("pgUntitled", "未命名");
       sel.appendChild(o);
     });
     sel.value = String(groupOf(rec));
@@ -484,7 +484,7 @@ const M8Prompts = (() => {
 
     const st = document.createElement("span");
     st.className = "pg-state";
-    st.textContent = state.dirty[rec.id] ? T("pgDirty", "有改动没保存") : T("pgSaved", "已保存（同键也覆盖「存好了。」）");
+    st.textContent = state.dirty[rec.id] ? T("pgDirty", "有改动没保存") : T("pgSaved", "已保存");
 
     tools.appendChild(copy);
     tools.appendChild(cp);
@@ -538,7 +538,7 @@ const M8Prompts = (() => {
     if (!row) return;
     row.classList.toggle("dirty", !!on);
     const st = row.querySelector ? row.querySelector(".pg-state") : null;
-    if (st) st.textContent = on ? T("pgDirty", "有改动没保存") : T("pgSaved", "已保存（同键也覆盖「存好了。」）");
+    if (st) st.textContent = on ? T("pgDirty", "有改动没保存") : T("pgSaved", "已保存");
   }
 
   /* ------------------------------------------------------------ 交互 */
@@ -556,7 +556,7 @@ const M8Prompts = (() => {
     if (!rec) return;
     saveCard(rec).then(function () {
       markDirty(id, false);
-      setStatus(T("pgSaved", "已保存（同键也覆盖「存好了。」）"));
+      setStatus(T("pgSaved", "已保存"));
       /* 分类归属或者名字可能变了，计数和筛选条要跟着更新 */
       renderGroups();
     });
@@ -682,9 +682,9 @@ const M8Prompts = (() => {
     if (!rec) return;
     pendingCard = id;
     pendingGroup = -1;
-    const name = rec.name || T("pgUntitled", "未命名（同键也覆盖「这张没名字」）");
+    const name = rec.name || T("pgUntitled", "未命名");
     const n = String(rec.text || "").length;
-    openModal(T("pgDelTitle", "删掉这张卡？"), T("pgDelCardBody", '"{name}" holds {n} characters of prompt, and once it is deleted it is gone.', { name: name, n: n }));
+    openModal(T("pgDelTitle", "删掉这张卡？"), T("pgDelCardBody", '「{name}」里写着 {n} 个字的提示词，删了找不回来。', { name: name, n: n }));
   }
 
   function askDeleteGroup(gid, label) {
@@ -693,7 +693,7 @@ const M8Prompts = (() => {
     pendingGroup = gid;
     openModal(
       T("pgDelGroupTitle", "删掉这个分类？"),
-      T("pgDelGroupBody", '"{name}" holds {n} cards right now. Deleting the category turns those cards into uncategorised ones - they are not deleted with it.', { name: label, n: n })
+      T("pgDelGroupBody", '「{name}」里现在有 {n} 张卡。分类删掉之后，那些卡会变成未分类，不会被一起删掉。', { name: label, n: n })
     );
   }
 
@@ -764,7 +764,7 @@ const M8Prompts = (() => {
         const obj = M8Backup.parse(text);
         if (obj.kind !== "prompts") {
           const other = M8Backup.KINDS[obj.kind];
-          throw new Error(T("pgWrongBackup", 'This backup is for "{other}", not for the prompt collection.', { other: other ? other.title : obj.kind }));
+          throw new Error(T("pgWrongBackup", '这份备份是「{other}」的，不是提示词归纳的。', { other: other ? other.title : obj.kind }));
         }
         return M8Backup.confirmImport(T("feat.prompts.name", "提示词归纳"), obj.data.length, state.cards.length)
           .then(function (mode) {

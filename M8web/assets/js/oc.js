@@ -426,7 +426,7 @@ const M8OC = (() => {
          就能把这段结构撕坏。 */
       const who = rec.name ? rec.name : T("ocUnnamed", "这一条");
       el.delText.innerHTML =
-        T("ocDelAsk", 'Delete <b class="who">"{who}"</b>?', { who: esc(who) }) +
+        T("ocDelAsk", '要删掉 <b class="who">「{who}」</b> 吗？', { who: esc(who) }) +
         '<span class="sub">' +
         T("ocDelSub", "删了找不回来。例图和特征词都会一起没掉。") +
         "</span>";
