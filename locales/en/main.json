@@ -322,6 +322,8 @@
       "needsKey": "key required",
       "noEndpoint": "endpoint not responding",
       "noThinking": "(no thinking this run: the model produced none, or the switch is off)",
+      "labelExtraText": "Extra text (user prompt)",
+      "labelExtraParams": "Request params (JSON)",
       "chars": "{n} chars",
       "done": "done"
     },

@@ -123,7 +123,15 @@ class M8LLMInference:
                     "multiline": True,
                     "default": "",
                     "dynamicPrompts": False,
-                    "tooltip": "额外的请求参数，JSON 对象格式，会合并进请求体。",
+                    "tooltip": "【请求参数】只放 JSON 对象，会合并进请求体（比如 {\"top_p\": 0.9}）。**这里不是写提示词的地方** —— 想补一段话请用下面的「额外文本」框。",
+                }),
+                # 放在最后是有意的：widgets_values 按索引存取，新控件只能追加在末尾。
+                # 插在中间会让已保存的工作流把 skill_auto / extra_params 的值读错位。
+                "extra_text": ("STRING", {
+                    "multiline": True,
+                    "default": "",
+                    "dynamicPrompts": False,
+                    "tooltip": "【额外文本】拼在这一轮提问的后面，属于**用户提示词**，不是系统提示词。放补充要求、格式约束、这次想强调的东西。和本地大模型推理节点上那个同名框是一回事。",
                 }),
             },
         }
@@ -165,11 +173,12 @@ class M8LLMInference:
         image=None,
         audio=None,
         extra_params: str = "",
+        extra_text: str = "",
     ):
         # 老工作流里档位存的是中文（关/低/中/高），这里归一成当前取值
         thinking = providers.normalize_thinking(thinking)
 
-        self._validate_request(model, user_prompt, image, audio)
+        self._validate_request(model, user_prompt, image, audio, extra_text)
 
         # 留空时用服务端存的那份 —— 但只在 base_url 确实是这个供应商的地址时才给。
         # 别人分享的工作流里可以塞一个指向他自己服务器的 base_url，密钥留空；
@@ -192,7 +201,9 @@ class M8LLMInference:
 
         skill_blocks = self._collect_skill_blocks(user_prompt, skill, bool(skill_auto))
         armor_text = self._armor_text(armor)
-        messages = self._build_messages(system_prompt, armor_text, user_prompt, skill_blocks, image, audio)
+        messages = self._build_messages(
+            system_prompt, armor_text, user_prompt, skill_blocks, image, audio, extra_text=extra_text
+        )
         payload = self._build_payload(
             model=model,
             messages=messages,
@@ -215,7 +226,7 @@ class M8LLMInference:
             )
         log(
             f"Request {model}: {len(messages)} messages / {len(skill_blocks)} knowledge packs ({skill_chars} chars)"
-            f" / armor {len(armor_text)} chars / thinking {thinking}",
+            f" / armor {len(armor_text)} chars / extra {(len(extra_text or ''))} chars / thinking {thinking}",
             SHELF_LLM,
         )
         data = llm_api.chat(base_url, resolved_key, payload, provider, timeout)
@@ -246,7 +257,7 @@ class M8LLMInference:
     # ------------------------------------------------------------ 组装
 
     @staticmethod
-    def _validate_request(model: str, user_prompt: str, image, audio) -> None:
+    def _validate_request(model: str, user_prompt: str, image, audio, extra_text: str = "") -> None:
         name = (model or "").strip()
         if not name or name == MODEL_PLACEHOLDER:
             raise M8Error(
@@ -254,7 +265,8 @@ class M8LLMInference:
                 message="No model selected",
                 hint="Click Refresh models on the node, or type a model name directly",
             )
-        if not (user_prompt or "").strip() and image is None and audio is None:
+        # 只写了「额外文本」也算有内容 —— 那个框拼在提问后面，本身就是一段提示词
+        if not (user_prompt or "").strip() and not (extra_text or "").strip() and image is None and audio is None:
             raise M8Error("M8-LLM-007")
 
     @staticmethod
@@ -349,6 +361,7 @@ class M8LLMInference:
         skill_blocks: list[str],
         image,
         audio,
+        extra_text: str = "",
     ) -> list[dict]:
         messages: list[dict] = []
 
@@ -375,6 +388,14 @@ class M8LLMInference:
 
         parts: list[dict] = []
         prompt_text = (user_prompt or "").strip()
+
+        # 「额外文本」和用户提示词是**同一性质**的东西 —— 都属于用户消息，
+        # 只是分成两个框写：一个存常用的固定要求，一个随手改。
+        # 拼成一段完整的提问发出去，不单独成一条 message。
+        extra = (extra_text or "").strip()
+        if extra:
+            prompt_text = f"{prompt_text}\n\n{extra}" if prompt_text else extra
+
         if prompt_text:
             parts.append({"type": "text", "text": prompt_text})
 
@@ -429,7 +450,10 @@ class M8LLMInference:
                 raise M8Error(
                     "M8-LLM-002",
                     message="extra_params is not valid JSON",
-                    hint="Write it as an object, e.g. {\"top_p\": 0.9}",
+                    hint=(
+                        "这个框只放请求参数 JSON，比如 {\"top_p\": 0.9}。"
+                        "要补一段提示词，请清空它，改用下面的「额外文本」框（extra_text）"
+                    ),
                     detail=str(exc),
                 ) from exc
             if not isinstance(parsed, dict):

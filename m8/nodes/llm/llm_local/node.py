@@ -183,7 +183,7 @@ class M8LLMLocal:
                     "multiline": True,
                     "default": "",
                     "dynamicPrompts": False,
-                    "tooltip": "额外文本，拼在提问后面。放补充要求、风格约束、要参考的字段这类东西。",
+                    "tooltip": "【额外文本】拼在提问后面，属于**用户提示词**，不是系统提示词。放补充要求、风格约束、要参考的字段这类东西。和云端大模型推理节点上那个同名框是一回事。",
                 }),
             },
             "optional": {

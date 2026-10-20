@@ -99,6 +99,20 @@ async function clearKey(node) {
 
 function setup(node) {
   M8.brand(node);
+
+  // 这两个框都是多行文本、又挨在一起，名字一个 extra_params 一个 extra_text ——
+  // 光看名字分不出哪个是「请求参数 JSON」哪个是「补充提示词」，写错地方会报
+  // 「extra_params is not valid JSON」，而人只会觉得自己填了段正常的话。
+  // 所以给它们上中文标签。ComfyUI 渲染时取 widget.label ?? widget.name。
+  const LABELS = {
+    extra_text: T("labelExtraText", "额外文本（用户提示词）"),
+    extra_params: T("labelExtraParams", "请求参数（JSON）"),
+  };
+  for (const [name, label] of Object.entries(LABELS)) {
+    const widget = M8.findWidget(node, name);
+    if (widget) widget.label = label;
+  }
+
   M8.setStatus(node, "idle", T("notConfigured", "未配置"));
 
   // ---- 思考过程显示框 ----------------------------------------------------

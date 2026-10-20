@@ -1209,6 +1209,89 @@ class TestSkillInjection(unittest.TestCase):
             skills.delete_skill('引用甲')
 
 
+class TestExtraText(unittest.TestCase):
+    """两个推理节点的「额外文本」都是用户提示词的一部分。
+
+    云端（M8LLMInference）和本地（M8LLMLocal）各有一个同名框。行为必须一致：
+    拼在用户消息末尾，**绝不进系统消息**。名字也必须一致 ——
+    用户在这两个节点之间换着用时不该重新理解一遍这个框是干嘛的。
+    """
+
+    def setUp(self):
+        self.module = load_plugin(FakeRouteTable())
+
+    # ---- 云端 ----
+
+    def test_cloud_extra_goes_into_the_user_message(self):
+        cls = self.module.NODE_CLASS_MAPPINGS["M8LLMInference"]
+        messages = cls()._build_messages("系统段", "", "问题", [], None, None, extra_text="补充要求")
+        self.assertEqual(messages[0]["role"], "system")
+        self.assertEqual(messages[0]["content"], "系统段")
+        self.assertEqual(messages[-1]["role"], "user")
+
+        text = messages[-1]["content"]
+        self.assertIn("问题", text)
+        self.assertIn("补充要求", text)
+        self.assertLess(text.index("问题"), text.index("补充要求"), "额外文本该排在提问后面")
+
+    def test_cloud_extra_never_reaches_the_system_message(self):
+        cls = self.module.NODE_CLASS_MAPPINGS["M8LLMInference"]
+        messages = cls()._build_messages("系统段", "", "问题", [], None, None, extra_text="绝不能进系统")
+        self.assertNotIn("绝不能进系统", messages[0]["content"])
+
+    def test_cloud_extra_alone_counts_as_input(self):
+        """只填额外文本、不填提问，也算有内容可发。"""
+        cls = self.module.NODE_CLASS_MAPPINGS["M8LLMInference"]
+        cls._validate_request("deepseek-chat", "", None, None, "只写了额外文本")
+        with self.assertRaises(Exception):
+            cls._validate_request("deepseek-chat", "", None, None, "   ")
+
+    def test_cloud_extra_only_becomes_the_whole_prompt(self):
+        cls = self.module.NODE_CLASS_MAPPINGS["M8LLMInference"]
+        messages = cls()._build_messages("", "", "", [], None, None, extra_text="只有这段")
+        self.assertEqual(messages[-1]["content"], "只有这段")
+
+    # ---- 本地 ----
+
+    def test_local_extra_goes_into_the_user_message(self):
+        mod = submodule("m8.nodes.llm.llm_local.node")
+        messages = mod.build_messages(system="系统段", user="问题", extra="补充要求", images=[], skill="")
+        self.assertEqual(messages[0]["role"], "system")
+        self.assertEqual(messages[0]["content"], "系统段")
+
+        user = messages[-1]
+        self.assertEqual(user["role"], "user")
+        text = user["content"][0]["text"]
+        self.assertIn("问题", text)
+        self.assertIn("补充要求", text)
+        self.assertLess(text.index("问题"), text.index("补充要求"))
+
+    def test_local_extra_never_reaches_the_system_message(self):
+        mod = submodule("m8.nodes.llm.llm_local.node")
+        messages = mod.build_messages(system="系统段", user="问题", extra="绝不能进系统", images=[], skill="")
+        self.assertNotIn("绝不能进系统", messages[0]["content"])
+
+    # ---- 两边对齐 ----
+
+    def test_both_nodes_expose_the_same_parameter_name(self):
+        """两边的框必须同名，否则用户在两个节点之间换着用会以为少了个功能。"""
+        cloud = self.module.NODE_CLASS_MAPPINGS["M8LLMInference"]
+        inputs = cloud.INPUT_TYPES()
+        declared = set(inputs.get("required", {})) | set(inputs.get("optional", {}))
+        self.assertIn("extra_text", declared, "M8LLMInference 没有 extra_text")
+
+        # 本地节点的 INPUT_TYPES 要扫 models/LLM 目录，脱离 ComfyUI 会炸，
+        # 所以这条只能看源码，不能实例化。
+        src = (PKG_DIR / "m8" / "nodes" / "llm" / "llm_local" / "node.py").read_text("utf-8")
+        self.assertIn('"extra_text": ("STRING"', src, "M8LLMLocal 没有 extra_text")
+
+    def test_cloud_extra_text_is_appended_last_in_widgets(self):
+        """云端这个框必须排在 optional 末尾 —— 插在中间会让已保存的工作流值错位。"""
+        cls = self.module.NODE_CLASS_MAPPINGS["M8LLMInference"]
+        optional = list(cls.INPUT_TYPES()["optional"])
+        self.assertEqual(optional[-1], "extra_text")
+
+
 class TestSkillExtraDirs(unittest.TestCase):
     """额外 skill 目录（设置里的 skills.extraDirs）。
 

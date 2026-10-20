@@ -322,6 +322,8 @@
       "needsKey": "待填密钥",
       "noEndpoint": "接口没响应",
       "noThinking": "（这次没有思考内容 —— 模型没输出，或开关关着）",
+      "labelExtraText": "额外文本（用户提示词）",
+      "labelExtraParams": "请求参数（JSON）",
       "chars": "{n} 字",
       "done": "完成"
     },
