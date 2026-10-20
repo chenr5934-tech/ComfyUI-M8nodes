@@ -5,6 +5,17 @@ m8/data/*
 !m8/data/skills/
 m8/data/skills/*
 !m8/data/skills/.gitkeep
+# 随仓库一起发布的示例 skill：新装的人打开就能用，不用自己去凑库。
+# 写成逐条白名单而不是 !*/ —— 否则以后每次从节点上传的包都会自动进仓库，
+# 那些是用户的运行时数据，不该跟着代码走。
+!m8/data/skills/adult-writing/
+!m8/data/skills/h3-prompt-writing/
+!m8/data/skills/moss-image-prompt-enhancer/
+!m8/data/skills/skill-creator/
+!m8/data/skills/tag/
+# 包内自带的 .git（从别的仓库 clone 来的）不跟。不排掉的话 git 会把嵌套仓库
+# 当成 submodule 引用提交，clone 下来是个空目录 —— 表现成「这个 skill 是空的」。
+m8/data/skills/*/.git/
 
 # Python
 __pycache__/
