@@ -4,11 +4,12 @@ English | [中文](README.md)
 
 A ComfyUI custom node pack organized by **shelf** (one directory per job the node does in a workflow, one error-code range per shelf).
 
-Three shelves, five nodes, plus a standalone web workbench:
+Three shelves, six nodes, plus a standalone web workbench:
 
 | Shelf | Node | What it does |
 | --- | --- | --- |
 | LLM | `M8LLMInference` | Calls an external LLM over an OpenAI-compatible API |
+| LLM | `M8ArmorBreak` | Assembles a tiered system-prompt injection for the inference node's armor port |
 | LLM | `M8SkillLoader` | Turns a text file into a knowledge pack for the inference node |
 | LLM | `M8LLMLocal` | Runs a GGUF **locally**, no network; pair it with an mmproj for vision |
 | Camera | `M8CameraControl` | Turns camera position / height / distance into prompt text |

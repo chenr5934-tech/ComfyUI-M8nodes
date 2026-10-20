@@ -56,6 +56,8 @@ m8/nodes/<货架>/<节点>.py       单个节点类
 | POST | `/m8/skills/delete` | 删除 skill |
 | GET | `/m8/skills/preview` | 预览 skill 主文件内容 |
 | GET | `/m8/skills/tree` | 列出一个 skill 包的文件结构与内联情况 |
+| GET | `/m8/skills/dirs` | 读额外 skill 目录配置，并逐条标出**这条路径现在能不能真的扫到、里面几个包** |
+| POST | `/m8/skills/dirs` | 存额外 skill 目录（分号分隔或数组），传空即清空只剩插件自己的目录 |
 | GET | `/m8/whale/balance` | 查 DeepSeek 余额（密钥只从服务端读） |
 | GET | `/m8/whale/history` | 读对话框的记录（存服务端，不存浏览器） |
 | POST | `/m8/whale/history` | 覆盖保存对话记录 |
@@ -74,6 +76,7 @@ m8/nodes/<货架>/<节点>.py       单个节点类
 | POST | `/m8/prompt/presets/load` | 取一套预设的正文 |
 | POST | `/m8/prompt/presets/delete` | 删掉一套预设 |
 | GET | `/m8/llm-local/models` | 列 `models/LLM` 里的 GGUF（前端「刷新模型」用） |
+| GET | `/m8/armor/preset` | 破甲注入节点某个档位 + 场景拼出来的正文（「注入内容 / 灌入预设」两个按钮用）。**文案只在 `prompts.py` 里一份，前端不抄第二份** —— 抄了就是两份真相，改词要改两处 |
 | GET | `/m8/i18n/{lang}` | 这个插件某个语言的界面文案（读 `locales/<lang>/main.json`，含 `ui` / `web` 段）。**语言码先净化字符集、再确认最终路径落在 locales/ 内**，两道都过才读；取不到返回空对象，前端退回代码里的中文 |
 | GET | `/m8/data/{kind}` | 读一整类工作台数据（kind = oc / prompts / groups / stickers）。**数据在 `<ComfyUI>/models/M8data/webapp/` 下，不在浏览器里** —— 独立服务也读同一份 |
 | POST | `/m8/data/{kind}/put` | 存一条（没带 id 就分配一个） |
@@ -118,6 +121,33 @@ m8/data/
 不至于编一个「我已按参考文件写」的答案。
 
 **兼容**：老的平铺 `.md` 仍能读（当作只有一个主文件的包），但保存一律走目录式。
+
+**额外目录**：skill 不必都在插件目录里。设置里的 `skills.extraDirs`
+（节点上「skill 目录」按钮编辑，分号或换行分隔）会和插件目录一起扫描，
+所以用户自己的技能库可以放在任何地方，插件升级、重装都带不走它。
+
+两条规则，都是安全底线：
+
+- **重名时默认目录优先**。外来的那个跳过并记日志 —— 静默让后到的覆盖，
+  用户会以为自己放进去的那份在生效，实际跑的是另一份。
+- **外部目录只读**。上传和删除只碰插件自己的目录，绝不往用户的库里写或删。
+  `_resolve(name, writable=True)` 就是这个开关。
+
+`_configured_dirs()` 和 `_search_dirs()` 是两件事：扫描只要存在的目录，
+而界面上必须能看见那条**写错的**路径 —— 否则用户填完发现列表没变，
+分不清是没生效还是路径拼错了。
+
+**换了设备 / 挪了位置会怎样**，三件事要分开看：
+
+- **插件目录自动适应**。`PLUGIN_DIR` 是 `Path(__file__).resolve().parent.parent.parent`
+  算出来的，全仓库没有任何硬编码绝对路径。整个 ComfyUI 搬到别的盘、别的机器，
+  `m8/data/skills` 跟着走，不用改任何配置。
+- **skill 包本身不会跟过去**。`m8/data/skills/*` 在 `.gitignore` 里（只留 `.gitkeep`
+  占位），所以**重新 clone 或从管理器重装，skills 是空的** —— 那些是用户攒的东西，
+  不是代码。要搬就整个文件夹拷；整体拷插件目录的话会一起带走。
+- **额外目录会失效**。存的是绝对路径，换设备就指不过去了。不会崩：那条路径被跳过，
+  界面上标「（不存在）」，启动后第一次列 skill 时日志里还有一句 warn。
+  填相对路径的话是相对 ComfyUI 的工作目录解析，换机器后大概率也不对 —— 别指望它。
 
 **密钥规则**：
 

@@ -59,6 +59,7 @@ ComfyUI 里的报错长这样：
 | M8-LLM-011 | `skill_loader.py: load` | skill 文件读不到 | 文件被删了或路径失效，重新选 |
 | M8-LLM-012 | `llm_inference.py: execute` | skill 内容超出上下文预算 | 换短一点的 skill，或调大 max_tokens |
 | M8-LLM-013 | `llm_api.py: request` | 请求体过大（图片太多 / 太大） | 减少图片张数或先缩放 |
+| M8-LLM-022 | `routes.py: handle_armor_preset` | 破甲货架导入失败，取不到预设正文 | 看启动日志里 `m8/nodes/llm/armor_break` 的报错；节点本身仍可用，只是「注入内容 / 灌入预设」两个按钮取不到原文 |
 | M8-LLM-021 | `config.resolve_api_key` | 服务端存着密钥，但这次请求的目标地址不是它归属的那个 | 在节点上点一次「保存密钥到服务端」，把当前地址一起记下；或把 base_url 改回该密钥归属的地址 |
 
 ### 本地大模型 `M8-LLM-014~020` — `m8/nodes/llm/llm_local/`

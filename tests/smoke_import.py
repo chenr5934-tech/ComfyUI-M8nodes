@@ -205,6 +205,8 @@ class TestRoutes(unittest.TestCase):
             ("GET", "/m8/skills/list"),
             ("GET", "/m8/skills/preview"),
             ("GET", "/m8/skills/tree"),
+            ("GET", "/m8/skills/dirs"),
+            ("POST", "/m8/skills/dirs"),
             ("POST", "/m8/skills/upload"),
             ("POST", "/m8/skills/delete"),
             ("GET", "/m8/whale/balance"),
@@ -225,6 +227,7 @@ class TestRoutes(unittest.TestCase):
             ("POST", "/m8/prompt/presets/load"),
             ("POST", "/m8/prompt/presets/delete"),
             ("GET", "/m8/llm-local/models"),
+            ("GET", "/m8/armor/preset"),
             ("GET", "/m8/i18n/{lang}"),
             ("GET", "/m8/data/{kind}"),
             ("POST", "/m8/data/{kind}/put"),
@@ -330,7 +333,11 @@ class TestNodeContract(unittest.TestCase):
         """
         import inspect
 
-        for node_name, func_name in (("M8LLMInference", "execute"), ("M8SkillLoader", "load")):
+        for node_name, func_name in (
+            ("M8LLMInference", "execute"),
+            ("M8SkillLoader", "load"),
+            ("M8ArmorBreak", "build"),
+        ):
             cls = self.module.NODE_CLASS_MAPPINGS[node_name]
             inputs = cls.INPUT_TYPES()
             declared = set(inputs.get("required", {})) | set(inputs.get("optional", {}))
@@ -1180,7 +1187,8 @@ class TestSkillInjection(unittest.TestCase):
             for block in blocks:
                 self.assertTrue(block.startswith('<skill name="'))
                 self.assertTrue(block.endswith('</skill>'))
-            messages = self.node._build_messages('', '你好', blocks, None, None)
+            # 第二个空串是 armor 位：这条测的是 skill 围栏，不涉及破甲
+            messages = self.node._build_messages('', '', '你好', blocks, None, None)
             system = messages[0]['content']
             self.assertIn('several independent knowledge packs', system)
         finally:
@@ -1195,10 +1203,161 @@ class TestSkillInjection(unittest.TestCase):
             prompt = '用 /引用甲 改这段话'
             blocks = self.node._collect_skill_blocks(prompt, None, False)
             self.assertEqual(len(blocks), 1)
-            messages = self.node._build_messages('', prompt, blocks, None, None)
+            messages = self.node._build_messages('', '', prompt, blocks, None, None)
             self.assertEqual(messages[-1]['content'], prompt)
         finally:
             skills.delete_skill('引用甲')
+
+
+class TestSkillExtraDirs(unittest.TestCase):
+    """额外 skill 目录（设置里的 skills.extraDirs）。
+
+    两条是安全底线，其余是可用性：
+      1. 外部目录**只读** —— 上传和删除只碰插件自己的目录。用户把技能库挂在
+         那儿，插件覆盖或删掉一个包，后果比「选不到」严重得多。
+      2. 重名时**默认目录优先** —— 静默让外来的覆盖，用户会以为自己放进去的
+         那份在生效，实际跑的是另一份。
+    """
+
+    def setUp(self):
+        load_plugin(FakeRouteTable())
+        self.skills = submodule("m8.server.skills")
+        self.config = submodule("m8.core.config")
+        self.paths = submodule("m8.core.paths")
+        self._home = Path(tempfile.mkdtemp(prefix="m8-home-"))
+        self._ext = Path(tempfile.mkdtemp(prefix="m8-ext-"))
+        self._orig = self.paths.SKILLS_DIR
+        self.paths.SKILLS_DIR = self._home
+
+    def tearDown(self):
+        self.paths.SKILLS_DIR = self._orig
+        shutil.rmtree(self._home, ignore_errors=True)
+        shutil.rmtree(self._ext, ignore_errors=True)
+
+    def extra(self, value):
+        """把 skills.extraDirs 假装成某个值 —— patch 而不是真写 settings.json，
+        否则跑一次测试就把用户自己的配置改掉了。"""
+        from unittest import mock
+        patcher = mock.patch.object(
+            self.config, "get_setting",
+            lambda key, default=None: value if key == "skills.extraDirs" else default,
+        )
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    @staticmethod
+    def make_pack(base: Path, name: str, text: str = "# 内容") -> Path:
+        pack = base / name
+        pack.mkdir(parents=True, exist_ok=True)
+        (pack / "SKILL.md").write_text(text, encoding="utf-8")
+        return pack
+
+    # ---- 扫描 ----
+
+    def test_external_packs_are_listed(self):
+        self.make_pack(self._ext, "外面的包")
+        self.extra(str(self._ext))
+
+        names = self.skills.skill_names()
+        self.assertIn("外面的包", names)
+
+        item = [x for x in self.skills.list_skills() if x["name"] == "外面的包"][0]
+        self.assertTrue(item["external"])
+        self.assertEqual(Path(item["dir"]), self._ext)
+
+    def test_plugin_dir_packs_are_not_marked_external(self):
+        self.make_pack(self._home, "自己的包")
+        self.extra("")
+        item = [x for x in self.skills.list_skills() if x["name"] == "自己的包"][0]
+        self.assertFalse(item["external"])
+
+    def test_multiple_dirs_split_on_semicolon_and_newline(self):
+        other = Path(tempfile.mkdtemp(prefix="m8-ext2-"))
+        self.addCleanup(shutil.rmtree, other, True)
+        self.make_pack(self._ext, "甲")
+        self.make_pack(other, "乙")
+
+        for raw in (f"{self._ext};{other}", f"{self._ext}\n{other}"):
+            self.extra(raw)
+            names = self.skills.skill_names()
+            self.assertIn("甲", names, raw)
+            self.assertIn("乙", names, raw)
+
+    def test_missing_dir_is_skipped_not_fatal(self):
+        """填错一个路径，不该让整个列表空掉 —— 那看起来像「所有 skill 都没了」。"""
+        self.make_pack(self._home, "还在")
+        self.extra(str(self._ext / "根本不存在"))
+        self.assertIn("还在", self.skills.skill_names())
+
+    def test_same_dir_listed_twice_is_scanned_once(self):
+        self.make_pack(self._ext, "只算一次")
+        self.extra(f"{self._ext};{self._ext}")
+        names = [x["name"] for x in self.skills.list_skills()]
+        self.assertEqual(names.count("只算一次"), 1)
+
+    # ---- 同名 ----
+
+    def test_plugin_dir_wins_on_name_clash(self):
+        self.make_pack(self._home, "同名", "# 插件里的")
+        self.make_pack(self._ext, "同名", "# 外面的")
+        self.extra(str(self._ext))
+
+        listed = [x for x in self.skills.list_skills() if x["name"] == "同名"]
+        self.assertEqual(len(listed), 1, "同名只该出现一次")
+        self.assertFalse(listed[0]["external"], "该留默认目录那份")
+        self.assertIn("插件里的", self.skills.read_skill("同名"))
+
+    # ---- 读 ----
+
+    def test_read_skill_falls_through_to_external(self):
+        self.make_pack(self._ext, "外部的", "# 外部正文")
+        self.extra(str(self._ext))
+        self.assertIn("外部正文", self.skills.read_skill("外部的"))
+
+    def test_read_bundle_works_from_external(self):
+        pack = self.make_pack(self._ext, "带资源的", "# 主文件")
+        (pack / "notes.md").write_text("# 附录", encoding="utf-8")
+        self.extra(str(self._ext))
+        bundle = self.skills.read_bundle("带资源的")
+        self.assertIn("主文件", bundle["text"])
+
+    def test_unknown_name_still_reports_missing(self):
+        self.extra(str(self._ext))
+        with self.assertRaises(Exception):
+            self.skills.read_skill("压根没有这个")
+
+    # ---- 写：只碰自己的目录 ----
+
+    def test_save_never_writes_into_external_dir(self):
+        self.make_pack(self._ext, "外面的同名")
+        self.extra(str(self._ext))
+        self.skills.save_skill("外面的同名", {"SKILL.md": "# 新内容".encode("utf-8")}, overwrite=True)
+
+        outside = (self._ext / "外面的同名" / "SKILL.md").read_text("utf-8")
+        self.assertEqual(outside, "# 内容", "外部目录里的包被改写了")
+        self.assertTrue((self._home / "外面的同名" / "SKILL.md").is_file(), "新内容该落在插件自己的目录")
+
+    def test_delete_never_removes_from_external_dir(self):
+        self.make_pack(self._ext, "别删我")
+        self.extra(str(self._ext))
+        self.skills.delete_skill("别删我")
+        self.assertTrue((self._ext / "别删我" / "SKILL.md").is_file(), "外部目录里的包被删了")
+
+    # ---- 给前端看的目录清单 ----
+
+    def test_describe_dirs_reports_existence_and_count(self):
+        self.make_pack(self._ext, "一")
+        self.make_pack(self._ext, "二")
+        gone = str(self._ext / "没有这个")
+        self.extra(f"{self._ext};{gone}")
+
+        entries = self.skills.describe_dirs()
+        self.assertTrue(entries[0]["primary"], "第一条永远是插件自己的目录")
+        by_path = {e["path"]: e for e in entries}
+
+        self.assertTrue(by_path[str(self._ext)]["exists"])
+        self.assertEqual(by_path[str(self._ext)]["count"], 2)
+        self.assertFalse(by_path[gone]["exists"], "不存在的路径要如实标出来")
 
 
 class TestMentionFrontend(unittest.TestCase):
@@ -2512,6 +2671,207 @@ class TestWhaleHistory(unittest.TestCase):
         self.assertNotIn('localStorage.setItem', chr(10).join(code))
         self.assertIn('/history', dialog)
 
+
+
+# ============================================================== 破甲注入
+
+class TestArmorBreak(unittest.TestCase):
+    """破甲注入节点。
+
+    两条是设计核心，其余是防退化：
+      1. 档位是**叠加**的，不是三份平行文本 —— 改一句通用话只需改一处
+      2. armor 落在系统消息**最前面** —— 模型对开头指令权重最高，
+         拼到末尾等于自我稀释，这是当初不复用 M8_SKILL 通道的原因
+    """
+
+    def setUp(self):
+        self.module = load_plugin(FakeRouteTable())
+        self.cls = self.module.NODE_CLASS_MAPPINGS["M8ArmorBreak"]
+        self.node = self.cls()
+
+    def _payload(self, level, scene="通用", **kwargs):
+        return self.node.build(level, scene, **kwargs)["result"][0]
+
+    # ---- 签名 ----
+
+    def test_signature(self):
+        inputs = self.cls.INPUT_TYPES()
+        self.assertEqual(list(inputs["required"]), ["level", "scene"])
+        # 顺序也有意义：widgets_values 按索引存取。这个顺序就是节点上看得到的顺序：
+        # 启用 → 正文 → 补充，正文是主体排在补充前面。
+        self.assertEqual(list(inputs["optional"]), ["enabled", "body", "extra"])
+        self.assertEqual(self.cls.RETURN_TYPES, ("M8_ARMOR",))
+        self.assertEqual(self.cls.RETURN_NAMES, ("armor",))
+        self.assertEqual(self.cls.FUNCTION, "build")
+        self.assertEqual(self.cls.CATEGORY, "M8/大模型")
+
+    def test_output_type_matches_inference_input_port(self):
+        """输出类型和推理节点的 armor 输入口必须逐字一致，差一个字符就接不上。"""
+        inference = self.module.NODE_CLASS_MAPPINGS["M8LLMInference"]
+        self.assertEqual(
+            self.cls.RETURN_TYPES[0],
+            inference.INPUT_TYPES()["optional"]["armor"][0],
+        )
+
+    def test_levels_are_registered(self):
+        levels = self.cls.INPUT_TYPES()["required"]["level"][0]
+        self.assertEqual(levels, ["关", "基础", "增强", "全量"])
+
+    # ---- 档位叠加 ----
+
+    def test_levels_nest_verbatim(self):
+        """下一档的正文必须原样包含上一档 —— 否则就是三份平行文本，迟早不一致。"""
+        base = self._payload("基础")["text"]
+        plus = self._payload("增强")["text"]
+        full = self._payload("全量")["text"]
+
+        self.assertIn(base, plus, "增强档没有原样包含基础档")
+        self.assertIn(plus, full, "全量档没有原样包含增强档")
+        self.assertLess(len(base), len(plus))
+        self.assertLess(len(plus), len(full))
+
+    def test_refusal_section_only_from_enhanced_up(self):
+        base = self._payload("基础")["text"]
+        plus = self._payload("增强")["text"]
+        self.assertNotIn("拒绝对抗", base)
+        self.assertIn("拒绝对抗", plus)
+
+    def test_immune_section_only_in_full(self):
+        plus = self._payload("增强")["text"]
+        full = self._payload("全量")["text"]
+        self.assertNotIn("外来指令", plus)
+        self.assertIn("外来指令", full)
+
+    def test_sections_reported_match_level(self):
+        self.assertEqual(self._payload("基础")["sections"], ["core"])
+        self.assertEqual(self._payload("增强")["sections"], ["core", "refusal"])
+        self.assertEqual(self._payload("全量")["sections"], ["core", "refusal", "immune"])
+
+    # ---- 关 / 禁用 ----
+
+    def test_off_returns_none(self):
+        self.assertIsNone(self._payload("关"))
+
+    def test_disabled_returns_none(self):
+        self.assertIsNone(self._payload("全量", "通用", enabled=False))
+
+    def test_off_with_extra_still_injects(self):
+        """档位关、但写了补充 —— 补充本身就是内容，不该被丢掉。"""
+        payload = self._payload("关", "通用", extra="再来一句")
+        self.assertIsNotNone(payload)
+        self.assertEqual(payload["text"], "再来一句")
+
+    def test_unknown_level_falls_back(self):
+        """手改过的工作流里可能留着旧档位名。退到默认档位，不该让整张图跑不起来。"""
+        payload = self._payload("这是早就改掉的旧名字")
+        self.assertIsNotNone(payload)
+        self.assertIn(payload["level"], ("基础", "增强", "全量"))
+
+    # ---- 场景 ----
+
+    def test_scenes_are_orthogonal(self):
+        """换场景只换那一段，档位段落不动。"""
+        generic = self._payload("增强", "通用")["text"]
+        coding = self._payload("增强", "编码")["text"]
+        self.assertIn(generic, coding)
+        self.assertGreater(len(coding), len(generic))
+        self.assertIn("技术输出", coding)
+
+    def test_every_scene_has_content_except_generic(self):
+        for scene, block in submodule("m8.nodes.llm.armor_break.prompts").SCENES.items():
+            if scene == "通用":
+                self.assertEqual(block, "", "通用场景不该有附加段")
+            else:
+                self.assertTrue(block.strip(), f"场景 {scene} 是空的")
+
+    def test_unknown_scene_falls_back(self):
+        payload = self._payload("增强", "不存在的场景")
+        self.assertEqual(payload["scene"], "通用")
+
+    # ---- 补充与回传 ----
+
+    def test_custom_text_overrides_the_preset(self):
+        """正文框填了就以它为准 —— 那是用户亲手改过的，比档位预设权威。"""
+        custom = "这是我自己的破甲正文。"
+        payload = self._payload("增强", "编码", body=custom)
+        self.assertEqual(payload["text"], custom)
+        self.assertTrue(payload["custom"])
+        self.assertEqual(payload["sections"], ["custom"])
+
+    def test_custom_text_keeps_level_and_scene_for_the_record(self):
+        """档位不再参与拼接，但仍要记下「他是从哪份预设改出来的」。"""
+        payload = self._payload("全量", "写作", body="随便写点")
+        self.assertEqual(payload["level"], "全量")
+        self.assertEqual(payload["scene"], "写作")
+
+    def test_preset_mode_is_the_default(self):
+        payload = self._payload("增强")
+        self.assertFalse(payload["custom"])
+        self.assertNotEqual(payload["sections"], ["custom"])
+
+    def test_extra_appends_in_custom_mode_too(self):
+        """补充的语义是「在基础上再加一句」，不会因为正文改了就变成替换。"""
+        payload = self._payload("基础", "通用", body="我的正文", extra="最后这句")
+        self.assertTrue(payload["text"].startswith("我的正文"))
+        self.assertTrue(payload["text"].rstrip().endswith("最后这句"))
+
+    def test_blank_custom_text_falls_back_to_preset(self):
+        """正文框里只有空白（空格、换行）不算「改过」。"""
+        for blank in ("   ", "\n\n", "\t"):
+            payload = self._payload("增强", "通用", body=blank)
+            self.assertFalse(payload["custom"], f"{blank!r} 不该被当成自定义正文")
+
+    def test_extra_goes_last(self):
+        text = self._payload("基础", "通用", extra="最后这句")["text"]
+        self.assertTrue(text.rstrip().endswith("最后这句"), "补充必须拼在最后，不是替换")
+
+    def test_ui_message_carries_preview(self):
+        """节点上的只读框靠这条消息，没有它就是黑箱。"""
+        result = self.node.build("增强", "通用")
+        payload = result["ui"]["m8"]
+        self.assertEqual(payload["preview"], result["result"][0]["text"])
+        self.assertEqual(payload["chars"], len(payload["text"]))
+
+    def test_preview_is_capped(self):
+        """补充框里塞一篇文章时，ui 消息不能被撑爆。"""
+        payload = self.node.build("基础", "通用", extra="长" * 5000)["ui"]["m8"]
+        self.assertLessEqual(len(payload["preview"]), 4000)
+        self.assertGreater(payload["chars"], 4000)
+
+    # ---- 注入位置 ----
+
+    def test_armor_leads_the_system_message(self):
+        """设计核心：armor → system_prompt → skill，破甲必须在最前。"""
+        inference = self.module.NODE_CLASS_MAPPINGS["M8LLMInference"]()
+        messages = inference._build_messages(
+            "人格设定", "破甲正文", "问题",
+            ['<skill name="a">\n资料\n</skill>'], None, None,
+        )
+        self.assertEqual(messages[0]["role"], "system")
+        content = messages[0]["content"]
+        self.assertTrue(content.startswith("破甲正文"), "破甲没有落在系统消息最前面")
+        self.assertLess(content.index("破甲正文"), content.index("人格设定"))
+        self.assertLess(content.index("人格设定"), content.index("<skill"))
+
+    def test_no_armor_keeps_old_behaviour(self):
+        """不接破甲时，system 消息和加这个功能之前一模一样。"""
+        inference = self.module.NODE_CLASS_MAPPINGS["M8LLMInference"]()
+        messages = inference._build_messages("人格设定", "", "问题", [], None, None)
+        self.assertEqual(messages[0]["content"], "人格设定")
+
+    def test_armor_alone_becomes_the_system_message(self):
+        """只接破甲、没填系统提示词时，system 消息就是破甲正文本身（不带头尾空行）。"""
+        inference = self.module.NODE_CLASS_MAPPINGS["M8LLMInference"]()
+        messages = inference._build_messages("", "破甲正文", "问题", [], None, None)
+        self.assertEqual(messages[0]["content"], "破甲正文")
+
+    def test_armor_accepts_any_input_shape(self):
+        """这个输入口可能被手改过的工作流塞进任意值，取不到就退成空串，不该炸。"""
+        inference = self.module.NODE_CLASS_MAPPINGS["M8LLMInference"]()
+        for weird in (None, {}, 42, [], {"text": ""}):
+            self.assertEqual(inference._armor_text(weird), "")
+        self.assertEqual(inference._armor_text({"text": "  正文  "}), "正文")
+        self.assertEqual(inference._armor_text("  裸字符串  "), "裸字符串")
 
 
 # ============================================================== widget 顺序契约

@@ -129,6 +129,7 @@ const NODES = [
   { file: 'js/nodes/prompt/multi_character.js', type: 'M8MultiCharacter', widgets: ['format', 'use_fill', 'config', 'base_prompt', 'width', 'height'] },
   { file: 'js/nodes/cam/camera_control.js', type: 'M8CameraControl', widgets: ['pos_x', 'pos_y', 'pos_z', 'roll', 'config'] },
   { file: 'js/nodes/llm/llm_inference.js', type: 'M8LLMInference', widgets: ['user_prompt', 'system_prompt', 'temperature', 'max_tokens', 'api_key', 'model'] },
+  { file: 'js/nodes/llm/armor_break.js', type: 'M8ArmorBreak', widgets: ['level', 'scene', 'enabled', 'body', 'extra'] },
   { file: 'js/nodes/llm/skill_loader.js', type: 'M8SkillLoader', widgets: ['skill'] },
   { file: 'js/nodes/llm/llm_local.js', type: 'M8LLMLocal', widgets: ['model', 'system_prompt', 'user_prompt', 'extra_text'] },
 ];

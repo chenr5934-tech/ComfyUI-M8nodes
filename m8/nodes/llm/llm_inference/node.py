@@ -103,6 +103,9 @@ class M8LLMInference:
                 }),
             },
             "optional": {
+                "armor": ("M8_ARMOR", {
+                    "tooltip": "从 M8 · 破甲注入 接进来。内容拼在系统消息最前面 —— 模型对开头的指令权重最高，破甲放末尾会被稀释。",
+                }),
                 "skill": ("M8_SKILL", {
                     "tooltip": "从 M8 · Skill 装载 接进来。内容会附在系统提示词后面当参考资料。",
                 }),
@@ -156,6 +159,7 @@ class M8LLMInference:
         temperature: float = 1.0,
         max_tokens: int = DEFAULT_MAX_TOKENS,
         timeout: int = DEFAULT_TIMEOUT,
+        armor: dict | None = None,
         skill: dict | None = None,
         skill_auto: bool = False,
         image=None,
@@ -187,7 +191,8 @@ class M8LLMInference:
             raise M8Error("M8-LLM-001")
 
         skill_blocks = self._collect_skill_blocks(user_prompt, skill, bool(skill_auto))
-        messages = self._build_messages(system_prompt, user_prompt, skill_blocks, image, audio)
+        armor_text = self._armor_text(armor)
+        messages = self._build_messages(system_prompt, armor_text, user_prompt, skill_blocks, image, audio)
         payload = self._build_payload(
             model=model,
             messages=messages,
@@ -210,7 +215,7 @@ class M8LLMInference:
             )
         log(
             f"Request {model}: {len(messages)} messages / {len(skill_blocks)} knowledge packs ({skill_chars} chars)"
-            f" / thinking {thinking}",
+            f" / armor {len(armor_text)} chars / thinking {thinking}",
             SHELF_LLM,
         )
         data = llm_api.chat(base_url, resolved_key, payload, provider, timeout)
@@ -251,6 +256,20 @@ class M8LLMInference:
             )
         if not (user_prompt or "").strip() and image is None and audio is None:
             raise M8Error("M8-LLM-007")
+
+    @staticmethod
+    def _armor_text(armor) -> str:
+        """从 armor 输入里取注入文本。
+
+        连进来的东西理论上一定是 M8ArmorBreak 给的 dict，但这个口子也能被手改过的
+        工作流塞进任意值。取不到就退成空串 —— 破甲是增强，缺了照常推理，
+        不该让整张图跑不起来。
+        """
+        if isinstance(armor, dict):
+            return str(armor.get("text") or "").strip()
+        if isinstance(armor, str):
+            return armor.strip()
+        return ""
 
     def _collect_skill_blocks(
         self,
@@ -325,6 +344,7 @@ class M8LLMInference:
     def _build_messages(
         self,
         system_prompt: str,
+        armor_text: str,
         user_prompt: str,
         skill_blocks: list[str],
         image,
@@ -332,7 +352,13 @@ class M8LLMInference:
     ) -> list[dict]:
         messages: list[dict] = []
 
+        # 三段拼接，顺序各有理由：
+        #   armor 在最前 —— 模型对 system 开头的指令权重最高，破甲拼到末尾等于自我稀释；
+        #   system_prompt 是用户自己写的人格设定，居中；
+        #   skill 是参考资料，垫底。
         system_text = (system_prompt or "").strip()
+        if armor_text:
+            system_text = f"{armor_text}\n\n{system_text}" if system_text else armor_text
         if skill_blocks:
             joined = "\n\n".join(skill_blocks)
             # 多个知识包时给一句话引导。不说的话，模型很容易把几份互不相干的

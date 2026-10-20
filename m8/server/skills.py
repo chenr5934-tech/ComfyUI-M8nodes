@@ -34,9 +34,9 @@ import time
 from pathlib import Path
 from typing import Any, Iterable
 
-from ..core import paths
+from ..core import config, paths
 from ..core.errors import M8Error
-from ..core.log import SHELF_SRV, log
+from ..core.log import SHELF_SRV, log, warn
 
 # 目录名里保留这些字符，其余换成下划线
 _SAFE_NAME = re.compile(r"[^0-9A-Za-z_\-\u4e00-\u9fff.]+")
@@ -118,12 +118,93 @@ def sanitize_rel_path(raw: str) -> str:
     return "/".join(parts)
 
 
-def _resolve(name: str) -> Path:
-    """拿到某个 skill 的目录路径，并确认它真的在 SKILLS_DIR 里。"""
-    candidate = paths.SKILLS_DIR / sanitize_name(name)
-    if not paths.is_inside(candidate, paths.SKILLS_DIR):
-        raise M8Error("M8-SRV-003", message=f"名字会把目录建到外面去：{name}")
-    return candidate
+def _configured_dirs() -> list[Path]:
+    """配置里写了的全部目录，**不管它们现在存不存在**。
+
+    单独拆出来是因为「扫描」和「告诉用户配了什么」需要不同的答案：
+    扫描只要存在的，而界面上必须能看见那条写错的路径 —— 否则用户填完
+    发现列表没变，根本分不清是没生效还是路径拼错了。
+
+    额外目录来自设置里的 `skills.extraDirs`（分号或换行分隔，路径可以带引号）。
+
+    每条都先 `resolve()` 再比较：`m8/data/skills` 和 `./m8/data/skills`、
+    正斜杠和反斜杠混着写，指的都是同一个地方。不规范化的话它们会被当成
+    几个不同的目录各扫一遍 —— 列表里出现重复项，界面上还会显示两条一样的路径。
+    `resolve()` 顺带把相对路径变成绝对路径，界面上看到的就是它到底指哪儿。
+    """
+    found: list[Path] = [paths.SKILLS_DIR.resolve()]
+    raw = config.get_setting("skills.extraDirs", "")
+    raw_items = raw if isinstance(raw, (list, tuple)) else re.split(r"[;\n]+", str(raw or ""))
+    for item in raw_items:
+        text = str(item).strip().strip('"').strip("'")
+        if not text:
+            continue
+        try:
+            candidate = Path(text).expanduser().resolve()
+            if candidate not in found:
+                found.append(candidate)
+        except (OSError, ValueError):
+            continue
+    return found
+
+
+# 已经提醒过的失效目录，避免每次列列表都刷一遍日志
+_WARNED_MISSING: set[str] = set()
+
+
+def _warn_missing_dirs() -> None:
+    """配置里的额外目录不存在时提醒一次。
+
+    换设备、换盘符、把技能库挪了地方之后，settings.json 里存的绝对路径会失效。
+    不提醒的话表现是「我的 skill 突然都没了」—— 其实只是路径指不过去。
+    这种静默失效要靠翻配置文件才查得到，所以宁可吵一句。
+    """
+    for base in _configured_dirs():
+        key = str(base)
+        if key in _WARNED_MISSING:
+            continue
+        if not base.is_dir():
+            _WARNED_MISSING.add(key)
+            warn(
+                f"配置的 skill 目录不存在，已跳过：{key}"
+                f"（换过设备或挪过位置？在节点的「skill 目录」里重新指一下）",
+                SHELF_SRV,
+            )
+
+
+def _search_dirs() -> list[Path]:
+    """真正要扫的目录：默认目录永远排第一，然后只保留存在的那些。
+
+    填错、已经被删掉、没权限的目录直接跳过 —— 一个坏路径不该让整个列表空掉，
+    那会表现成「所有 skill 突然都没了」，比少一个目录难查得多。
+    """
+    return [base for base in _configured_dirs() if base.is_dir()]
+
+
+def _resolve(name: str, *, writable: bool = False) -> Path:
+    """拿到某个 skill 的路径。
+
+    **读**的时候会挨个目录找（默认目录优先），所以额外目录里的包也能直接选。
+    **写**的时候只认默认目录 —— 额外目录是用户自己的库，插件往里删东西或
+    覆盖重名包，后果比「找不到」严重得多。
+    """
+    safe = sanitize_name(name)
+
+    if writable:
+        candidate = paths.SKILLS_DIR / safe
+        if not paths.is_inside(candidate, paths.SKILLS_DIR):
+            raise M8Error("M8-SRV-003", message=f"名字会把目录建到外面去：{name}")
+        return candidate
+
+    for base in _search_dirs():
+        candidate = base / safe
+        if not paths.is_inside(candidate, base):
+            raise M8Error("M8-SRV-003", message=f"名字会把目录建到外面去：{name}")
+        if candidate.exists():
+            return candidate
+
+    # 哪儿都没有：返回默认目录下的路径，让上层按「不存在」去报 M8-LLM-011
+    return paths.SKILLS_DIR / safe
 
 
 def _is_legacy_file(entry: Path) -> bool:
@@ -171,67 +252,114 @@ def _package_files(directory: Path) -> list[Path]:
     return found
 
 
-def list_skills() -> list[dict[str, Any]]:
-    """列出已上传的 skill 包，按名字排序。
+def describe_dirs() -> list[dict[str, Any]]:
+    """给前端看的目录清单：每条路径现在能不能真的扫到、里面有几个包。
 
-    目录式（新格式）和散落的 .md（老格式）都会列出来 ——
-    读取时两种都认，只是保存只会产生目录式。
+    光把路径存下来是不够的 —— 用户填错了的话，列表看起来和没改一样，
+    根本分不清是「没生效」还是「路径写错了」。这里连存在性一起回。
+    """
+    entries: list[dict[str, Any]] = []
+    for index, base in enumerate(_configured_dirs()):
+        exists = False
+        count = 0
+        try:
+            exists = base.is_dir()
+            if exists:
+                count = sum(1 for item in base.iterdir() if not item.name.startswith("."))
+        except OSError:
+            exists = False
+        entries.append({
+            "path": str(base),
+            "exists": exists,
+            "count": count,
+            "primary": index == 0,   # 第一个永远是插件自己的目录，删不掉
+        })
+    return entries
+
+
+def list_skills() -> list[dict[str, Any]]:
+    """列出所有能读到的 skill 包。
+
+    两个来源：插件自己的 `m8/data/skills`，和用户额外指定的目录
+    （设置里的 `skills.extraDirs`）。目录式（新格式）和散落的 .md
+    （老格式）都列 —— 读取时两种都认，只是保存只会产生目录式。
+
+    同名时**默认目录优先**，外来的跳过并记日志。静默让后到的覆盖，
+    用户会以为自己放进去的那份在生效，实际跑的是另一份。
     """
     paths.ensure_data_dirs()
+    _warn_missing_dirs()
     items: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    default_dir = paths.SKILLS_DIR
 
-    for entry in sorted(paths.SKILLS_DIR.iterdir(), key=lambda p: p.name.lower()):
-        if entry.name.startswith("."):
+    for base in _search_dirs():
+        if not base.is_dir():
             continue
+        external = base.resolve() != default_dir.resolve()
+        where = str(base)
 
-        if entry.is_dir():
-            main = _main_file(entry)
-            files = _package_files(entry)
-            if not files:
-                continue  # 空目录不算 skill
-            try:
-                stat = entry.stat()
-            except OSError:
+        for entry in sorted(base.iterdir(), key=lambda p: p.name.lower()):
+            if entry.name.startswith("."):
                 continue
-            title = ""
-            if main is not None:
+            if entry.name in seen:
+                warn(f"跳过重名的 skill：{entry}（默认目录里已有同名的一份，以那份为准）", SHELF_SRV)
+                continue
+
+            if entry.is_dir():
+                main = _main_file(entry)
+                files = _package_files(entry)
+                if not files:
+                    continue  # 空目录不算 skill
                 try:
-                    with open(main, "r", encoding="utf-8", errors="replace") as handle:
+                    stat = entry.stat()
+                except OSError:
+                    continue
+                title = ""
+                if main is not None:
+                    try:
+                        with open(main, "r", encoding="utf-8", errors="replace") as handle:
+                            title = title_of(handle.read(4000))
+                    except OSError:
+                        pass
+                total = sum(p.stat().st_size for p in files if p.exists())
+                seen.add(entry.name)
+                items.append({
+                    "name": entry.name,
+                    "stem": entry.name,
+                    "title": title,
+                    "size": total,
+                    "sizeText": human_size(total),
+                    "fileCount": len(files),
+                    "resourceCount": max(0, len(files) - 1),
+                    "legacy": False,
+                    "mtime": time.strftime("%Y-%m-%d %H:%M", time.localtime(stat.st_mtime)),
+                    "dir": where,
+                    "external": external,
+                })
+                continue
+
+            if _is_legacy_file(entry):
+                try:
+                    stat = entry.stat()
+                    with open(entry, "r", encoding="utf-8", errors="replace") as handle:
                         title = title_of(handle.read(4000))
                 except OSError:
-                    pass
-            total = sum(p.stat().st_size for p in files if p.exists())
-            items.append({
-                "name": entry.name,
-                "stem": entry.name,
-                "title": title,
-                "size": total,
-                "sizeText": human_size(total),
-                "fileCount": len(files),
-                "resourceCount": max(0, len(files) - 1),
-                "legacy": False,
-                "mtime": time.strftime("%Y-%m-%d %H:%M", time.localtime(stat.st_mtime)),
-            })
-            continue
-
-        if _is_legacy_file(entry):
-            try:
-                stat = entry.stat()
-                with open(entry, "r", encoding="utf-8", errors="replace") as handle:
-                    title = title_of(handle.read(4000))
-            except OSError:
-                continue
-            items.append({
-                "name": entry.name,
-                "stem": display_name(entry.name),
-                "title": title,
-                "size": stat.st_size,
-                "sizeText": human_size(stat.st_size),
-                "fileCount": 1,
-                "resourceCount": 0,
-                "legacy": True,
-                "mtime": time.strftime("%Y-%m-%d %H:%M", time.localtime(stat.st_mtime)),
-            })
+                    continue
+                seen.add(entry.name)
+                items.append({
+                    "name": entry.name,
+                    "stem": display_name(entry.name),
+                    "title": title,
+                    "size": stat.st_size,
+                    "sizeText": human_size(stat.st_size),
+                    "fileCount": 1,
+                    "resourceCount": 0,
+                    "legacy": True,
+                    "mtime": time.strftime("%Y-%m-%d %H:%M", time.localtime(stat.st_mtime)),
+                    "dir": where,
+                    "external": external,
+                })
 
     return items
 
@@ -507,7 +635,7 @@ def save_skill(
 
     cleaned = _promote_main_file(cleaned, name)
 
-    target = _resolve(name)
+    target = _resolve(name, writable=True)
     if target.exists() and not overwrite:
         target = _unique_dir(target)
 
@@ -585,8 +713,11 @@ def save_skill_text(name: str, text: str, filename: str = MAIN_FILE) -> dict[str
 
 
 def delete_skill(name: str) -> bool:
-    """删一个 skill。不存在返回 False（删两次不该报错）。"""
-    target = _resolve(name)
+    """删一个 skill。不存在返回 False（删两次不该报错）。
+
+    只在默认目录里删 —— 额外目录是用户自己的库，插件不碰。
+    """
+    target = _resolve(name, writable=True)
 
     if target.is_dir():
         try:

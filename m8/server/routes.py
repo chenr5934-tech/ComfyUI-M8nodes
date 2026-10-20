@@ -270,6 +270,31 @@ async def handle_skills_upload(request: web.Request) -> web.Response:
     return _ok(skill=saved, skills=skills.list_skills())
 
 
+async def handle_skills_dirs(request: web.Request) -> web.Response:
+    """GET / POST /m8/skills/dirs —— 额外 skill 目录。
+
+    GET  读回配置，并逐条标出「这个目录现在真的能扫到吗、里面有几个包」。
+         只存路径不管死活的话，用户填错了会看到列表毫无变化，
+         分不清是没生效还是路径写错。
+    POST 保存。传 {"dirs": "路径1;路径2"} 或 {"dirs": ["路径1", "路径2"]}；
+         传空 = 清空，只留插件自己的目录。
+    """
+    if request.method == "POST":
+        try:
+            body = await _read_json(request)
+            raw = body.get("dirs", "")
+            if isinstance(raw, (list, tuple)):
+                raw = ";".join(str(item) for item in raw)
+            config.save_settings({"skills": {"extraDirs": str(raw or "").strip()}})
+        except M8Error as exc:
+            return _err(exc)
+
+    return _ok(
+        raw=config.get_setting("skills.extraDirs", ""),
+        dirs=skills.describe_dirs(),
+    )
+
+
 async def handle_skills_tree(request: web.Request) -> web.Response:
     """GET /m8/skills/tree?name=xxx —— 列出一个包的文件结构。
 
@@ -331,6 +356,37 @@ async def handle_local_models(request: web.Request) -> web.Response:
         mmproj=mmproj,
         loaded=local_models.cached_count(),
         gpu=local_models.gpu_offload_available(),
+    )
+
+
+async def handle_armor_preset(request: web.Request) -> web.Response:
+    """GET /m8/armor/preset —— 某个档位 + 场景拼出来的破甲正文。
+
+    节点上「注入内容」和「灌入预设」两个按钮用它。文案库在 Python 里，
+    前端**不抄第二份** —— 抄了就是两份真相，改词要改两处，而且迟早对不上。
+
+    代价是这两个按钮依赖接口在。接口没起来时它们会报「接口没响应」，
+    但节点照常能用：选档位走预设这条路完全不经过前端。
+    """
+    try:
+        from ..nodes.llm.armor_break import prompts
+    except Exception as exc:  # noqa: BLE001 货架加载期什么都可能炸
+        return _err(M8Error(
+            "M8-LLM-022",
+            message="破甲货架加载不了",
+            hint="看启动日志里 m8/nodes/llm/armor_break 有没有报错",
+            detail=f"{type(exc).__name__}: {exc}",
+        ))
+
+    level = prompts.normalize_level(request.query.get("level", ""))
+    scene = prompts.normalize_scene(request.query.get("scene", ""))
+    text = prompts.compose(level, scene, "")
+    return _ok(
+        level=level,
+        scene=scene,
+        text=text,
+        chars=len(text),
+        sections=prompts.sections_of(level, scene),
     )
 
 
@@ -540,6 +596,8 @@ ROUTES: list[tuple[str, str, Callable]] = [
     ("GET", "/m8/skills/list", handle_skills_list),
     ("GET", "/m8/skills/preview", handle_skills_preview),
     ("GET", "/m8/skills/tree", handle_skills_tree),
+    ("GET", "/m8/skills/dirs", handle_skills_dirs),
+    ("POST", "/m8/skills/dirs", handle_skills_dirs),
     ("POST", "/m8/skills/upload", handle_skills_upload),
     ("POST", "/m8/skills/delete", handle_skills_delete),
     ("GET", "/m8/cam/configs", handle_cam_configs_list),
@@ -550,6 +608,7 @@ ROUTES: list[tuple[str, str, Callable]] = [
     ("POST", "/m8/prompt/presets/load", handle_prompt_presets_load),
     ("POST", "/m8/prompt/presets/delete", handle_prompt_presets_delete),
     ("GET", "/m8/llm-local/models", handle_local_models),
+    ("GET", "/m8/armor/preset", handle_armor_preset),
     ("GET", "/m8/i18n/{lang}", handle_i18n),
     ("GET", "/m8/data/{kind}", handle_data_get),
     ("POST", "/m8/data/{kind}/put", handle_data_put),

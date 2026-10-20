@@ -20,7 +20,7 @@ import * as M8 from "../../m8_core.js";
 
 const NODE_TYPE = "M8SkillLoader";
 
-/* 界面文案：代码里写英文，中文由 locales/zh/main.json 的 ui 段提供。 */
+/* 界面文案：中文直接写在代码里，locales/zh/main.json 的 ui 段是同一份副本。 */
 const T = M8.tFor(NODE_TYPE);
 
 /* 和后端 m8/nodes/llm/skill_loader/node.py 里的 NO_SKILL 必须逐字一致 */
@@ -110,6 +110,55 @@ async function doUpload(node, files) {
   applyList(node, result.skills, saved.name);
 }
 
+/**
+ * 改「插件目录之外还去哪些文件夹找 skill」。
+ *
+ * 为什么用原生 prompt 而不是 ComfyUI 的设置面板：设置项的 onChange 在初始化时
+ * 会不会被调一次，从前端打包产物里查不实。要是会，一次空值写入就会把用户
+ * 配好的路径冲掉，而且完全没有提示。路径配置是丢一次就很难回想起来的东西，
+ * 不值当赌这个不确定性。原生 prompt 零 API 依赖，一定可用。
+ */
+async function editDirs(node) {
+  let current;
+  try {
+    current = await M8.apiGet("/skills/dirs");
+  } catch (exc) {
+    M8.notify(T("dirsFailed", "读不到目录配置：{msg}", { msg: exc.message }), { kind: "warn" });
+    return;
+  }
+
+  const listing = (current.dirs || [])
+    .map((d) => d.path + (d.exists ? T("dirsCount", "（{n} 个）", { n: d.count }) : T("dirsGone", "（不存在）")))
+    .join("\n");
+
+  const typed = window.prompt(
+    T("dirsPrompt", "插件目录之外，还去哪些文件夹找 skill？多个用英文分号隔开。\n留空就只用插件自己的目录。\n\n现在生效的：\n{list}", { list: listing }),
+    current.raw || "",
+  );
+  if (typed === null) return; // 点了取消
+
+  let saved;
+  try {
+    saved = await M8.apiPost("/skills/dirs", { dirs: typed });
+  } catch (exc) {
+    M8.notify(T("dirsFailed", "读不到目录配置：{msg}", { msg: exc.message }), { kind: "warn" });
+    return;
+  }
+
+  // 保存后立刻重扫一次：用户改完路径，下一步就是去下拉里挑，不该还要再点一次刷新
+  const result = await M8.apiGet("/skills/list");
+  applyList(node, result.skills);
+
+  const missing = (saved.dirs || []).filter((d) => !d.exists && !d.primary);
+  M8.notify(T("dirsSaved", "目录已保存，现在能扫到 {n} 个 skill", { n: result.skills.length }), {
+    kind: missing.length ? "warn" : "ok",
+    hint: missing.length
+      ? T("dirsMissing", "这几个路径不存在，已经跳过：{list}", { list: missing.map((d) => d.path).join("; ") })
+      : T("dirsSavedHint", "外面那些目录里的包也能在下拉里选了；插件不会往里写或删东西"),
+    timeout: 7000,
+  });
+}
+
 /** 点一下看这个包带了什么。信息走通知，不占节点的地方。 */
 async function showResources(node) {
   const widget = M8.findWidget(node, "skill");
@@ -161,6 +210,10 @@ function setup(node) {
     M8.notify(T("refreshed", "skill 列表已更新：{n} 个", { n: result.skills.length }),
       { kind: "ok", timeout: 2200 });
   }, { tooltip: T("refreshTip", "重新读一遍已上传的 skill 列表") });
+
+  const dirsWidget = M8.addButton(node, T("dirs", "skill 目录"), async () => {
+    await editDirs(node);
+  }, { tooltip: T("dirsTip", "插件目录之外的 skill 库：加几个文件夹，里面的包也能在这个下拉里选。只读，不会往里写或删") });
 
   const infoWidget = M8.addButton(node, T("inventory", "资源清单"), async () => {
     await showResources(node);
