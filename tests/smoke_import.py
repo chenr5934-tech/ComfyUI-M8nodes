@@ -1254,6 +1254,20 @@ class TestSkillExtraDirs(unittest.TestCase):
 
     # ---- 扫描 ----
 
+    def test_install_note_is_not_listed_as_a_skill(self):
+        """skills 目录里的 AGENTS.md 是安装说明，不是 skill。
+
+        它是个顶层 .md，正好撞上「老格式单文件 skill」的规则 —— 不排除的话
+        clone 下来下拉里会多一个叫 AGENTS.md 的条目，选中就把说明当知识包发出去。
+        """
+        self.make_pack(self._home, "真包")
+        (self._home / "AGENTS.md").write_text("# 安装说明", encoding="utf-8")
+        self.extra("")
+
+        names = self.skills.skill_names()
+        self.assertIn("真包", names)
+        self.assertNotIn("AGENTS.md", names)
+
     def test_external_packs_are_listed(self):
         self.make_pack(self._ext, "外面的包")
         self.extra(str(self._ext))

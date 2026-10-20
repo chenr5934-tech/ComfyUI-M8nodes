@@ -208,8 +208,18 @@ def _resolve(name: str, *, writable: bool = False) -> Path:
 
 
 def _is_legacy_file(entry: Path) -> bool:
-    """老格式：直接躺在 skills/ 下的一个 .md 文件。"""
-    return entry.is_file() and entry.suffix.lower() in (".md", ".markdown", ".txt") and not entry.name.startswith(".")
+    """老格式：直接躺在 skills/ 下的一个 .md 文件。
+
+    `AGENTS.md` 除外 —— 那是这个目录的安装说明，是我们自己放的，
+    不是谁上传的 skill。不排掉的话下拉里会多出一个叫「AGENTS.md」的条目，
+    选中就把说明当成知识包发给模型了。
+    """
+    return (
+        entry.is_file()
+        and entry.suffix.lower() in (".md", ".markdown", ".txt")
+        and not entry.name.startswith(".")
+        and entry.name.lower() != "agents.md"
+    )
 
 
 def _main_file(directory: Path) -> Path | None:
