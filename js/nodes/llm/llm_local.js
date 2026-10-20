@@ -14,8 +14,8 @@ import * as M8 from "../../m8_core.js";
 
 const NODE_TYPE = "M8LLMLocal";
 
-/* 界面文案：代码里只写英文（ComfyUI 审核的硬要求），中文由 locales/zh/main.json
-   的 ui 段提供，取不到就用这里写的英文原文。见 m8_core.js 的 t()。 */
+/* 界面文案：中文直接写在代码里，locales/zh/main.json 的 ui 段是同一份副本，
+   取不到就用这里写的原文。见 m8_core.js 的 t()。 */
 const T = M8.tFor(NODE_TYPE);
 /* 和后端 m8/nodes/llm/llm_local/node.py 里的两个常量必须逐字一致 */
 const PLACEHOLDER = "(no .gguf in models/LLM yet)";

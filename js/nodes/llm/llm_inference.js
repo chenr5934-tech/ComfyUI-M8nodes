@@ -17,7 +17,7 @@ import * as M8 from "../../m8_core.js";
 
 const NODE_TYPE = "M8LLMInference";
 
-/* 界面文案：代码里写英文，中文由 locales/zh/main.json 的 ui 段提供。 */
+/* 界面文案：中文直接写在代码里，locales/zh/main.json 的 ui 段是同一份副本。 */
 const T = M8.tFor(NODE_TYPE);
 
 /* 和后端 m8/nodes/llm/llm_inference.py 里的 MODEL_PLACEHOLDER 必须逐字一致 */

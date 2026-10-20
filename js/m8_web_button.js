@@ -12,7 +12,7 @@
 import { app } from "/scripts/app.js";
 import * as M8 from "./m8_core.js";
 
-/* 界面文案：代码里写英文，中文由 locales/zh/main.json 的 ui 段提供。 */
+/* 界面文案：中文直接写在代码里，locales/zh/main.json 的 ui 段是同一份副本。 */
 const T = M8.tFor("M8WebButton");
 
 const BTN_ID = "m8-web-entry";

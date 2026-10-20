@@ -192,6 +192,10 @@ class TestDefaultsMatchLocale(unittest.TestCase):
 
     JS_T = re.compile(r"""\b(T|coreT)\(\s*(["'])([A-Za-z0-9_.\-]+)\2\s*,\s*(["'])((?:[^"'\\]|\\.)*)\4""")
     TFOR = re.compile(r"""\.tFor\(\s*["']([A-Za-z0-9_]+)["']""")
+    # js/nodes 下写的是 const T = M8.tFor(NODE_TYPE) —— 段名在 NODE_TYPE 里，
+    # 不是字面量。只看 TFOR 的话整个 js/nodes 目录都会被静默跳过，
+    # 这条守卫就等于不存在（实测：新加一个节点，漏了两处翻译也照样绿灯）。
+    NODE_TYPE = re.compile(r"""(?m)^const NODE_TYPE = ["']([A-Za-z0-9_]+)["'];\s*$""")
     CJK = re.compile(r"[\u4e00-\u9fff]")
 
     @classmethod
@@ -235,6 +239,9 @@ class TestDefaultsMatchLocale(unittest.TestCase):
             if path.name == "m8_core.js":
                 return "M8Core"
             hit = self.TFOR.search(src)
+            if hit:
+                return hit.group(1)
+            hit = self.NODE_TYPE.search(src)
             return hit.group(1) if hit else None
 
         bad = self._check_js(plugin_js, section_of)

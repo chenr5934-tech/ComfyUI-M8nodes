@@ -356,13 +356,13 @@ step('训练耗时：两个时间都有才算，只有一个不算', () => {
   });
   const g = info.groups.filter((x) => x.title === 'Training run')[0];
   if (!g) throw new Error('no Training run card');
-  const dur = g.pairs.filter((p) => p[0] === 'Training time')[0];
+  const dur = g.pairs.filter((p) => p[0] === '训练耗时')[0];
   if (!dur) throw new Error('the duration was not computed');
-  if (dur[1] !== '1 h 10 min') throw new Error('computed wrongly: ' + dur[1]);
+  if (dur[1] !== '1 小时 10 分') throw new Error('computed wrongly: ' + dur[1]);
 
   const half = m.extract({ ss_training_started_at: '1768106358.29' });
   const gh = half.groups.filter((x) => x.title === 'Training run')[0];
-  if (gh && gh.pairs.some((p) => p[0] === 'Training time')) throw new Error('a duration was computed from a start time alone');
+  if (gh && gh.pairs.some((p) => p[0] === '训练耗时')) throw new Error('a duration was computed from a start time alone');
   /* 时间戳本身也不该孤零零地掉进其他参数 */
   if (half.others.some((p) => p[0] === 'ss_training_started_at')) {
     throw new Error('the timestamp leaked into Other parameters');
@@ -377,10 +377,10 @@ step('网络参数那串 JSON 拆成一条条', () => {
   const g = info.groups.filter((x) => x.title === 'Noise and sampling')[0];
   if (!g) throw new Error('the card holding the network parameters never appeared');
   const names = g.pairs.map((p) => p[0]);
-  for (const w of ['Network arg · algo', 'Network arg · factor', 'Network arg · preset', 'Network arg · dropout']) {
+  for (const w of ['网络参数 · algo', '网络参数 · factor', '网络参数 · preset', '网络参数 · dropout']) {
     if (names.indexOf(w) < 0) throw new Error('did not split out ' + w);
   }
-  const algo = g.pairs.filter((p) => p[0].indexOf('Network arg ') === 0)[0];
+  const algo = g.pairs.filter((p) => p[0].indexOf('网络参数 · ') === 0)[0];
   if (algo[1] !== 'lora') throw new Error('the split-out value was wrong: ' + algo[1]);
 });
 

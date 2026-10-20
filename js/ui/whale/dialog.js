@@ -21,7 +21,7 @@ import * as M8 from '../../m8_core.js';
 import { API_BASE, assetUrl } from './whale.js';
 import { toolLabel, runToolCall, snapshotCanvas } from './canvas.js';
 
-/* 界面文案：代码里写英文，中文由 locales/zh/main.json 的 ui.M8Whale 段提供。
+/* 界面文案：中文直接写在代码里，locales/zh/main.json 的 ui.M8Whale 段是同一份副本。
    下面的预设每条都现取 —— 界面文案是异步拉回来的，模块顶层求值只会拿到英文。 */
 const T = M8.tFor('M8Whale');
 
