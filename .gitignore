@@ -17,6 +17,10 @@ m8/data/skills/*
 # 当成 submodule 引用提交，clone 下来是个空目录 —— 表现成「这个 skill 是空的」。
 m8/data/skills/*/.git/
 
+# 图库货架运行时会往自己目录里写日志（py/utils/logger.py 的 LOG_DIR）
+m8/nodes/gallery/logs/
+m8/nodes/gallery/**/__pycache__/
+
 # Python
 __pycache__/
 *.pyc

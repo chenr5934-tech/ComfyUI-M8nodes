@@ -1,0 +1,25 @@
+{
+  "logging": {
+    "level": "INFO",
+    "console_output": false,
+    "components": {
+      "parameter_control_panel": "INFO",
+      "workflow_description": "INFO",
+      "tag_sync": "INFO"
+    }
+  },
+  "tag_sync": {
+    "debug": false,
+    "min_post_count": 100,
+    "max_tags": 100000,
+    "sync_interval_days": 7,
+    "incremental_update_count": 10000,
+    "api_rate_limit": 2
+  },
+  "quick_group_navigation": {
+    "show_floating_ball": true
+  },
+  "ui": {
+    "show_toast_notifications": true
+  }
+}
