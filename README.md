@@ -4,7 +4,7 @@
 
 按**货架**分类的 ComfyUI 自定义节点包。
 
-三个货架、六个节点，外加一个独立网页工作台：
+四个分类、二十五个节点，外加一个独立网页工作台：
 
 | 货架 | 节点 | 做什么 |
 | --- | --- | --- |
@@ -14,8 +14,16 @@
 | 大模型 | `M8LLMLocal` | **本地**跑 GGUF，不联网；配 mmproj 就能识图 |
 | 相机 | `M8CameraControl` | 把「相机在哪、朝哪、拍多近」翻译成提示词 |
 | 提示词 | `M8MultiCharacter` | 多角色分块与区域权重 |
+| 图库 | `M8DanbooruGallery` 等 19 个 | **整包合并**的 Danbooru Gallery：图库浏览、标签检索、角色特征替换、提示词清理、分辨率预设、图片对比……全部归在右键菜单的 `M8/Gallery` 下 |
 
 > **除本地推理节点外，零第三方依赖**。后端只用 Python 标准库和 ComfyUI 自带的东西，装完不用 pip 装任何包。
+>
+> **图库分类例外**：它是整包合并进来的第三方项目，需要 `requests`（调 Danbooru API）
+> 和 `aiosqlite`（异步读标签库）两个包。秋叶整合包已自带；纯净安装的话补一句
+> `pip install requests aiosqlite`。缺了只有图库那批节点报错，M8 其余部分不受影响。
+>
+> （它的旧脚本里还出现过 `psutil`，那是在 `legacy/` 的 Krita 联动代码里，函数内 import
+> 且有 `except ImportError` 兜底 —— 不是必需项，合并时已经从依赖里去掉了。）
 > `M8LLMLocal` 要跑起来得另外装 `llama-cpp-python` —— 那是它自己的事，不装不影响别的节点，它会自己报一句缺什么。
 
 ---
@@ -299,7 +307,6 @@ MIT 协议，版权归原作者所有，原许可证副本见 `js/ui/whale/asset
 | 加载器 | `m8/nodes/loaders/` | `M8-LOAD-###` |
 | 采样 | `m8/nodes/samplers/` | `M8-SAMP-###` |
 | 判断 | `m8/nodes/logic/` | `M8-LOGIC-###` |
-| 图像 | `m8/nodes/image/` | `M8-IMG-###` |
 | 文本 | `m8/nodes/text/` | `M8-TXT-###` |
 
 目录是两层的：**一个货架一个文件夹，货架里一个功能一个文件夹**。

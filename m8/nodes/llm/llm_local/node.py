@@ -18,6 +18,7 @@ import io
 import time
 from typing import Any
 
+from ....core import config
 from ....core.errors import M8Error
 from ....core.log import SHELF_LLM, warn
 from . import models
@@ -30,6 +31,10 @@ NO_MMPROJ = "(none, text only)"
 # 图片送进模型前先缩到这个边长以内。原图像素动辄几百万，直接塞会把
 # 上下文撑爆 —— 模型的视觉编码是固定 token 预算的，喂再大也不会更清楚。
 MAX_IMAGE_SIDE = 1024
+
+# 图片输入口的上限，和云端推理节点的 MAX_IMAGE_INPUTS 对齐。
+# 前端一个个往下展开，后端必须先把名字全声明出来（执行时只认声明过的）。
+MAX_IMAGE_INPUTS = 8
 
 # think 块：模型把推理过程写在 里面。有的版本靠 enable_thinking
 # 关掉了，有的关不掉，所以还要有一道文本清洗兜底。
@@ -62,16 +67,11 @@ def strip_think(text: str) -> str:
     return out.strip()
 
 
-def tensor_to_data_url(image: Any, index: int = 0) -> str:
-    """ComfyUI 的 IMAGE 张量 → data URL。
-
-    IMAGE 的形状是 [B, H, W, C]，取值 0..1 的 float。
-    先缩到 MAX_IMAGE_SIDE 以内再编 JPEG —— 这一步不是省事，是必须：
-    上下文是按 token 算的，图太大直接把预算吃光。
-    """
+def _as_image_array(image: Any):
+    """IMAGE 张量 → [B, H, W, C] 的 numpy 数组，形状不对就报 M8-LLM-018。"""
     try:
         import numpy as np
-        from PIL import Image
+        from PIL import Image  # noqa: F401 这里只是确认环境齐了
     except Exception as exc:
         raise M8Error(
             "M8-LLM-018",
@@ -94,10 +94,19 @@ def tensor_to_data_url(image: Any, index: int = 0) -> str:
             hint="The IMAGE input should be [batch, height, width, 3]",
             detail=f"shape={getattr(arr, 'shape', None)}",
         )
+    return arr
 
-    b = min(max(int(index), 0), arr.shape[0] - 1)
-    frame = arr[b]
-    frame = np.clip(frame * 255.0, 0, 255).astype("uint8")
+
+def _frame_to_data_url(frame: Any) -> str:
+    """单帧 → data URL。
+
+    先缩到 MAX_IMAGE_SIDE 以内再编 JPEG —— 这不是省事，是必须：
+    上下文按 token 算，图太大会把预算吃光。
+    """
+    import numpy as np
+    from PIL import Image
+
+    frame = np.clip(np.asarray(frame) * 255.0, 0, 255).astype("uint8")
 
     im = Image.fromarray(frame)
     w, h = im.size
@@ -110,6 +119,24 @@ def tensor_to_data_url(image: Any, index: int = 0) -> str:
     im.convert("RGB").save(buf, format="JPEG", quality=88)
     b64 = base64.b64encode(buf.getvalue()).decode("ascii")
     return "data:image/jpeg;base64," + b64
+
+
+def tensor_to_data_url(image: Any, index: int = 0) -> str:
+    """取批次的第 index 张，转成 data URL。"""
+    arr = _as_image_array(image)
+    b = min(max(int(index), 0), arr.shape[0] - 1)
+    return _frame_to_data_url(arr[b])
+
+
+def tensor_batch_to_data_urls(image: Any, limit: int) -> list[str]:
+    """一个输入口的**整批**帧，按顺序转成 data URL。
+
+    以前只取第一张（index=0），多图输入接进来其余的就白接了。
+    现在每个口能把整批都发出去，再由 limit 统一截断。
+    """
+    arr = _as_image_array(image)
+    count = min(arr.shape[0], max(1, int(limit)))
+    return [_frame_to_data_url(arr[i]) for i in range(count)]
 
 
 def build_messages(*, system: str, user: str, extra: str, images: list[str], skill: str) -> list[dict]:
@@ -188,8 +215,14 @@ class M8LLMLocal:
             },
             "optional": {
                 "image": ("IMAGE", {
-                    "tooltip": "要给它看的图。不接就是纯文本。需要模型目录里有 mmproj 文件。",
+                    "tooltip": "要给它看的图。不接就是纯文本。需要模型目录里有 mmproj 文件。接上之后会自动多出下一个图片口。",
                 }),
+                **{
+                    f"image_{i}": ("IMAGE", {
+                        "tooltip": f"第 {i} 张图。上一张接好之后这个口会自动出现。",
+                    })
+                    for i in range(2, MAX_IMAGE_INPUTS + 1)
+                },
                 "skill": ("M8_SKILL", {
                     "tooltip": "接 skill 装载节点的输出，当知识包用。",
                 }),
@@ -232,6 +265,13 @@ class M8LLMLocal:
         user_prompt: str = "",
         extra_text: str = "",
         image=None,
+        image_2=None,
+        image_3=None,
+        image_4=None,
+        image_5=None,
+        image_6=None,
+        image_7=None,
+        image_8=None,
         skill: Any = None,
         mmproj: str = NO_MMPROJ,
         max_tokens: int = 512,
@@ -250,7 +290,18 @@ class M8LLMLocal:
                 hint="Drop a .gguf into ComfyUI's models/LLM folder, then re-create this node",
                 detail=str(model),
             )
-        if not (user_prompt or "").strip() and not (extra_text or "").strip() and image is None:
+        # 八个图片口收成一个列表：哪个口接了什么不关心，只关心顺序
+        image_slots = [
+            item for item in (
+                image, image_2, image_3, image_4, image_5, image_6, image_7, image_8,
+            ) if item is not None
+        ]
+
+        if (
+            not (user_prompt or "").strip()
+            and not (extra_text or "").strip()
+            and not image_slots
+        ):
             raise M8Error(
                 "M8-LLM-019",
                 message="Nothing was asked",
@@ -265,12 +316,19 @@ class M8LLMLocal:
         picked = "" if str(mmproj).startswith("（") else str(mmproj)
         if not picked:
             picked = models.pick_mmproj(model) or ""
-            if not picked and image is not None:
+            if not picked and image_slots:
                 warn("No mmproj found next to this model; vision will not work", SHELF_LLM)
 
+        # 每个口把**整批**都发出去（以前只取第一张，接进来的其余几张白接了），
+        # 总量再由 llm.max_images 统一截断
+        image_limit = int(config.get_setting("llm.max_images", 4) or 4)
         images: list[str] = []
-        if image is not None:
-            images.append(tensor_to_data_url(image, 0))
+        for tensor in image_slots:
+            if len(images) >= image_limit:
+                break
+            images.extend(tensor_batch_to_data_urls(tensor, image_limit - len(images)))
+        if images:
+            warn(f"Sending {len(images)} image(s) to the local model", SHELF_LLM)
 
         skill_text = ""
         if skill is not None:

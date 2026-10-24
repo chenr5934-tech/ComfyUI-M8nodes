@@ -91,9 +91,26 @@ function autoPickMmproj(modelName, mmprojs) {
   return best || NO_MMPROJ;
 }
 
+/* 控件的中文显示名。只挂 label，不动 widget.name —— 名字是工作流文件里的键。 */
+const LABELS = {
+  model: T("labelModel", "主模型"),
+  system_prompt: T("labelSystemPrompt", "系统提示词"),
+  user_prompt: T("labelUserPrompt", "对话提示词"),
+  extra_text: T("labelExtraText", "额外文本（用户提示词）"),
+  mmproj: T("labelMmproj", "多模态投影文件"),
+  max_tokens: T("labelMaxTokens", "回答长度上限"),
+  temperature: T("labelTemperature", "随机性"),
+  top_p: T("labelTopP", "采样范围"),
+  ctx: T("labelCtx", "上下文长度"),
+  gpu_layers: T("labelGpuLayers", "显卡层数"),
+  thinking: T("labelThinking", "输出思考过程"),
+};
+
 function hookNode(node) {
   if (!node || node.__m8LocalHooked) return;
   node.__m8LocalHooked = true;
+
+  M8.labelWidgets(node, LABELS);
 
   const modelW = findWidget(node, "model");
   const mmW = findWidget(node, "mmproj");
@@ -134,14 +151,37 @@ function hookNode(node) {
   });
 }
 
+/* 图片输入口的上限，和后端 llm_local/node.py 的 MAX_IMAGE_INPUTS 一致。
+   名字必须和信息：后端要先把 8 个全声明出来，这里只负责露出用得上的那个。 */
+const IMAGE_SLOTS = ["image", ...Array.from({ length: 7 }, (_, i) => `image_${i + 2}`)];
+
 app.registerExtension({
   name: "M8.LLMLocal",
   async beforeRegisterNodeDef(nodeType, nodeData) {
     if (nodeData.name !== NODE_TYPE) return;
+
+    // 连线一变就重算该露出几个图片口。type === 1 是输入端。
+    const onConnectionsChange = nodeType.prototype.onConnectionsChange;
+    nodeType.prototype.onConnectionsChange = function (type) {
+      const r = onConnectionsChange?.apply(this, arguments);
+      try {
+        if (type === 1) M8.syncImageInputs(this, IMAGE_SLOTS);
+      } catch (exc) {
+        M8.error("同步图片输入口失败：", exc);
+      }
+      return r;
+    };
+
     const onCreated = nodeType.prototype.onNodeCreated;
     nodeType.prototype.onNodeCreated = function () {
       const r = onCreated ? onCreated.apply(this, arguments) : undefined;
       hookNode(this);
+      try {
+        // 默认只留一个图片口
+        M8.syncImageInputs(this, IMAGE_SLOTS);
+      } catch (exc) {
+        M8.error("同步图片输入口失败：", exc);
+      }
       return r;
     };
   },

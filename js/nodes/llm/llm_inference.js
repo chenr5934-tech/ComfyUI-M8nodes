@@ -23,6 +23,13 @@ const T = M8.tFor(NODE_TYPE);
 /* 和后端 m8/nodes/llm/llm_inference.py 里的 MODEL_PLACEHOLDER 必须逐字一致 */
 const MODEL_PLACEHOLDER = "(click Refresh models to load the list)";
 
+/* 和后端的 MAX_IMAGE_INPUTS 保持一致（那边在 node.py 顶部） */
+const MAX_IMAGES = 8;
+
+/** 八个图片口的名字，第一个是 image，其余 image_2..image_8。 */
+const IMAGE_SLOTS = ["image", ...Array.from({ length: MAX_IMAGES - 1 }, (_, i) => `image_${i + 2}`)];
+
+
 M8.injectTheme();
 
 /* 供应商档案是后端说了算的。这里只是缓存一份用于联动 base_url，
@@ -100,18 +107,28 @@ async function clearKey(node) {
 function setup(node) {
   M8.brand(node);
 
-  // 这两个框都是多行文本、又挨在一起，名字一个 extra_params 一个 extra_text ——
-  // 光看名字分不出哪个是「请求参数 JSON」哪个是「补充提示词」，写错地方会报
+  // 控件的中文显示名。只挂 label，不动 widget.name —— 名字是工作流文件和接口
+  // 里的键，改了已存的工作流整体错位。ComfyUI 渲染标题时取 label ?? name。
+  //
+  // extra_params / extra_text 这两个尤其要分清：都是多行框、又挨在一起，光看
+  // 名字分不出哪个是「请求参数 JSON」哪个是「补充提示词」，写错地方会报
   // 「extra_params is not valid JSON」，而人只会觉得自己填了段正常的话。
-  // 所以给它们上中文标签。ComfyUI 渲染时取 widget.label ?? widget.name。
-  const LABELS = {
-    extra_text: T("labelExtraText", "额外文本（用户提示词）"),
+  M8.labelWidgets(node, {
+    provider: T("labelProvider", "供应商"),
+    base_url: T("labelBaseUrl", "接口地址"),
+    api_key: T("labelApiKey", "密钥（留空用服务端）"),
+    model: T("labelModel", "模型"),
+    system_prompt: T("labelSystemPrompt", "系统提示词"),
+    user_prompt: T("labelUserPrompt", "对话提示词"),
+    thinking: T("labelThinking", "思考强度"),
+    show_thinking: T("labelShowThinking", "显示思考过程"),
+    temperature: T("labelTemperature", "随机性"),
+    max_tokens: T("labelMaxTokens", "回答长度上限"),
+    timeout: T("labelTimeout", "超时（秒）"),
+    skill_auto: T("labelSkillAuto", "自动带上已上传的 skill"),
     extra_params: T("labelExtraParams", "请求参数（JSON）"),
-  };
-  for (const [name, label] of Object.entries(LABELS)) {
-    const widget = M8.findWidget(node, name);
-    if (widget) widget.label = label;
-  }
+    extra_text: T("labelExtraText", "额外文本（用户提示词）"),
+  });
 
   M8.setStatus(node, "idle", T("notConfigured", "未配置"));
 
@@ -250,11 +267,26 @@ app.registerExtension({
       }
     };
 
+    // 连线一变就重算「该露出几个图片口」。type === 1 是输入端，
+    // 输出端的变化和图片无关，直接放过。
+    const onConnectionsChange = nodeType.prototype.onConnectionsChange;
+    nodeType.prototype.onConnectionsChange = function (type) {
+      const result = onConnectionsChange?.apply(this, arguments);
+      try {
+        if (type === 1) M8.syncImageInputs(this, IMAGE_SLOTS);
+      } catch (exc) {
+        M8.error("同步图片输入口失败：", exc);
+      }
+      return result;
+    };
+
     const onNodeCreated = nodeType.prototype.onNodeCreated;
     nodeType.prototype.onNodeCreated = function () {
       onNodeCreated?.apply(this, arguments);
       try {
         setup(this);
+        // 建节点时先收起来：默认只有一个图片口，接满了才往下长
+        M8.syncImageInputs(this, IMAGE_SLOTS);
       } catch (exc) {
         M8.error("大模型推理节点初始化失败：", exc);
       }

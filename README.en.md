@@ -118,7 +118,6 @@ Nodes are grouped by **what they do in a workflow**, one directory and one error
 | loaders | `m8/nodes/loaders/` | `M8-LOAD-###` |
 | samplers | `m8/nodes/samplers/` | `M8-SAMP-###` |
 | logic | `m8/nodes/logic/` | `M8-LOGIC-###` |
-| image | `m8/nodes/image/` | `M8-IMG-###` |
 | text | `m8/nodes/text/` | `M8-TXT-###` |
 
 The layout is two levels: **one folder per shelf, one folder per feature inside it**.

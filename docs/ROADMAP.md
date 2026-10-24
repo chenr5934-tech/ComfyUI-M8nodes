@@ -28,13 +28,13 @@
 | **加载器** | `m8/nodes/loaders/` | `M8-LOAD-###` | 底模 / CLIP / LoRA / VAE / ControlNet 的加载与切换 | 不采样、不改像素 |
 | **采样** | `m8/nodes/samplers/` | `M8-SAMP-###` | 采样器、调度器、步数/CFG 控制、噪声注入 | 不加载模型 |
 | **判断** | `m8/nodes/logic/` | `M8-LOGIC-###` | 条件分支、比较、布尔开关、值路由 | 不做数据转换 |
-| **图像** | `m8/nodes/image/` | `M8-IMG-###` | 图像选择（第 N 张 / 按规则挑）、尺寸、拼接、比较 | 不做加载 |
 | **文本** | `m8/nodes/text/` | `M8-TXT-###` | 文本拼接 / 替换 / 正则 / 分行 / 编码 | 不做提示词模型编码 |
 | **工具** | `m8/utils/` | `M8-UTIL-###` | 跨货架复用的纯函数 | 不做 IO、不碰节点 |
 | **界面** | `m8/ui/` | `M8-UI-###` | 改界面本身：侧边栏、悬浮挂件、对话框 | **不产出节点** |
 | **相机** | `m8/nodes/cam/` | `M8-CAM-###` | 把取景意图翻译成提示词：机位方位 / 高度 / 距离 / 倾斜、镜头与构图 | 不采样、不加载、不碰像素 |
 | **提示词** | `m8/nodes/prompt/` | `M8-PROMPT-###` | 组装提示词结构：多角色分块、区域权重、格式模板 | 不做模型编码、不采样、不碰像素 |
 | **网页** | `M8web/` | `M8-WEB-###` | 插件自带的独立网页工作台（首页 + 各功能页），从顶栏按钮进入 | **不产出节点**、不碰工作流数据 |
+| **图库** | `m8/nodes/gallery/` | 无（用它自带的 `[Danbooru-Gallery]` 日志） | 整包合并的 Danbooru Gallery：19 个节点，图库浏览、标签检索、角色特征替换、提示词清理、分辨率预设等 | **全插件唯一的例外**：不遵守「一个功能一个文件夹」、不用 `/m8/` 路由前缀、不抛 `M8Error`。见下面第五节 |
 
 **放不进任何货架** → 说明它是新领域。**开一个新货架，别硬塞。**
 
@@ -101,13 +101,29 @@
 
 规划：`M8KSampler`（把 sampler/scheduler/steps/cfg/denoise 收成一套可保存的配置）、`M8SamplerConfig`、`M8SeedControl`。
 
+### 图库 `js/gallery/` 的数据源
+
+合并进来的 Danbooru Gallery 原本只有 D 站 / G 站两个来源。第三个是 **NAI 图鉴**
+（第三方站点，非本仓库资产），接法和其他两个不一样：
+
+| | D 站 / G 站 | NAI 图鉴 |
+| --- | --- | --- |
+| 数据 | 后端代理 `/danbooru_gallery/posts` | **前端直连**上游 release |
+| 图片 | 走后端 `image_proxy`（上游有 Cloudflare 挑战） | **直连**（公开 CDN，immutable 一年） |
+| 缓存 | 后端各站的 session / 限流 | 只有页面内存，**不落盘** |
+| 提示词 | `buildPromptForPost` 按分类重排后拼接 | 转换时就算好 SD 格式，入队直接取 `_nai_sd_prompt` |
+
+三条约束，改之前先读：
+
+- **不落盘。** 词典几 MB，写进任何持久层都是给别人的磁盘添负担。只放内存 Map，刷新即失。
+- **提示词走自己的路。** `buildPromptForPost` 会按分类重排、过滤、逗号连成一行，会把 NAI 的权重语法（`(tag:1.05)`）和角色分段一起揉坏。所以转换时把结果挂在 `_nai_sd_prompt` 上，入队优先取它。
+- **域名白名单一项一项加。** `ALLOWED_MEDIA_SUFFIXES` 是 SSRF 防护，加 `quicktagcloud.com` 时不要顺手写成通配。
+- **检索和分类只作用于图鉴。** D 站 / G 站要打网络请求，保持「回车触发 + 后端搜索」原样；图鉴数据全在内存里，所以做防抖即时检索（260ms）。分类来自**每部词典自己的 `tree`**，不写死任何分类名，换了词典就换一套。
+- **检索规则照法典站 search.js。** 下划线与空格等价（标签写 `ask_(askzy)`，用户会敲 `ask askzy`）、英文词边界（搜 `cat` 不该命中 `category`）、空格分词全部 AND。字段前缀语法（`title:` `path:` `has:`）没搬 —— 插件里用不上那么细。
+
 ### 判断 `m8/nodes/logic/`
 
 规划：`M8IfElse`（任意类型直通式分支）、`M8Compare`、`M8Switch`、`M8Gate`（执行开关）。
-
-### 图像 `m8/nodes/image/` 
-
-规划：`M8ImagePicker`（批次里按序号/规则取第 N 张）、`M8ImageBatchSwitch`、`M8ImageSizeInfo`、`M8ImageCompare`。
 
 ---
 

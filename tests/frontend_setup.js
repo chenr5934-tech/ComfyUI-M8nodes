@@ -121,6 +121,11 @@ function stubM8(log) {
     setComboOptions: noop, relayout: noop,
     findWidget: (node, name) => (node._widgets || {})[name] || null,
     onWidgetChange: noop, hideWidget: (w) => { if (w) w.hidden = true; }, showWidget: noop,
+    /* 动态图片口：桩节点没有真的 inputs 数组，这里只记录被调过，
+       真逻辑由 tests/frontend_setup.js 之外的单测覆盖 */
+    syncImageInputs: noop,
+    /* 中文控件标签：桩节点的 widget 是个空对象，直接跳过就行 */
+    labelWidgets: noop,
   };
 }
 

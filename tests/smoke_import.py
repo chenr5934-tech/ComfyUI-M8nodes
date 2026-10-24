@@ -196,7 +196,7 @@ class TestRoutes(unittest.TestCase):
 
         新增接口漏了断言，这里有条兜底断言会红 —— 逼着人回来补文档。
         """
-        paths = {(method, path) for method, path, _ in self.table.entries}
+        paths = {(method, path) for method, path, _ in self.table.entries if path.startswith("/m8/")}
         expected = {
             ("POST", "/m8/llm/models"),
             ("POST", "/m8/llm/test"),
@@ -242,7 +242,10 @@ class TestRoutes(unittest.TestCase):
     def test_every_route_is_documented(self):
         """代码里的路由必须出现在架构文档里。文档是给人看的唯一入口。"""
         doc = (PKG_DIR / "docs" / "ARCHITECTURE.md").read_text("utf-8")
-        for _, path in {(m, p) for m, p, _ in self.table.entries}:
+        # 只查 /m8/ 前缀的路由。gallery 带进来的是它自己的历史接口
+        # （/danbooru_gallery/*、/multi_character_editor/* 这些），不属于 M8 的
+        # 接口面，列进 M8 的路由表只会让那张表失去意义。
+        for _, path in {(m, p) for m, p, _ in self.table.entries if p.startswith("/m8/")}:
             self.assertIn(path, doc, f"路由 {path} 没写进 docs/ARCHITECTURE.md")
 
     def test_missing_prompt_server_does_not_break_import(self):
@@ -900,12 +903,19 @@ class TestReleaseReadiness(unittest.TestCase):
 
 # ============================================================== 目录约定
 
+# 整包合并进来的第三方货架：内部保留它自己的目录结构、自己的路由前缀，
+# 不遵守 M8「一个功能一个文件夹」。在 docs/CONVENTIONS.md 里登记为唯一的例外。
+# 这里只让**目录约定检查**跳过它 —— registry 照样会加载（那是另一条路）。
+MERGED_SHELVES = {"gallery"}
+
+
 def list_shelves() -> list[str]:
     """货架目录名。判定标准和 registry.discover_shelf_names 一致。"""
     nodes_dir = PKG_DIR / 'm8' / 'nodes'
     return sorted(
         entry.name for entry in nodes_dir.iterdir()
         if entry.is_dir() and not entry.name.startswith(('_', '.'))
+        and entry.name not in MERGED_SHELVES
         and (entry / '__init__.py').is_file()
     )
 
@@ -995,7 +1005,8 @@ class TestDirectoryConvention(unittest.TestCase):
     def test_every_registered_node_has_frontend_enhancement(self):
         """每个注册的节点都要有对应的前端增强文件（按 NODE_TYPE 常量认领）。"""
         module = load_plugin(FakeRouteTable())
-        registered = set(module.NODE_CLASS_MAPPINGS)
+        # 只看 M8 自己的节点：gallery 的节点用它自己那套前端，命名也不带 M8 前缀
+        registered = {n for n in module.NODE_CLASS_MAPPINGS if n.startswith('M8')}
         covered = set()
         for path in (PKG_DIR / 'js' / 'nodes').rglob('*.js'):
             text = path.read_text('utf-8')
@@ -1207,6 +1218,81 @@ class TestSkillInjection(unittest.TestCase):
             self.assertEqual(messages[-1]['content'], prompt)
         finally:
             skills.delete_skill('引用甲')
+
+
+class TestMultipleImageInputs(unittest.TestCase):
+    """两个推理节点的多图输入口。
+
+    核心约束：ComfyUI 的 INPUT_TYPES 是**静态**的 —— 执行时只认声明过的输入名，
+    前端凭空 addInput 出来的口拿不到值（会静默变成 undefined）。所以「最多几个口」
+    必须由后端定死，前端只负责把用不到的那些从画布上摘掉。
+    """
+
+    def setUp(self):
+        self.module = load_plugin(FakeRouteTable())
+
+    def test_cloud_declares_all_eight_slots(self):
+        optional = self.module.NODE_CLASS_MAPPINGS["M8LLMInference"].INPUT_TYPES()["optional"]
+        self.assertIn("image", optional, "第一个图片口丢了")
+        for i in range(2, 9):
+            self.assertIn(f"image_{i}", optional, f"缺第 {i} 个图片口")
+
+    def test_cloud_execute_signature_covers_every_slot(self):
+        """execute 的参数名要和 INPUT_TYPES 精确对上。
+
+        少一个，那个口即使连了线也永远收不到值 —— 界面上看得见、跑起来是空的，
+        最难查的一类。
+        """
+        import inspect
+
+        cls = self.module.NODE_CLASS_MAPPINGS["M8LLMInference"]
+        declared = set(cls.INPUT_TYPES().get("optional", {})) | set(cls.INPUT_TYPES().get("required", {}))
+        actual = set(inspect.getfullargspec(cls.execute).args) - {"self"}
+        self.assertEqual(declared - actual, set(), "这些声明的输入 execute 收不到")
+
+    def test_cloud_collects_slots_into_one_ordered_list(self):
+        """八个口收成一个列表，顺序跟着口的顺序走，None 的跳过。"""
+        cls = self.module.NODE_CLASS_MAPPINGS["M8LLMInference"]
+        node = cls()
+        seen = {}
+
+        # 只拦到最后一步：_build_messages 内部会调 _pack_images，
+        # 在那里记录它收到的列表，就能看出八个口是怎么被收拢的
+        def fake_pack(tensors):
+            seen["got"] = list(tensors)
+            return []
+
+        node._pack_images = fake_pack
+
+        import unittest.mock as mock
+        with mock.patch.object(submodule("m8.core.config"), "resolve_api_key", lambda *a, **k: "k"), \
+             mock.patch.object(submodule("m8.server.llm_api"), "chat", lambda *a, **k: {"choices": [{"message": {"content": "ok"}}]}), \
+             mock.patch.object(submodule("m8.server.llm_api"), "extract_message", lambda d: ("ok", "")), \
+             mock.patch.object(submodule("m8.server.llm_api"), "usage_of", lambda d: {}):
+            node.execute(
+                provider="deepseek", base_url="https://api.deepseek.com/v1", api_key="k",
+                model="m", user_prompt="hi",
+                image="A", image_2=None, image_3="C",
+            )
+        self.assertEqual(seen["got"], ["A", "C"], "顺序没跟着口走，或者 None 没被跳过")
+
+    def test_local_declares_the_same_upper_bound(self):
+        src = (PKG_DIR / "m8" / "nodes" / "llm" / "llm_local" / "node.py").read_text("utf-8")
+        self.assertIn("MAX_IMAGE_INPUTS = 8", src, "本地节点的口数上限丢了")
+        self.assertIn('f"image_{i}"', src, "本地节点没有循环声明多个图片口")
+
+    def test_local_sends_the_whole_batch(self):
+        """本地节点以前只取批次第一张（index=0），多图接进来其余几张白接。"""
+        mod = submodule("m8.nodes.llm.llm_local.node")
+        self.assertTrue(hasattr(mod, "tensor_batch_to_data_urls"), "没有整批转码的函数")
+
+    def test_frontend_core_exposes_the_helper(self):
+        """两个节点共用同一套「显隐」逻辑，不能各写一份。"""
+        core = (PKG_DIR / "js" / "m8_core.js").read_text("utf-8")
+        self.assertIn("export function syncImageInputs", core)
+        for name in ("llm_inference.js", "llm_local.js"):
+            js = (PKG_DIR / "js" / "nodes" / "llm" / name).read_text("utf-8")
+            self.assertIn("M8.syncImageInputs(", js, f"{name} 没接上公共的显隐逻辑")
 
 
 class TestExtraText(unittest.TestCase):

@@ -23,7 +23,7 @@ from typing import Any
 #     1. 这里
 #     2. docs/ROADMAP.md 的货架总表
 #     3. docs/ERROR-PLAYBOOK.md（新码段下要有表格）
-SHELVES: tuple[str, ...] = ("CORE", "SRV", "LLM", "LOAD", "SAMP", "LOGIC", "IMG", "TXT", "UTIL", "UI", "CAM", "PROMPT", "WEB")
+SHELVES: tuple[str, ...] = ("CORE", "SRV", "LLM", "LOAD", "SAMP", "LOGIC", "TXT", "UTIL", "UI", "CAM", "PROMPT", "WEB")
 
 # 码 -> (默认消息, 默认修复建议)
 # 这里只放「不依赖上下文就有意义」的默认文案；具体调用点可以覆盖。
@@ -68,6 +68,7 @@ ERRORS: dict[str, tuple[str, str]] = {
     "M8-LLM-018": ("图片处理出错", "IMAGE 输入应该是 [批, 高, 宽, 3]；确认 pillow 和 numpy 在"),
     "M8-LLM-019": ("什么都没问", "至少填「提问」，或者接一张图进来"),
     "M8-LLM-020": ("本地推理出错", "上下文不够就调大「上下文长度」；显存放不下就把「GPU 层数」改 0"),
+    # ---- 图像 ----
     # ---- 界面扩展 ----
     "M8-UI-001": ("没配 DeepSeek 密钥", "在侧边栏小鲸鱼的设置里填密钥，或先在推理节点上存一份"),
     "M8-UI-002": ("余额查不到", "看 detail 里的响应正文：401=密钥不对，403=密钥没权限，其余多半是网络"),

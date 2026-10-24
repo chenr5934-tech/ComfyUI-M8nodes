@@ -26,7 +26,7 @@ from typing import Any, Callable
 from aiohttp import web
 
 from ..core import config, paths, webdata
-from ..core.errors import M8Error
+from ..core.errors import M8Error, wrap
 from ..core.log import SHELF_SRV, error, log, warn
 from . import camera_configs, llm_api, prompt_presets, providers, shortcut, skills, webapp
 

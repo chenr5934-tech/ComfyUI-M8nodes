@@ -87,20 +87,19 @@ python3 /path/to/moss-image-prompt-enhancer/scripts/compile_prompt.py \
   draft.json --output prompt.txt
 ```
 
-**On this machine (Windows):** invoke the bundled Python 3.13 as `python`, never
+**On Windows:** invoke the bundled Python 3.13 as `python`, never
 `python3` — `python3` resolves to the Microsoft Store placeholder
 (`WindowsApps\python3.exe`), which exits silently with no output. Forward slashes
-work fine in arguments. Installed location of this skill:
+work fine in arguments. Run it from wherever this skill is installed:
 
 ```powershell
-python "<home>/.claude/skills/moss-image-prompt-enhancer/scripts/compile_prompt.py" `
+python "<skill-dir>/moss-image-prompt-enhancer/scripts/compile_prompt.py" `
   draft.json --output prompt.txt
 ```
 
-Every install path is a junction to the same bundle, so any of these resolves to
-the identical file: `<home>/.claude/skills/moss-image-prompt-enhancer`,
-`<home>/.agents/skills/moss-image-prompt-enhancer`,
-`<home>/.dsh/skills/moss-image-prompt-enhancer`.
+The same bundle may be reachable through several junctioned skill directories
+(`.claude/skills`, `.agents/skills`, `.dsh/skills` under your home directory);
+any of them resolves to the identical file.
 
 Use an actual path in the invocation. Keep the editable JSON draft and compiled
 output separate. Read the result and check the subject, exact text, intended

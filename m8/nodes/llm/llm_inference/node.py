@@ -34,6 +34,10 @@ from ....server import llm_api, providers, skills
 # The frontend replaces it once /m8/llm/models answers.
 MODEL_PLACEHOLDER = "(click Refresh models to load the list)"
 
+# 图片输入口的上限。前端一个个往下展开，到这儿为止。
+# 8 个是权衡：再多节点竖着会长得离谱，而且一次发 8 张图基本都没模型吃得下。
+MAX_IMAGE_INPUTS = 8
+
 DEFAULT_TIMEOUT = 120
 DEFAULT_MAX_TOKENS = 8192
 
@@ -114,8 +118,17 @@ class M8LLMInference:
                     "tooltip": "打开后把服务端已上传的 skill 一起注入，由模型自己判断该用哪个。默认关：库里内容一多，每轮都会带上几份用不上的，白烧 token。",
                 }),
                 "image": ("IMAGE", {
-                    "tooltip": "接图片给能看图的模型。多张会一起发。",
+                    "tooltip": "接图片给能看图的模型。接上之后，下面会自动多出下一个图片口。",
                 }),
+                # 多图输入。后端必须把这几个口全声明出来 —— ComfyUI 的 INPUT_TYPES
+                # 是静态的，前端能动态显示/隐藏，但执行时只能拿到这里写过的名字。
+                # 前端只放出「当前用得到的那一个」，一个个接下去。
+                **{
+                    f"image_{i}": ("IMAGE", {
+                        "tooltip": f"第 {i} 张图。上一张接好之后这个口会自动出现。",
+                    })
+                    for i in range(2, MAX_IMAGE_INPUTS + 1)
+                },
                 "audio": ("AUDIO", {
                     "tooltip": "接音频给能听音频的模型（转成 WAV 发出去）。",
                 }),
@@ -171,6 +184,13 @@ class M8LLMInference:
         skill: dict | None = None,
         skill_auto: bool = False,
         image=None,
+        image_2=None,
+        image_3=None,
+        image_4=None,
+        image_5=None,
+        image_6=None,
+        image_7=None,
+        image_8=None,
         audio=None,
         extra_params: str = "",
         extra_text: str = "",
@@ -178,7 +198,14 @@ class M8LLMInference:
         # 老工作流里档位存的是中文（关/低/中/高），这里归一成当前取值
         thinking = providers.normalize_thinking(thinking)
 
-        self._validate_request(model, user_prompt, image, audio, extra_text)
+        # 八个图片口收成一个列表：哪个口接了什么后端不关心，只关心顺序
+        images = [
+            item for item in (
+                image, image_2, image_3, image_4, image_5, image_6, image_7, image_8,
+            ) if item is not None
+        ]
+
+        self._validate_request(model, user_prompt, images, audio, extra_text)
 
         # 留空时用服务端存的那份 —— 但只在 base_url 确实是这个供应商的地址时才给。
         # 别人分享的工作流里可以塞一个指向他自己服务器的 base_url，密钥留空；
@@ -202,7 +229,7 @@ class M8LLMInference:
         skill_blocks = self._collect_skill_blocks(user_prompt, skill, bool(skill_auto))
         armor_text = self._armor_text(armor)
         messages = self._build_messages(
-            system_prompt, armor_text, user_prompt, skill_blocks, image, audio, extra_text=extra_text
+            system_prompt, armor_text, user_prompt, skill_blocks, images, audio, extra_text=extra_text
         )
         payload = self._build_payload(
             model=model,
@@ -257,7 +284,7 @@ class M8LLMInference:
     # ------------------------------------------------------------ 组装
 
     @staticmethod
-    def _validate_request(model: str, user_prompt: str, image, audio, extra_text: str = "") -> None:
+    def _validate_request(model: str, user_prompt: str, images, audio, extra_text: str = "") -> None:
         name = (model or "").strip()
         if not name or name == MODEL_PLACEHOLDER:
             raise M8Error(
@@ -266,7 +293,12 @@ class M8LLMInference:
                 hint="Click Refresh models on the node, or type a model name directly",
             )
         # 只写了「额外文本」也算有内容 —— 那个框拼在提问后面，本身就是一段提示词
-        if not (user_prompt or "").strip() and not (extra_text or "").strip() and image is None and audio is None:
+        if (
+            not (user_prompt or "").strip()
+            and not (extra_text or "").strip()
+            and not images
+            and audio is None
+        ):
             raise M8Error("M8-LLM-007")
 
     @staticmethod
@@ -359,7 +391,7 @@ class M8LLMInference:
         armor_text: str,
         user_prompt: str,
         skill_blocks: list[str],
-        image,
+        images,
         audio,
         extra_text: str = "",
     ) -> list[dict]:
@@ -399,9 +431,9 @@ class M8LLMInference:
         if prompt_text:
             parts.append({"type": "text", "text": prompt_text})
 
-        if image is not None:
-            for url in self._pack_images(image):
-                parts.append({"type": "image_url", "image_url": {"url": url}})
+        # 没有图时 _pack_images 直接回空列表，不用在外面再判一次
+        for url in self._pack_images(images):
+            parts.append({"type": "image_url", "image_url": {"url": url}})
 
         if audio is not None:
             audio_part = self._pack_audio(audio)
@@ -464,12 +496,14 @@ class M8LLMInference:
 
     # ------------------------------------------------------------ 图片 / 音频
 
-    def _pack_images(self, images) -> list[str]:
-        """把 IMAGE 张量转成 data URL 列表。
+    def _pack_images(self, tensors) -> list[str]:
+        """把若干个 IMAGE 张量转成 data URL 列表。
 
-        IMAGE 的形状是 [B, H, W, C]，float 0~1。转 PNG 再 base64 ——
-        用 data URL 而不是先存文件，是因为有的部署环境把 output 目录挂到别处，
-        存文件再给路径会踩空。
+        参数是**列表**：每个图片输入口给一个张量，形状 [B, H, W, C]，float 0~1。
+        8 个口全接上就会收到 8 个张量，逐个拆帧、按口的顺序排好。
+
+        转 PNG 再 base64 —— 用 data URL 而不是先存文件，是因为有的部署环境把
+        output 目录挂到别处，存文件再给路径会踩空。
         """
         limit_count = int(config.get_setting("llm.max_images", 4) or 4)
         max_side = int(config.get_setting("llm.max_image_side", 1568) or 1568)
@@ -485,30 +519,47 @@ class M8LLMInference:
                 detail=str(exc),
             ) from exc
 
-        try:
-            batch = images
-            if hasattr(batch, "cpu"):
-                batch = batch.cpu().numpy()
-            array = np.asarray(batch)
-        except Exception as exc:  # noqa: BLE001 张量形态千奇百怪，统一转成 M8 错误
-            raise wrap("M8-LLM-008", exc, message="Could not read the image tensor") from exc
+        # 先把所有输入口的帧摊平成一条，再统一限流 —— 逐个口限流的话
+        # 「第一个口给 4 张、第二个口还有」这种情况就说不清了
+        frames = []
+        for slot, tensor in enumerate(tensors or []):
+            if tensor is None:
+                continue
+            try:
+                batch = tensor
+                if hasattr(batch, "cpu"):
+                    batch = batch.cpu().numpy()
+                array = np.asarray(batch)
+            except Exception as exc:  # noqa: BLE001 张量形态千奇百怪，统一转成 M8 错误
+                raise wrap("M8-LLM-008", exc, message=f"Could not read image input {slot + 1}") from exc
 
-        if array.ndim == 3:  # 单张没带 batch 维度
-            array = array[None, ...]
-        if array.ndim != 4:
-            raise M8Error("M8-LLM-008", message=f"Unexpected image tensor shape: {array.shape}")
+            if array.ndim == 3:  # 单张没带 batch 维度
+                array = array[None, ...]
+            if array.ndim != 4:
+                raise M8Error(
+                    "M8-LLM-008",
+                    message=f"Image input {slot + 1} has an unexpected shape: {array.shape}",
+                )
+            frames.extend(array[index] for index in range(array.shape[0]))
 
-        count = min(array.shape[0], limit_count)
-        if array.shape[0] > limit_count:
-            warn(f"{array.shape[0]} images, sending only the first {limit_count} (cap is configurable in settings)", SHELF_LLM)
+        if not frames:
+            return []
+
+        if len(frames) > limit_count:
+            warn(
+                f"收到 {len(frames)} 张图，只发前 {limit_count} 张"
+                f"（上限在设置里可调：llm.max_images）",
+                SHELF_LLM,
+            )
+            frames = frames[:limit_count]
 
         urls: list[str] = []
-        for index in range(count):
-            frame = array[index]
+        for index, frame in enumerate(frames):
+            
             if frame.shape[-1] == 4:
                 frame = frame[..., :3]
             if frame.shape[-1] != 3:
-                raise M8Error("M8-LLM-008", message=f"Image {index} is not 3-channel: {frame.shape}")
+                raise M8Error("M8-LLM-008", message=f"Image {index + 1} is not 3-channel: {frame.shape}")
             pixels = (np.clip(frame, 0.0, 1.0) * 255.0).round().astype("uint8")
             try:
                 picture = PILImage.fromarray(pixels, "RGB")
@@ -516,7 +567,7 @@ class M8LLMInference:
                 buffer = io.BytesIO()
                 picture.save(buffer, format="PNG", optimize=False)
             except Exception as exc:  # noqa: BLE001
-                raise wrap("M8-LLM-008", exc, message=f"Failed to encode image {index}") from exc
+                raise wrap("M8-LLM-008", exc, message=f"Failed to encode image {index + 1}") from exc
             encoded = base64.b64encode(buffer.getvalue()).decode("ascii")
             urls.append(f"data:image/png;base64,{encoded}")
 

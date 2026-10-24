@@ -208,18 +208,37 @@ export function notifyError(exc, context = "") {
 
 /* ---------------------------------------------------------------- 外观 */
 
-/** 给节点套上 M8 的品牌外观。青绿标题栏 = 这是 M8 的节点。 */
+/**
+ * 给节点套上 M8 的品牌外观。青绿标题栏 = 这是 M8 的节点。
+ *
+ * **颜色主权归用户。** 一旦有人动过这个节点的颜色（右键 Colors 换色，或者工作流里
+ * 存着的是别的色），我们就永久收手，不再往 node.color 上写 —— 否则每次状态变化都
+ * 把用户挑的颜色冲掉，切一次工作流页就"变回去"。
+ *
+ * 判据不需要拦截菜单：上一次**我们**写进去的值还挂在节点上，就说明没人动过；
+ * 变了，就说明被接管了。工作流的 configure() 发生在本函数的第一次调用之后，
+ * 所以「加载工作流」和「手动改色」是同一个信号，一条判断两种都吃得下。
+ */
 export function brand(node, { color = COLOR.primary, background = "#22282b" } = {}) {
   try {
+    if (node.m8Branded && node.color !== node.m8BrandColor) {
+      node.m8ColorLocked = true;
+    }
+    if (node.m8ColorLocked) return;
     node.color = color;
     node.bgcolor = background;
+    node.m8Branded = true;
+    node.m8BrandColor = color;
   } catch (exc) {
     warn("节点配色没设上：", exc);
   }
 }
 
 /** 改节点标题栏颜色来表示状态。
- *  state: "idle" | "busy" | "ok" | "err" */
+ *  state: "idle" | "busy" | "ok" | "err"
+ *
+ * 用户自己改过色的节点不会变色（见 brand）—— 状态就只留在 m8State 里，
+ * 不拿视觉主权去换一个状态提示。 */
 export function setStatus(node, state, note = "") {
   const colors = {
     idle: COLOR.primary,
@@ -283,6 +302,22 @@ export function setComboOptions(widget, values, { keep = true } = {}) {
 /** 找一个 widget。按名字查，别用下标 —— 下标会因为加个字段就错位。 */
 export function findWidget(node, name) {
   return (node.widgets || []).find((w) => w.name === name);
+}
+
+/**
+ * 给一批 widget 挂中文显示名。
+ *
+ * 只管**显示**，不动 widget.name —— 名字是工作流文件和接口里的键，改了已存的
+ * 工作流就整体错位。ComfyUI 渲染标题时取 `widget.label ?? widget.name`，
+ * 所以 label 是唯一能安全中文化的字段。
+ *
+ * labels 是 { 内部名: 中文名 }，找不到的 widget 静默跳过。
+ */
+export function labelWidgets(node, labels) {
+  for (const [name, label] of Object.entries(labels || {})) {
+    const widget = findWidget(node, name);
+    if (widget) widget.label = label;
+  }
 }
 
 /** 拿到 widget 的取值回调链上再套一个函数（不需要就保持原样）。 */
@@ -724,6 +759,60 @@ export function attachMentionAutocomplete(node, widgetName, options = {}) {
     return null;
   }
   return attachMention(input, options);
+}
+
+/**
+ * 让节点上的多图输入一个个往下长：接满一个才露出下一个。
+ *
+ * 为什么是这个形状：ComfyUI 后端的 `INPUT_TYPES` 是**静态**的，执行时只认声明过的
+ * 输入名 —— 前端凭空 addInput 出来的口拿不到值，会静默变成 undefined。所以后端必须把
+ * 全部口一次声明完，然后由这里把「还用不上的」从画布上摘掉。
+ *
+ * @param node   节点实例
+ * @param slots  按顺序排好的输入口名字，比如 ["image", "image_2", ...]
+ *
+ * 已连线的口永远不摘 —— 摘了会把用户的连线一起丢掉。
+ */
+export function syncImageInputs(node, slots) {
+  if (!Array.isArray(node?.inputs) || !slots?.length) return;
+
+  const indexOf = (name) => node.inputs.findIndex((x) => x?.name === name);
+  const isFree = (name) => {
+    const i = indexOf(name);
+    return i < 0 || node.inputs[i].link == null;
+  };
+
+  // 第一个空着的口就是「当前正在用的那个」，它后面的全部摘掉
+  let firstFree = slots.findIndex(isFree);
+  if (firstFree < 0) firstFree = slots.length - 1; // 全接满了：最后一个留着
+
+  const doomed = [];
+  for (let i = firstFree + 1; i < slots.length; i++) {
+    const idx = indexOf(slots[i]);
+    if (idx >= 0) doomed.push(idx);
+  }
+  // 倒序删，否则先删前面的会让后面的索引整体错位
+  doomed.sort((a, b) => b - a);
+  for (const idx of doomed) node.removeInput(idx);
+
+  // 该露出来的那个如果不在，补上
+  if (firstFree >= 0 && indexOf(slots[firstFree]) < 0) {
+    node.addInput(slots[firstFree], "IMAGE");
+  }
+
+  // **只放大，不缩小。**
+  // 原本这里写的是 setSize(computeSize())，等于每次连线都把节点压回最小尺寸 ——
+  // 用户拖出来的大小、拖出来的预览高度，接一根线全没了。
+  // computeSize() 是「至少要多大」，不是「应该多大」，所以取两者的并。
+  const min = node.computeSize?.();
+  if (Array.isArray(min) && Array.isArray(node.size)) {
+    const width = Math.max(node.size[0], min[0]);
+    const height = Math.max(node.size[1], min[1]);
+    if (width !== node.size[0] || height !== node.size[1]) {
+      if (typeof node.setSize === "function") node.setSize([width, height]);
+      else node.size = [width, height];
+    }
+  }
 }
 
 /** 让节点重新算高度。加了控件之后调一下，否则新控件会被挤出可视区。 */

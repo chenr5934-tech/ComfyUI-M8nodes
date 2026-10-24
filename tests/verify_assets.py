@@ -133,10 +133,22 @@ IMPORT_RE = re.compile(r"""from\s+["'](\.[^"']+)["']""")
 for js in js_files:
     text = js.read_text("utf-8")
     rel_self = js.relative_to(PKG_DIR).as_posix()
-    for target in IMPORT_RE.findall(text):
+    # 先把注释行去掉再找 import：注释里经常写着用法示例
+    # （"import { createLogger } from './global/logger_client.js'" 就是注释里的），
+    # 当成真的 import 去解析必然是误报。
+    code = "\n".join(
+        line for line in text.splitlines()
+        if not line.strip().startswith(("*", "//", "/*"))
+    )
+    for target in IMPORT_RE.findall(code):
         resolved = (js.parent / target).resolve()
         if resolved.is_file():
             ok("{}  ->  {}".format(rel_self, target))
+        elif "scripts/" in target.replace("\\", "/") or "extensions/" in target.replace("\\", "/"):
+            # **浏览器的 URL 路径**，不是磁盘文件。典型写法是 "../../../scripts/app.js"：
+            # 在浏览器里归一化成 ComfyUI 提供的 /scripts/app.js，按文件系统算却指向一个
+            # 不存在的 scripts/ 目录。gallery 货架带进来好几个这种写法，它们本来是对的。
+            ok("{}  ->  {}（web 路径）".format(rel_self, target))
         else:
             bad("{} 里的 import 找不到".format(rel_self), target)
 
