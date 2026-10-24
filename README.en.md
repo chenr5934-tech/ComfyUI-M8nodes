@@ -14,11 +14,30 @@ Three shelves, six nodes, plus a standalone web workbench:
 | LLM | `M8LLMLocal` | Runs a GGUF **locally**, no network; pair it with an mmproj for vision |
 | Camera | `M8CameraControl` | Turns camera position / height / distance into prompt text |
 | Prompt | `M8MultiCharacter` | Multi-character blocks and per-region weights |
+| Gallery | `M8DanbooruGallery` and 18 more | **Third-party bundle** ([Aaalice233](https://github.com/Aaalice233)'s Danbooru Gallery): image browsing, tag search, character feature swap, prompt cleanup, resolution presets, image compare — all under the `M8/Gallery` right-click menu |
 
-> **Zero third-party dependencies, with one exception: the local inference node.**
+> **Zero third-party dependencies, with two exceptions.**
 > The backend uses only the Python standard library plus what ComfyUI already ships.
-> `M8LLMLocal` additionally needs `llama-cpp-python`; without it the other nodes are
-> unaffected and that node reports what is missing.
+> `M8LLMLocal` needs `llama-cpp-python`; without it the other nodes are unaffected and
+> that node reports what is missing. The gallery shelf needs `requests` (Danbooru API)
+> and `aiosqlite` (async tag database) — both ship with the common ComfyUI packages;
+> on a clean install run `pip install requests aiosqlite`. Only the gallery nodes fail
+> without them.
+
+### Third-party code and credits
+
+**The gallery shelf is not original code from this repository.** It comes from
+[Aaalice233/ComfyUI-Danbooru-Gallery](https://github.com/Aaalice233/ComfyUI-Danbooru-Gallery),
+merged in whole through the
+[chenr5934-tech/ComfyUI-Danbooru-Gallery-M8](https://github.com/chenr5934-tech/ComfyUI-Danbooru-Gallery-M8)
+branch, keeping its own directory layout and naming.
+
+- **Original author: [Aaalice233](https://github.com/Aaalice233)**, MIT license
+- **The license and copyright notice live in [`m8/nodes/gallery/LICENSE`](m8/nodes/gallery/LICENSE)** (`Copyright (c) 2026 Aaalice233`). MIT requires keeping the notice in substantial portions of the software — **do not remove that file**
+- The upstream repository is archived; the author moved further work to [ComfyUI-Aaalice-Nodes](https://github.com/Aaalice233/ComfyUI-Aaalice-Nodes)
+- Changes made here on top of the merge (categories unified under `M8/Gallery`, the NAI atlas source, the Gelbooru original-image fix, dropping its bundled requirements) are recorded in [`m8/nodes/gallery/README.md`](m8/nodes/gallery/README.md) and the git history
+
+Every other shelf (LLM / camera / prompt) is written by this repository.
 
 ---
 

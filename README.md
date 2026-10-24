@@ -14,9 +14,9 @@
 | 大模型 | `M8LLMLocal` | **本地**跑 GGUF，不联网；配 mmproj 就能识图 |
 | 相机 | `M8CameraControl` | 把「相机在哪、朝哪、拍多近」翻译成提示词 |
 | 提示词 | `M8MultiCharacter` | 多角色分块与区域权重 |
-| 图库 | `M8DanbooruGallery` 等 19 个 | **整包合并**的 Danbooru Gallery：图库浏览、标签检索、角色特征替换、提示词清理、分辨率预设、图片对比……全部归在右键菜单的 `M8/Gallery` 下 |
+| 图库 | `M8DanbooruGallery` 等 19 个 | **第三方整包合并**（[Aaalice233](https://github.com/Aaalice233) 的 Danbooru Gallery）：图库浏览、标签检索、角色特征替换、提示词清理、分辨率预设、图片对比……全部归在右键菜单的 `M8/Gallery` 下 |
 
-> **除本地推理节点外，零第三方依赖**。后端只用 Python 标准库和 ComfyUI 自带的东西，装完不用 pip 装任何包。
+> **零第三方依赖，两个例外。** 后端只用 Python 标准库和 ComfyUI 自带的东西，装完不用 pip 装任何包。
 >
 > **图库分类例外**：它是整包合并进来的第三方项目，需要 `requests`（调 Danbooru API）
 > 和 `aiosqlite`（异步读标签库）两个包。秋叶整合包已自带；纯净安装的话补一句
@@ -25,6 +25,20 @@
 > （它的旧脚本里还出现过 `psutil`，那是在 `legacy/` 的 Krita 联动代码里，函数内 import
 > 且有 `except ImportError` 兜底 —— 不是必需项，合并时已经从依赖里去掉了。）
 > `M8LLMLocal` 要跑起来得另外装 `llama-cpp-python` —— 那是它自己的事，不装不影响别的节点，它会自己报一句缺什么。
+
+### 第三方代码与致谢
+
+**图库货架不是本仓库原创的代码。** 它来自
+[Aaalice233/ComfyUI-Danbooru-Gallery](https://github.com/Aaalice233/ComfyUI-Danbooru-Gallery)，
+经 [chenr5934-tech/ComfyUI-Danbooru-Gallery-M8](https://github.com/chenr5934-tech/ComfyUI-Danbooru-Gallery-M8)
+分支整包合并进来，原样保留它自己的目录结构与命名。
+
+- **原项目作者：[Aaalice233](https://github.com/Aaalice233)**，MIT 许可
+- **许可证与版权声明保留在 [`m8/nodes/gallery/LICENSE`](m8/nodes/gallery/LICENSE)**（`Copyright (c) 2026 Aaalice233`）。MIT 要求在软件的实质部分中保留版权声明，**请勿删除该文件**
+- 上游原仓库已归档，作者把后续功能迁到了 [ComfyUI-Aaalice-Nodes](https://github.com/Aaalice233/ComfyUI-Aaalice-Nodes)
+- 本仓库在合并基础上做的改动（节点分类统一到 `M8/Gallery`、接入 NAI 图鉴源、修 Gelbooru 原图、去掉它自带的 requirements）记在 [`m8/nodes/gallery/README.md`](m8/nodes/gallery/README.md) 和 git 历史里
+
+其余货架（大模型 / 相机 / 提示词）都是本仓库自己写的。
 
 ---
 

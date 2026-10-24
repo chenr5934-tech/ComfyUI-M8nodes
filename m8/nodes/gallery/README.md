@@ -1,8 +1,12 @@
 # 🎨 ComfyUI-Danbooru-Gallery (M8 fork)
 
-> **这是 [Aaalice233/ComfyUI-Danbooru-Gallery](https://github.com/Aaalice233/ComfyUI-Danbooru-Gallery) 的独立维护分支。**
-> 上游已归档並把功能迁往 [ComfyUI-Aaalice-Nodes](https://github.com/Aaalice233/ComfyUI-Aaalice-Nodes)；
-> 本分支继续在原有 23 节点架构上维护，**不与上游新仓库同步**。
+> **这份代码来自 [Aaalice233/ComfyUI-Danbooru-Gallery](https://github.com/Aaalice233/ComfyUI-Danbooru-Gallery)，作者 [Aaalice233](https://github.com/Aaalice233)，MIT 许可。**
+> 上游已归档并把功能迁往 [ComfyUI-Aaalice-Nodes](https://github.com/Aaalice233/ComfyUI-Aaalice-Nodes)；
+> 这份分支继续在原有 23 节点架构上维护，**不与上游新仓库同步**。
+>
+> **它现在已经是 [ComfyUI-M8nodes](https://github.com/chenr5934-tech/ComfyUI-M8nodes) 的一个子货架**，
+> 不再是独立插件：装在 `m8/nodes/gallery/`，前端在 `js/gallery/`，节点分类统一到 `M8/Gallery`。
+> 版权声明见同目录的 [LICENSE](LICENSE)，**不要删它**。
 
 面向 ComfyUI 的实用节点集合：Danbooru / Gelbooru 图像检索、提示词编辑与清洗、缓存管理、工作流辅助工具。
 
@@ -13,12 +17,18 @@
 
 ## 🚀 安装
 
+**不需要单独安装。** 这份代码随 [ComfyUI-M8nodes](https://github.com/chenr5934-tech/ComfyUI-M8nodes) 一起装：
+装好 M8nodes 就有图库这批节点（右键菜单 `M8/Gallery` 下）。
+
+依赖只有两个（`requests` 调 Danbooru API、`aiosqlite` 异步读标签库），
+常见整合包已自带；纯净安装补一句：
+
 ```bash
-cd ComfyUI/custom_nodes
-git clone https://github.com/chenr5934-tech/ComfyUI-Danbooru-Gallery-M8.git ComfyUI-Danbooru-Gallery-M8
-cd ComfyUI-Danbooru-Gallery-M8
-pip install -r requirements.txt
+pip install requests aiosqlite
 ```
+
+它自带的 `requirements.txt` 和 `pyproject.toml` 在合并时删掉了 —— ComfyUI 只读插件根目录那份，
+放在子目录里永远不会被读取，留着只会让人以为要单独 `pip install -r`。
 
 重启 ComfyUI 即可。
 
