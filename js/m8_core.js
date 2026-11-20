@@ -827,3 +827,178 @@ export function relayout(node) {
     }
   });
 }
+
+/* ---------------------------------------------------------------- 文件夹浏览器 */
+
+/** 当前开着的那一个面板。同一时间只留一个 —— 两个节点各弹一个，用户不知道该点哪个。 */
+let folderPanel = null;
+
+/** 关掉面板。没开着就是空操作。 */
+function closeFolderPanel() {
+  if (!folderPanel) return;
+  document.removeEventListener("keydown", folderPanel.onKey, true);
+  folderPanel.wrap.remove();
+  folderPanel = null;
+}
+
+/**
+ * 弹一个文件夹选择面板，让用户走目录树挑一个文件夹。
+ *
+ * 浏览器拿不到本地文件系统，所以目录内容是后端 `/m8/image/dirs` 给的。
+ * 面板挂在 `document.body` 上、`position: fixed` —— 节点画在 canvas 上，
+ * 放进节点里会被画布裁剪，还会跟着缩放变形。
+ *
+ * @param {object} opts
+ * @param {string} [opts.path]     初始路径，留空 = 从基准目录开始
+ * @param {string} [opts.prefer]   "input"（默认，相对 ComfyUI input 目录）或 "output"
+ * @param {(picked: string) => void} opts.onPick 选定回调，参数是绝对路径
+ */
+export function browseFolder({ path = "", prefer = "input", onPick = null } = {}) {
+  injectTheme();
+  closeFolderPanel();
+
+  const wrap = document.createElement("div");
+  wrap.className = "m8-folder-veil";
+
+  const root = document.createElement("div");
+  root.className = "m8-folder";
+  // 点面板本身不该关面板 —— 遮罩的点击会冒到这里来
+  root.addEventListener("click", (event) => event.stopPropagation());
+
+  const head = document.createElement("div");
+  head.className = "m8-folder-head";
+
+  const title = document.createElement("span");
+  title.className = "m8-folder-path";
+  title.textContent = coreT("folderLoading", "读目录中…");
+  head.appendChild(title);
+
+  const closeBtn = document.createElement("button");
+  closeBtn.type = "button";
+  closeBtn.className = "m8-folder-x";
+  closeBtn.textContent = "×";
+  closeBtn.title = coreT("folderClose", "关闭");
+  head.appendChild(closeBtn);
+
+  const list = document.createElement("div");
+  list.className = "m8-folder-list";
+
+  const foot = document.createElement("div");
+  foot.className = "m8-folder-foot";
+
+  const upBtn = document.createElement("button");
+  upBtn.type = "button";
+  upBtn.className = "m8-folder-btn";
+  upBtn.textContent = coreT("folderUp", "上一级");
+
+  const hint = document.createElement("span");
+  hint.className = "m8-folder-hint";
+
+  const pickBtn = document.createElement("button");
+  pickBtn.type = "button";
+  pickBtn.className = "m8-folder-btn -primary";
+  pickBtn.textContent = coreT("folderPick", "选这个文件夹");
+
+  foot.append(upBtn, hint, pickBtn);
+  root.append(head, list, foot);
+  wrap.appendChild(root);
+
+  // 当前所处的路径。用户进哪一层就写哪一层；空字符串 = 还停在基准目录。
+  const state = { path: "", parent: "", busy: false };
+
+  function render(resp) {
+    list.textContent = "";
+    const dirs = Array.isArray(resp.dirs) ? resp.dirs : [];
+
+    if (!dirs.length) {
+      const empty = document.createElement("div");
+      empty.className = "m8-folder-empty";
+      empty.textContent = coreT("folderNoSubdir", "这里没有再下一层文件夹");
+      list.appendChild(empty);
+    }
+
+    for (const item of dirs) {
+      const row = document.createElement("div");
+      row.className = "m8-folder-item";
+      row.title = item.path || "";
+
+      const name = document.createElement("span");
+      name.className = "m8-folder-name";
+      name.textContent = item.name || item.path || "";
+
+      const meta = document.createElement("span");
+      meta.className = "m8-folder-meta";
+      meta.textContent = item.hasChildren
+        ? coreT("folderMore", "{count} 张 ▸", { count: item.images ?? 0 })
+        : coreT("folderCount", "{count} 张", { count: item.images ?? 0 });
+
+      row.append(name, meta);
+      row.addEventListener("click", () => load(item.path));
+      list.appendChild(row);
+    }
+
+    if (resp.truncated) {
+      const more = document.createElement("div");
+      more.className = "m8-folder-empty";
+      more.textContent = coreT("folderTooMany", "子目录太多，只显示前 300 个");
+      list.appendChild(more);
+    }
+
+    upBtn.disabled = !state.path;
+    pickBtn.disabled = !state.path;
+    hint.textContent = state.path ? "" : coreT("folderRootHint", "先进入一个文件夹，或直接填路径");
+  }
+
+  async function load(target) {
+    if (state.busy) return;
+    state.busy = true;
+
+    list.textContent = "";
+    const loading = document.createElement("div");
+    loading.className = "m8-folder-empty";
+    loading.textContent = coreT("folderLoading", "读目录中…");
+    list.appendChild(loading);
+
+    try {
+      const resp = await apiGet("/image/dirs", { path: target || "", prefer });
+      state.path = resp.path || "";
+      state.parent = resp.parent || "";
+      title.textContent = state.path || resp.root || coreT("folderBase", "基准目录");
+      title.title = state.path || resp.root || "";
+      render(resp);
+    } catch (exc) {
+      // 面板里就地报错，不弹 toast：用户就站在这块框前面，再盖一层浮层没意义。
+      list.textContent = "";
+      const fail = document.createElement("div");
+      fail.className = "m8-folder-empty -err";
+      fail.textContent = exc?.message || String(exc);
+      if (exc?.hint) fail.title = exc.hint;
+      list.appendChild(fail);
+      warn("列目录失败：", exc);
+    } finally {
+      state.busy = false;
+    }
+  }
+
+  closeBtn.addEventListener("click", closeFolderPanel);
+  upBtn.addEventListener("click", () => load(state.parent));
+  pickBtn.addEventListener("click", () => {
+    if (!state.path) return;
+    try {
+      onPick?.(state.path);
+    } catch (exc) {
+      warn("选定文件夹后出错：", exc);
+    }
+    closeFolderPanel();
+  });
+  wrap.addEventListener("click", closeFolderPanel);
+
+  const onKey = (event) => {
+    if (event.key === "Escape") closeFolderPanel();
+  };
+  document.addEventListener("keydown", onKey, true);
+
+  document.body.appendChild(wrap);
+  folderPanel = { wrap, onKey };
+  load(path);
+}

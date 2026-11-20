@@ -121,7 +121,24 @@ ComfyUI 里的报错长这样：
 | M8-WEB-011 | `server/shortcut.py: confined` | 拼出来的路径跑到了桌面目录外面 | 内部调用出错，正常从工作台点按钮不会走到这儿 |
 | M8-WEB-010 | `core/webdata.py: put/replace` | 传进来要存的不是一条记录 | 这是内部调用写错了，不是你的操作问题；看 detail |
 
-### 加载器 / 采样 / 判断 / 图像 / 文本
+### 图像 `M8-IMG-###` — `m8/nodes/image/`
+
+| 码 | 触发点 | 原因 | 修法 |
+| --- | --- | --- | --- |
+| M8-IMG-001 | `core/imageio.py: resolve_folder` | 文件夹那栏是空的 | 填这个文件夹的完整路径（带盘符那种），或填相对 ComfyUI 目录的路径，如 `input/pics`。节点上的「浏览文件夹」可以直接挑 |
+| M8-IMG-002 | `core/imageio.py: resolve_folder` | 按填的路径找不到目录 | 看 detail 里列出的找过的位置 —— 相对路径先按 ComfyUI 目录、再按 `input` / `output` 依次试 |
+| M8-IMG-003 | `core/imageio.py: list_images` | 目录在，但里面一张图都没有 | 支持 png/jpg/jpeg/webp/bmp/gif/tif/tiff。图都在子文件夹里就打开「含子文件夹」 |
+| M8-IMG-004 | `image_folder_loader/node.py: _probe_size / _to_tensor` | 某张图打不开，或尺寸是 0 | 文件损坏、或被改了后缀名。detail 里指到具体文件；删掉它或换成完好的那张 |
+| M8-IMG-005 | `image_folder_loader/node.py: _target_size` | 一个 batch 里的图尺寸不一致，而「尺寸处理」是「严格」 | 换成「补边」或「拉伸」，或先把这一批图统一成同一尺寸。detail 里列出不一致的文件 |
+| M8-IMG-006 | `core/imageio.py: ensure_dir` | 目标目录建不出来 | 只读盘、需要管理员权限的目录、盘符不存在都会这样。换个可写的位置 |
+| M8-IMG-007 | `image_folder_saver/node.py: execute` | 某张图写盘失败 | 看磁盘剩余空间和目录写权限。detail 里是文件名和原始异常 |
+| M8-IMG-008 | `image_folder_loader/node.py: execute` | 「起始序号」超过了总数，或「最多输出」为负 | 起始序号从 0 开始且要小于总数；「最多输出」填 0 表示全部 |
+| M8-IMG-009 | `image_folder_saver/node.py: execute` | 保存格式不是 PNG / JPEG / WEBP | 用下拉里那三个值，别手改 |
+| M8-IMG-010 | `image_folder_saver/node.py: execute` | IMAGE 输入是空的 | 把图像接到输入上；上游节点没出图也会这样，先单独跑一遍上游 |
+| M8-IMG-011 | `core/imageio.py: list_images` | 排序方式不是下拉里给的那几个 | 重选一次下拉；手改过 `sort` 值就改回来 |
+| M8-IMG-012 | `server/routes.py: _list_dirs` | 目录列不出来（节点的「浏览」按钮） | 检查这个目录的读权限。路径还能手填 —— 浏览只是省事，不是唯一入口 |
+
+### 加载器 / 采样 / 判断 / 文本
 
 _v0.2 起随货架落地时补充。_
 

@@ -227,6 +227,7 @@ class TestRoutes(unittest.TestCase):
             ("POST", "/m8/prompt/presets/load"),
             ("POST", "/m8/prompt/presets/delete"),
             ("GET", "/m8/llm-local/models"),
+            ("GET", "/m8/image/dirs"),
             ("GET", "/m8/armor/preset"),
             ("GET", "/m8/i18n/{lang}"),
             ("GET", "/m8/data/{kind}"),

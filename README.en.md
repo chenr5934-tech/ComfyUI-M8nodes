@@ -4,7 +4,7 @@ English | [中文](README.md)
 
 A ComfyUI custom node pack organized by **shelf** (one directory per job the node does in a workflow, one error-code range per shelf).
 
-Three shelves, six nodes, plus a standalone web workbench:
+Five shelves, twenty-seven nodes, plus a standalone web workbench:
 
 | Shelf | Node | What it does |
 | --- | --- | --- |
@@ -14,6 +14,8 @@ Three shelves, six nodes, plus a standalone web workbench:
 | LLM | `M8LLMLocal` | Runs a GGUF **locally**, no network; pair it with an mmproj for vision |
 | Camera | `M8CameraControl` | Turns camera position / height / distance into prompt text |
 | Prompt | `M8MultiCharacter` | Multi-character blocks and per-region weights |
+| Image | `M8ImageFolderLoader` | Reads a folder of images in order and feeds them **one at a time**, so the sampler runs once per image and VRAM holds a single frame |
+| Image | `M8ImageFolderSaver` | Writes results back into a folder, creating it when missing; never overwrites an existing file |
 | Gallery | `M8DanbooruGallery` and 18 more | **Third-party bundle** ([Aaalice233](https://github.com/Aaalice233)'s Danbooru Gallery): image browsing, tag search, character feature swap, prompt cleanup, resolution presets, image compare — all under the `M8/Gallery` right-click menu |
 
 > **Zero third-party dependencies, with two exceptions.**
@@ -87,7 +89,7 @@ git clone https://github.com/chenr5934-tech/ComfyUI-M8nodes.git
 
 Restart ComfyUI. **No pip dependencies.**
 
-The nodes appear under `M8/`, grouped by shelf: `大模型` (LLM), `相机` (Camera), `提示词` (Prompt).
+The nodes appear under `M8/`, grouped by shelf: `大模型` (LLM), `相机` (Camera), `提示词` (Prompt), `图像` (Image).
 
 ---
 
@@ -137,6 +139,7 @@ Nodes are grouped by **what they do in a workflow**, one directory and one error
 | loaders | `m8/nodes/loaders/` | `M8-LOAD-###` |
 | samplers | `m8/nodes/samplers/` | `M8-SAMP-###` |
 | logic | `m8/nodes/logic/` | `M8-LOGIC-###` |
+| image | `m8/nodes/image/` | `M8-IMG-###` |
 | text | `m8/nodes/text/` | `M8-TXT-###` |
 
 The layout is two levels: **one folder per shelf, one folder per feature inside it**.

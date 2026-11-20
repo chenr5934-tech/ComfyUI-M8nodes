@@ -39,6 +39,11 @@ Thumbs.db
 _shot*.png
 *.log
 
+# 开发机上 dsh 自己的笔记本，跟插件无关
+.dsh-notebook/
+dsh-notebook.md
+dsh-notebook-project.md
+
 # comfy node pack 的产物（发布时临时生成，不进仓库）
 node.zip
 

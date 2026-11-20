@@ -178,6 +178,161 @@
   font-size: 11px;
 }
 
+/* ---------------------------------------------------------------- 文件夹浏览器 */
+
+/* 和补全下拉同一个套路：挂 body、fixed 定位、自己管层级。
+   多一层遮罩是因为这个面板要吃掉「点空白处就关」这个手势。 */
+.m8-folder-veil {
+  position: fixed;
+  inset: 0;
+  z-index: 100001;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.m8-folder {
+  width: 460px;
+  max-width: calc(100vw - 40px);
+  max-height: 70vh;
+  display: flex;
+  flex-direction: column;
+  padding: 10px;
+  gap: var(--m8-gap);
+  background: var(--m8-bg);
+  border: 1px solid var(--m8-line);
+  border-radius: var(--m8-radius);
+  box-shadow: 0 16px 44px rgba(0, 0, 0, 0.65);
+  color: var(--m8-text);
+  font-size: 13px;
+}
+
+.m8-folder-head {
+  display: flex;
+  align-items: center;
+  gap: var(--m8-gap);
+}
+
+.m8-folder-path {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  direction: rtl;          /* 路径太长时截左边、保住末尾几层目录名 */
+  text-align: left;
+  color: var(--m8-text-dim);
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  font-size: 12px;
+}
+
+.m8-folder-x {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  background: transparent;
+  border: 1px solid var(--m8-line);
+  border-radius: 4px;
+  color: var(--m8-text-dim);
+  cursor: pointer;
+  font-size: 15px;
+  line-height: 1;
+}
+
+.m8-folder-x:hover {
+  border-color: var(--m8-err);
+  color: var(--m8-err);
+}
+
+.m8-folder-list {
+  flex: 1 1 auto;
+  min-height: 120px;
+  overflow-y: auto;
+  padding: 2px;
+  background: var(--m8-bg-soft);
+  border: 1px solid var(--m8-line);
+  border-radius: 4px;
+}
+
+.m8-folder-item {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 6px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.m8-folder-item:hover {
+  background: var(--m8-primary-soft);
+}
+
+.m8-folder-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.m8-folder-meta {
+  flex: none;
+  color: var(--m8-text-dim);
+  font-size: 11px;
+}
+
+.m8-folder-empty {
+  padding: 8px;
+  color: var(--m8-text-dim);
+}
+
+.m8-folder-empty.-err {
+  color: var(--m8-err);
+}
+
+.m8-folder-foot {
+  display: flex;
+  align-items: center;
+  gap: var(--m8-gap);
+}
+
+.m8-folder-hint {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--m8-text-dim);
+  font-size: 11px;
+}
+
+.m8-folder-btn {
+  flex: none;
+  padding: 5px 12px;
+  background: var(--m8-bg-soft);
+  border: 1px solid var(--m8-line);
+  border-radius: 4px;
+  color: var(--m8-text);
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.m8-folder-btn:hover:not(:disabled) {
+  border-color: var(--m8-primary);
+}
+
+.m8-folder-btn.-primary {
+  border-color: var(--m8-primary-dim);
+  color: var(--m8-primary);
+}
+
+.m8-folder-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
 /* ---------------------------------------------------------------- 小标记 */
 
 /* 节点上的状态小标签（画在 canvas 上，这里是它用到的字体度量参考） */

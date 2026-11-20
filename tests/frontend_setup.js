@@ -126,6 +126,8 @@ function stubM8(log) {
     syncImageInputs: noop,
     /* 中文控件标签：桩节点的 widget 是个空对象，直接跳过就行 */
     labelWidgets: noop,
+    /* 文件夹浏览器：真逻辑要点 DOM，这里只记录被调过 */
+    browseFolder: noop,
   };
 }
 
@@ -137,6 +139,8 @@ const NODES = [
   { file: 'js/nodes/llm/armor_break.js', type: 'M8ArmorBreak', widgets: ['level', 'scene', 'enabled', 'body', 'extra'] },
   { file: 'js/nodes/llm/skill_loader.js', type: 'M8SkillLoader', widgets: ['skill'] },
   { file: 'js/nodes/llm/llm_local.js', type: 'M8LLMLocal', widgets: ['model', 'system_prompt', 'user_prompt', 'extra_text'] },
+  { file: 'js/nodes/image/image_folder_loader.js', type: 'M8ImageFolderLoader', widgets: ['folder', 'recursive', 'sort', 'size_mode', 'start_index', 'limit'] },
+  { file: 'js/nodes/image/image_folder_saver.js', type: 'M8ImageFolderSaver', widgets: ['images', 'output_folder', 'format', 'filename_prefix', 'keep_structure', 'overwrite', 'quality', 'filenames'] },
 ];
 
 async function checkOne(entry) {

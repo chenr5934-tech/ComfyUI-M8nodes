@@ -76,6 +76,7 @@ m8/nodes/<货架>/<节点>.py       单个节点类
 | POST | `/m8/prompt/presets/load` | 取一套预设的正文 |
 | POST | `/m8/prompt/presets/delete` | 删掉一套预设 |
 | GET | `/m8/llm-local/models` | 列 `models/LLM` 里的 GGUF（前端「刷新模型」用） |
+| GET | `/m8/image/dirs` | 列一个目录下的子文件夹（图像两个节点的「浏览」按钮用）。`path` 留空 = 从基准目录开始：`prefer=input` 是 ComfyUI 的 `input`（读图），`prefer=output` 是 `output`（存图）。回 `path/parent/root/count/dirs/truncated`，`count` 是这个目录**直属**的图片数，每个子目录带 `images` 与 `hasChildren`，让用户一眼看出哪一层有图。**只列目录不列文件**，一屏最多 300 个子目录 |
 | GET | `/m8/armor/preset` | 破甲注入节点某个档位 + 场景拼出来的正文（「注入内容 / 灌入预设」两个按钮用）。**文案只在 `prompts.py` 里一份，前端不抄第二份** —— 抄了就是两份真相，改词要改两处 |
 | GET | `/m8/i18n/{lang}` | 这个插件某个语言的界面文案（读 `locales/<lang>/main.json`，含 `ui` / `web` 段）。**语言码先净化字符集、再确认最终路径落在 locales/ 内**，两道都过才读；取不到返回空对象，前端退回代码里的中文 |
 | GET | `/m8/data/{kind}` | 读一整类工作台数据（kind = oc / prompts / groups / stickers）。**数据在 `<ComfyUI>/models/M8data/webapp/` 下，不在浏览器里** —— 独立服务也读同一份 |

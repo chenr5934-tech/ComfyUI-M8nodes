@@ -25,7 +25,7 @@ from typing import Any, Callable
 
 from aiohttp import web
 
-from ..core import config, paths, webdata
+from ..core import config, imageio, paths, webdata
 from ..core.errors import M8Error, wrap
 from ..core.log import SHELF_SRV, error, log, warn
 from . import camera_configs, llm_api, prompt_presets, providers, shortcut, skills, webapp
@@ -37,7 +37,7 @@ except ImportError:  # 脱离 ComfyUI（跑单元测试）时
 
 _DUMPS = partial(json.dumps, ensure_ascii=False)
 
-VERSION = "0.6.0"
+VERSION = "0.7.0"
 
 # 由根 __init__.py 在收集完货架后注入，供 /m8/health 使用
 _RUNTIME_INFO: dict[str, Any] = {"shelves": [], "nodeCount": 0, "routeCount": 0}
@@ -330,6 +330,109 @@ async def handle_skills_delete(request: web.Request) -> web.Response:
 
 # ------------------------------------------------------------------ 自检
 
+# ------------------------------------------------------------------ 图像
+
+# 一屏能滚完就够。用户点开根目录这种地方时，列全等于把浏览器拖死。
+MAX_DIR_ENTRIES = 300
+
+# 数「这个目录里有几张图」时最多看的条目数 —— node_modules 那种目录不该让接口卡住。
+MAX_SCAN_ENTRIES = 2000
+
+
+def _dir_entry(path: Path) -> dict[str, Any]:
+    """一个子目录的速览：名字、绝对路径、里面几张图、还有没有下一层。
+
+    `images` 决定用户在浏览器里一眼看出哪个文件夹是有图的 —— 他填路径的目的
+    就是这个，让他进去再发现是空的，等于白点一次。
+    """
+    images = 0
+    has_children = False
+    checked = 0
+    try:
+        for child in path.iterdir():
+            checked += 1
+            if checked > MAX_SCAN_ENTRIES:
+                break
+            if child.is_dir():
+                has_children = True
+            elif imageio.is_image(child):
+                images += 1
+    except OSError:
+        pass  # 读不进去的目录照样能列出来，只是没有统计
+    return {"name": path.name, "path": str(path), "images": images, "hasChildren": has_children}
+
+
+def _count_images(folder: Path) -> int:
+    """这个目录直属的图片数（不递归）。浏览器用它显示「当前这一层有几张」。"""
+    total = 0
+    checked = 0
+    try:
+        for child in folder.iterdir():
+            checked += 1
+            if checked > MAX_SCAN_ENTRIES:
+                break
+            if child.is_file() and imageio.is_image(child):
+                total += 1
+    except OSError:
+        return 0
+    return total
+
+
+def _list_dirs(raw: str, prefer: str) -> dict[str, Any]:
+    """列子目录。path 留空 = 从基准目录开始（input 或 output）。"""
+    text = (raw or "").strip()
+    roots = [p for p in imageio.comfy_roots(prefer) if p.is_dir()]
+
+    if not text:
+        return {
+            "path": "",
+            "parent": "",
+            "root": str(roots[0]) if roots else "",
+            "prefer": prefer,
+            "count": 0,
+            "dirs": [_dir_entry(p) for p in roots],
+            "truncated": False,
+        }
+
+    folder = imageio.resolve_folder(text, must_exist=True, prefer=prefer)
+    try:
+        children = [p for p in folder.iterdir() if p.is_dir()]
+    except OSError as exc:
+        raise wrap("M8-IMG-012", exc, "列不出这个目录", "检查这个目录的读权限")
+
+    children.sort(key=lambda p: imageio.natural_key(p.name))
+    parent = "" if folder.parent == folder else str(folder.parent)
+    return {
+        "path": str(folder),
+        "parent": parent,
+        "root": str(roots[0]) if roots else "",
+        "prefer": prefer,
+        "count": _count_images(folder),
+        "dirs": [_dir_entry(p) for p in children[:MAX_DIR_ENTRIES]],
+        "truncated": len(children) > MAX_DIR_ENTRIES,
+    }
+
+
+async def handle_image_dirs(request: web.Request) -> web.Response:
+    """GET /m8/image/dirs?path=&prefer= —— 给两个图像节点的「浏览」按钮列子目录。
+
+    为什么要后端列：浏览器拿不到本地文件系统，而 ComfyUI 自带的「加载图像」
+    只认 input 目录里的单张图。要让用户挑「一整个文件夹」，就得有人替他走目录树。
+
+    prefer=input 时基准是 ComfyUI 的 input 目录，output 时是 output 目录 ——
+    加载器读图（input），保存器写图（output），各按各的直觉。
+    """
+    raw = request.query.get("path", "")
+    prefer = request.query.get("prefer", "input")
+    if prefer not in ("input", "output"):
+        prefer = "input"
+    try:
+        listing = await asyncio.to_thread(_list_dirs, raw, prefer)
+    except M8Error as exc:
+        return _err(exc)
+    return _ok(**listing)
+
+
 # ------------------------------------------------------------------ 本地模型
 
 async def handle_local_models(request: web.Request) -> web.Response:
@@ -608,6 +711,7 @@ ROUTES: list[tuple[str, str, Callable]] = [
     ("POST", "/m8/prompt/presets/load", handle_prompt_presets_load),
     ("POST", "/m8/prompt/presets/delete", handle_prompt_presets_delete),
     ("GET", "/m8/llm-local/models", handle_local_models),
+    ("GET", "/m8/image/dirs", handle_image_dirs),
     ("GET", "/m8/armor/preset", handle_armor_preset),
     ("GET", "/m8/i18n/{lang}", handle_i18n),
     ("GET", "/m8/data/{kind}", handle_data_get),

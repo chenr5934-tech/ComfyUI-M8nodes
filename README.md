@@ -4,7 +4,7 @@
 
 按**货架**分类的 ComfyUI 自定义节点包。
 
-四个分类、二十五个节点，外加一个独立网页工作台：
+五个分类、二十七个节点，外加一个独立网页工作台：
 
 | 货架 | 节点 | 做什么 |
 | --- | --- | --- |
@@ -14,6 +14,8 @@
 | 大模型 | `M8LLMLocal` | **本地**跑 GGUF，不联网；配 mmproj 就能识图 |
 | 相机 | `M8CameraControl` | 把「相机在哪、朝哪、拍多近」翻译成提示词 |
 | 提示词 | `M8MultiCharacter` | 多角色分块与区域权重 |
+| 图像 | `M8ImageFolderLoader` | 把一个文件夹里的图片按顺序读出来、**逐张**喂给下游（采样器因此每张各跑一次，显存只吃一张） |
+| 图像 | `M8ImageFolderSaver` | 把处理完的图按文件夹存回去，目录不存在就新建，重名不覆盖 |
 | 图库 | `M8DanbooruGallery` 等 19 个 | **第三方整包合并**（[Aaalice233](https://github.com/Aaalice233) 的 Danbooru Gallery）：图库浏览、标签检索、角色特征替换、提示词清理、分辨率预设、图片对比……全部归在右键菜单的 `M8/Gallery` 下 |
 
 > **零第三方依赖，两个例外。** 后端只用 Python 标准库和 ComfyUI 自带的东西，装完不用 pip 装任何包。
@@ -38,7 +40,7 @@
 - 上游原仓库已归档，作者把后续功能迁到了 [ComfyUI-Aaalice-Nodes](https://github.com/Aaalice233/ComfyUI-Aaalice-Nodes)
 - 本仓库在合并基础上做的改动（节点分类统一到 `M8/Gallery`、接入 NAI 图鉴源、修 Gelbooru 原图、去掉它自带的 requirements）记在 [`m8/nodes/gallery/README.md`](m8/nodes/gallery/README.md) 和 git 历史里
 
-其余货架（大模型 / 相机 / 提示词）都是本仓库自己写的。
+其余货架（大模型 / 相机 / 提示词 / 图像）都是本仓库自己写的。
 
 ---
 
@@ -219,7 +221,7 @@ git clone https://github.com/chenr5934-tech/ComfyUI-M8nodes.git
 
 重启 ComfyUI 即可。**不需要 pip 安装任何依赖。**
 
-节点会出现在右键菜单的 `M8/` 下面，按货架分成三组：`大模型`、`相机`、`提示词`。
+节点会出现在右键菜单的 `M8/` 下面，按货架分成四组：`大模型`、`相机`、`提示词`、`图像`。
 
 ### 更新
 
@@ -321,6 +323,7 @@ MIT 协议，版权归原作者所有，原许可证副本见 `js/ui/whale/asset
 | 加载器 | `m8/nodes/loaders/` | `M8-LOAD-###` |
 | 采样 | `m8/nodes/samplers/` | `M8-SAMP-###` |
 | 判断 | `m8/nodes/logic/` | `M8-LOGIC-###` |
+| 图像 | `m8/nodes/image/` | `M8-IMG-###` |
 | 文本 | `m8/nodes/text/` | `M8-TXT-###` |
 
 目录是两层的：**一个货架一个文件夹，货架里一个功能一个文件夹**。
