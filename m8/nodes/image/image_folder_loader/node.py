@@ -1,8 +1,9 @@
-"""M8 · 文件夹读图 —— 把一整个文件夹的图按确定顺序读成 IMAGE 批次。
+"""M8 · 文件夹读图 —— 把一整个文件夹的图按确定顺序读出来，逐张喂给下游。
 
 为什么需要它：ComfyUI 自带的「加载图像」一次只能读一张，要过一整个文件夹就得
-手工点 N 次、每次换一张。这个节点把「文件夹」变成一个批次，并且**顺序是确定的**
-（见 m8/core/imageio.py 的排序逻辑），下游按 batch 维逐张处理，出来还是那个顺序。
+手工点 N 次、每次换一张。这个节点把「文件夹」变成一个列表，并且**顺序是确定的**
+（见 m8/core/imageio.py 的排序逻辑），下游按项逐张处理，出来还是那个顺序。
+每张保持自己的原尺寸 —— 逐项下发时尺寸本来就不需要统一。
 
 重依赖（torch / numpy / pillow）全部在函数里 import —— 模块级 import 会让
 没有装这些包的静态测试环境直接炸掉，也会拖慢 ComfyUI 的启动扫描。
@@ -17,7 +18,8 @@ from ....core import imageio
 from ....core.errors import M8Error, wrap
 from ....core.log import SHELF_IMG, log, warn
 
-# 三个尺寸策略的语义，和 imageio.SIZE_MODES 一一对应
+# 尺寸处理档位，和 imageio.SIZE_MODES 一一对应
+MODE_AS_IS = imageio.SIZE_AS_IS
 MODE_STRICT = imageio.SIZE_STRICT
 MODE_PAD = imageio.SIZE_PAD
 MODE_RESIZE = imageio.SIZE_RESIZE
@@ -56,8 +58,11 @@ def _probe_size(path: Path) -> tuple[int, int]:
     return width, height
 
 
-def _target_size(sizes: list[tuple[int, int]], mode: str, names: list[str]) -> tuple[int, int]:
-    """按策略决定整个批次要用的 (宽, 高)。"""
+def _target_size(sizes: list[tuple[int, int]], mode: str, names: list[str]) -> tuple[int, int] | None:
+    """按策略决定整个批次要用的 (宽, 高)；返回 None 表示「各用各的」。"""
+    if mode == MODE_AS_IS:
+        return None
+
     if mode == MODE_PAD:
         return (max(w for w, _h in sizes), max(h for _w, h in sizes))
 
@@ -74,14 +79,18 @@ def _target_size(sizes: list[tuple[int, int]], mode: str, names: list[str]) -> t
             raise M8Error(
                 "M8-IMG-005",
                 "这批图尺寸不一致",
-                "把「尺寸处理」改成「补边」或「拉伸」，或者先把文件夹里的图统一成同一尺寸",
+                "把「尺寸处理」改成「原样」就行 —— 逐张下发不需要统一尺寸；"
+                "确实要固定尺寸的话选「补边」或「拉伸」",
                 detail=f"基准 {target[0]}x{target[1]}；不一致：{shown}{more}",
             )
     return target
 
 
-def _to_tensor(path: Path, target: tuple[int, int], mode: str) -> Any:
-    """读一张图 → (高, 宽, 3) 的 float32 张量，取值 0..1。"""
+def _to_tensor(path: Path, target: tuple[int, int] | None, mode: str) -> Any:
+    """读一张图 → (高, 宽, 3) 的 float32 张量，取值 0..1。
+
+    `target` 为 None 时保持原尺寸，一个像素都不动。
+    """
     try:
         import numpy as np
         import torch
@@ -110,7 +119,7 @@ def _to_tensor(path: Path, target: tuple[int, int], mode: str) -> Any:
             "文件可能损坏，或后缀和真实格式不符",
         )
 
-    if img.size != target:
+    if target is not None and img.size != target:
         if mode == MODE_PAD:
             # 等比缩放到装得下，空出来的地方补黑 —— 不裁内容、不变形。
             img = ImageOps.pad(img, target, color=(0, 0, 0), centering=(0.5, 0.5))
@@ -131,7 +140,7 @@ class M8ImageFolderLoader:
                 "folder": ("STRING", {"default": "", "multiline": False}),
                 "recursive": ("BOOLEAN", {"default": False}),
                 "sort": (list(imageio.SORT_OPTIONS), {"default": imageio.DEFAULT_SORT_LABEL}),
-                "size_mode": (list(imageio.SIZE_MODES), {"default": MODE_STRICT}),
+                "size_mode": (list(imageio.SIZE_MODES), {"default": MODE_AS_IS}),
                 "start_index": ("INT", {"default": 0, "min": 0, "max": 0x7FFFFFFF, "step": 1}),
                 "limit": ("INT", {"default": 0, "min": 0, "max": 0x7FFFFFFF, "step": 1}),
             }
@@ -149,6 +158,8 @@ class M8ImageFolderLoader:
         "把一个文件夹里的图片按顺序读出来，逐张下发给下游。"
         "输出是图像列表 —— ComfyUI 对 list 输出会按项喂，所以采样器每张各跑一次、"
         "显存只吃一张；模型加载这类不吃 list 的节点仍然只跑一次。"
+        "每张保持自己的原尺寸，文件夹里尺寸不一样也能直接跑；"
+        "只有下游非要固定尺寸时，才需要把「尺寸处理」改成补边或拉伸。"
         "「文件名」同样逐项下发，接给「文件夹存图」就能按原名回写、保留子目录结构。"
         "文件夹填完整路径，或填相对 ComfyUI 目录的路径（如 input/pics）。"
     )
@@ -188,8 +199,11 @@ class M8ImageFolderLoader:
         chosen = paths[start : start + count]
 
         names = [str(p.relative_to(target_dir)).replace("\\", "/") for p in chosen]
-        sizes = [_probe_size(p) for p in chosen]
-        size = _target_size(sizes, size_mode, names)
+        # 「原样」不探测尺寸：逐张下发时每张各是各的张量，多读一遍文件头纯属浪费。
+        size: tuple[int, int] | None = None
+        if size_mode != MODE_AS_IS:
+            sizes = [_probe_size(p) for p in chosen]
+            size = _target_size(sizes, size_mode, names)
 
         # 这里显式 import 一次，是为了在「还没开始解码」时就给出明确的依赖错误，
         # 而不是让第一批图读到一半才在 _to_tensor 里炸。别当死代码删掉。
@@ -200,9 +214,9 @@ class M8ImageFolderLoader:
 
         # 每张单独一维 batch（1, 高, 宽, 3）：下游按项收，一次只拿一张。
         tensors = [_to_tensor(p, size, size_mode).unsqueeze(0) for p in chosen]
+        shape_note = f"输出尺寸 {size[0]}x{size[1]}（{size_mode}）" if size else "各用原尺寸"
         log(
-            f"{target_dir} → 第 {start + 1}-{start + count} 张 / 共 {total} 张，"
-            f"输出尺寸 {size[0]}x{size[1]}（{size_mode}）",
+            f"{target_dir} → 第 {start + 1}-{start + count} 张 / 共 {total} 张，{shape_note}",
             shelf=SHELF_IMG,
         )
         # ui 段只给前端写状态栏用；真正的输出在 result 里，按 OUTPUT_IS_LIST 逐项下发。

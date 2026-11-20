@@ -129,7 +129,7 @@ ComfyUI 里的报错长这样：
 | M8-IMG-002 | `core/imageio.py: resolve_folder` | 按填的路径找不到目录 | 看 detail 里列出的找过的位置 —— 相对路径先按 ComfyUI 目录、再按 `input` / `output` 依次试 |
 | M8-IMG-003 | `core/imageio.py: list_images` | 目录在，但里面一张图都没有 | 支持 png/jpg/jpeg/webp/bmp/gif/tif/tiff。图都在子文件夹里就打开「含子文件夹」 |
 | M8-IMG-004 | `image_folder_loader/node.py: _probe_size / _to_tensor` | 某张图打不开，或尺寸是 0 | 文件损坏、或被改了后缀名。detail 里指到具体文件；删掉它或换成完好的那张 |
-| M8-IMG-005 | `image_folder_loader/node.py: _target_size` | 一个 batch 里的图尺寸不一致，而「尺寸处理」是「严格」 | 换成「补边」或「拉伸」，或先把这一批图统一成同一尺寸。detail 里列出不一致的文件 |
+| M8-IMG-005 | `image_folder_loader/node.py: _target_size` | 只有把「尺寸处理」手动切成「严格」时才会发生：这一批图尺寸不一致 | 改回「原样」就行 —— 逐张下发本来就不需要统一尺寸。真要让下游收到固定尺寸才选「补边」或「拉伸」。detail 里列出不一致的文件 |
 | M8-IMG-006 | `core/imageio.py: ensure_dir` | 目标目录建不出来 | 只读盘、需要管理员权限的目录、盘符不存在都会这样。换个可写的位置 |
 | M8-IMG-007 | `image_folder_saver/node.py: execute` | 某张图写盘失败 | 看磁盘剩余空间和目录写权限。detail 里是文件名和原始异常 |
 | M8-IMG-008 | `image_folder_loader/node.py: execute` | 「起始序号」超过了总数，或「最多输出」为负 | 起始序号从 0 开始且要小于总数；「最多输出」填 0 表示全部 |

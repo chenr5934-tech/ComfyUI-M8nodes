@@ -50,11 +50,15 @@ SORT_OPTIONS: dict[str, str] = {
 
 DEFAULT_SORT_LABEL = "文件名（自然序）"
 
-# 尺寸不一致时的处理档位。下拉值同样是中文。
+# 尺寸处理档位。下拉值同样是中文。
+#
+# 「原样」是默认：加载器逐张下发，每张各是一个独立的张量，尺寸本来就可以各不相同，
+# 硬把它们对齐纯属白损信息。剩下三档只在「下游确实要固定尺寸」时才用得上。
+SIZE_AS_IS = "原样"
 SIZE_STRICT = "严格"
 SIZE_PAD = "补边"
 SIZE_RESIZE = "拉伸"
-SIZE_MODES: tuple[str, ...] = (SIZE_STRICT, SIZE_PAD, SIZE_RESIZE)
+SIZE_MODES: tuple[str, ...] = (SIZE_AS_IS, SIZE_STRICT, SIZE_PAD, SIZE_RESIZE)
 
 # 保存格式 -> 落盘用的 PIL 格式名 + 后缀
 SAVE_FORMATS: dict[str, tuple[str, str]] = {
